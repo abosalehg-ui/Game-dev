@@ -155,6 +155,8 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:#fff;u
     <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#ccc;font-family:'Cairo';font-size:11px;outline:none"></div>
     <button class="bd" id="bdev" onclick="SD()">🚀 طوّر اللعبة</button>
     <div class="dc" id="dcc">تكلفة: 2,000</div>
+<button class="bd" id="bfree" onclick="FL()" style="display:none;background:linear-gradient(135deg,#ffb347,#ff6b6b);margin-top:6px">💼 عمل حر (بدون تكلفة)</button>
+<div class="dc" id="freeDesc" style="display:none;color:#ffb347">أرباح قليلة بدون تقييم أو معجبين</div>
   </div>
 </div>
 
@@ -537,6 +539,9 @@ function UU(){
     document.getElementById(vid).textContent=S.sl[k];
   });
   document.getElementById('bdev').disabled=!(S.genre&&S.topic&&S.money>=STG[S.st].devCost&&!S.dev);
+  const broke=S.money<STG[S.st].devCost;
+  document.getElementById('bfree').style.display=broke?'block':'none';
+  document.getElementById('freeDesc').style.display=broke?'block':'none';
 }
 
 function BS2(){
@@ -584,6 +589,29 @@ function sn(t){
 }
 
 // ============ DEVELOP ============
+window.FL=function(){
+  if(S.dev)return;S.dev=true;sn('c');
+  po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
+  document.getElementById('sp').classList.add('show');typingActive=true;
+  let step=0;const total=30;
+  document.getElementById('ppx').textContent='تنفيذ عقد خارجي...';
+  const iv=setInterval(()=>{
+    step++;document.getElementById('pf').style.width=(step/total*100)+'%';
+    if(step%7===0)sn('t');
+    if(step>=total){
+      clearInterval(iv);typingActive=false;
+      document.getElementById('sp').classList.remove('show');
+      const earn=Math.floor(STG[S.st].devCost*0.4+Math.random()*STG[S.st].devCost*0.2);
+      S.money+=earn;S.dev=false;S.gse++;
+      document.getElementById('pt').style.display='flex';
+      openPanel();UU();
+      // إشعار بسيط
+      const t=document.getElementById('at');document.getElementById('atx').textContent='💼 عمل حر: +'+fmt(earn);
+      t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
+    }
+  },50);
+};
+
 window.SD=function(){
   if(!S.genre||!S.topic||S.money<STG[S.st].devCost||S.dev)return;
   S.dev=true;S.money-=STG[S.st].devCost;UU();sn('c');
