@@ -139,6 +139,8 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:#fff;u
     <div class="st">👥 <span class="v" id="df">0</span></div>
   </div>
   <button id="hb" onclick="TH()">📜 السجل</button>
+  <button id="hb" onclick="exportSave()" style="position:fixed;top:48px;right:80px;z-index:12;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:3px 8px;color:#555;font-family:'Cairo';font-size:10px;font-weight:700;cursor:pointer">💾 تصدير</button>
+  <button id="hb" onclick="importSave()" style="position:fixed;top:48px;right:140px;z-index:12;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:3px 8px;color:#555;font-family:'Cairo';font-size:10px;font-weight:700;cursor:pointer">📂 استيراد</button>
   <div id="hp"></div>
 </div>
 
@@ -482,6 +484,8 @@ const EVENTS=[
   {icon:'🏴‍☠️',title:'قرصنة!',desc:'لعبتك الأخيرة انتشرت مقرصنة! المبيعات القادمة -30%',good:false,type:'piracy'},
   {icon:'🎁',title:'هدية من معجب!',desc:'معجب أرسل تبرع! +15,000 💰',good:true,type:'gift'},
   {icon:'📱',title:'انتشار فيروسي!',desc:'لعبتك أصبحت ترند! +800 معجب',good:true,type:'viral'},
+  {icon:'🎥',title:'يوتيوبر مشهور!',desc:'يوتيوبر لعب لعبتك على الهواء! +1,200 معجب',good:true,type:'youtuber'},
+  {icon:'✊',title:'احترق الكمبيوتر!',desc:'احتراق كروت الشاشة بسبب الكيبل.',good:false,type:'strike'},
 ];
 
 // EASTER EGGS: if user types this exact name, bonus
@@ -518,6 +522,10 @@ const NB=['الظلام','النور','الأبطال','المجهول','الخ�
 let S={};
 function IS(){S={money:10000,fn:0,gc:0,st:0,bs:0,pm:10000,hs:5,genre:null,topic:null,sl:{design:3,code:4,sound:3},hist:[],ach:[],sk:0,em:null,tt:null,gse:0,dev:false,eggs:0};}
 
+function saveGame(){try{localStorage.setItem('gd_save',JSON.stringify(S))}catch(e){}}
+function loadGame(){try{const d=localStorage.getItem('gd_save');if(d){const p=JSON.parse(d);Object.assign(S,p);return true}}catch(e){}return false}
+function exportSave(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='game_save.json';a.click()}
+function importSave(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);Object.assign(S,d);buildRoom(S.st);UU();saveGame();const t=document.getElementById('at');document.getElementById('atx').textContent='✅ تم تحميل الحفظ!';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}catch(e){alert('ملف غير صالح')}};r.readAsText(e.target.files[0])};i.click()}
 function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString('ar')}
 
 function UU(){
@@ -589,6 +597,8 @@ function sn(t){
 }
 
 // ============ DEVELOP ============
+window.exportSave=exportSave;
+window.importSave=importSave;
 window.FL=function(){
   if(S.dev)return;S.dev=true;sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
@@ -614,7 +624,7 @@ window.FL=function(){
 
 window.SD=function(){
   if(!S.genre||!S.topic||S.money<STG[S.st].devCost||S.dev)return;
-  S.dev=true;S.money-=STG[S.st].devCost;UU();sn('c');
+  const cost=S.em==='strike'?STG[S.st].devCost*2:STG[S.st].devCost;if(S.em==='strike')S.em=null;S.dev=true;S.money-=cost;UU();sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
   document.getElementById('sp').classList.add('show');
   typingActive=true;
@@ -688,7 +698,7 @@ function FD(){
 
   // Show review after egg delay
   setTimeout(()=>showRev(gameName,scores,avg,rev,fd),eggKey?2600:100);
-  CA();UU();
+  CA();UU();saveGame();
 }
 
 function showRev(name,scores,avg,rev,fd){
@@ -732,6 +742,8 @@ function TE(){
   else if(ev.type==='piracy')S.em='piracy';
   else if(ev.type==='gift')S.money+=15000;
   else if(ev.type==='viral')S.fn+=800;
+  else if(ev.type==='youtuber')S.fn+=1200;
+  else if(ev.type==='strike')S.em='strike';
   document.getElementById('evi').textContent=ev.icon;
   const te=document.getElementById('evt2');te.textContent=ev.title;te.className='et '+(ev.good?'gd2':'bd3');
   document.getElementById('evd').textContent=desc;
@@ -754,7 +766,7 @@ window.DU=function(){
   const mx=STG[S.st].maxPts,old=S.sl.design+S.sl.code+S.sl.sound||1,r=mx/(old);
   S.sl.design=Math.floor(S.sl.design*r*.9);S.sl.code=Math.floor(S.sl.code*r*.9);
   S.sl.sound=Math.max(0,mx-S.sl.design-S.sl.code);
-  document.getElementById('su').classList.remove('show');openPanel();sn('ok');UU();CA();
+  document.getElementById('su').classList.remove('show');openPanel();sn('ok');UU();CA();saveGame();
 };
 window.CU=function(){document.getElementById('su').classList.remove('show');openPanel();UU();};
 
@@ -791,7 +803,9 @@ window.TH=function(){
 
 // ============ START ============
 document.getElementById('bst').onclick=function(){
-  document.getElementById('ss').style.display='none';IS();buildRoom(0);BS2();SS2();
+  document.getElementById('ss').style.display='none';IS();
+  const loaded=loadGame();
+  buildRoom(S.st);BS2();SS2();
   document.getElementById('nm').style.display='block';
   openPanel();UU();sn('ok');
 };
