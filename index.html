@@ -448,16 +448,161 @@ function mkTrophy(x,y,z,col){
 
 const COLORS=[0x00aaff,0xff6b6b,0x6c5ce7,0x00b894,0xfdcb6e,0xe17055,0x74b9ff,0xffeaa7];
 
+// Role-based person colors (matches employee role)
+const ROLE_COLORS={designer:0xff6b9d,coder:0x00b894,artist:0xa29bfe,composer:0x74b9ff,marketer:0xfdcb6e};
+// Self (player) is always gold to stand out
+const SELF_COLOR=0xffd700;
+// Genre tints for game posters on walls
+const GENRE_COLORS={action:0xff4444,rpg:0x9b59b6,sim:0x3498db,adventure:0xe67e22,strategy:0x2ecc71,horror:0x34495e,racing:0xf1c40f,puzzle:0xff69b4,mmo:0x1abc9c,br:0xff8800,vr:0xa29bfe};
+
+// Max hires per stage (first slot is always self/CEO)
+const HIRE_CAPS=[2,2,4,8,15,23];
+
+// Desk + person positions per stage. First slot = self/CEO, rest = employees in order.
+// ceo:true means desk is drawn manually (skip mkDesk)
+const STAGE_LAYOUT=[
+  // 0: Bedroom — 1 self + 2 hires possible (bed occupies left-back area)
+  {desks:[{x:3,z:-5},{x:-3,z:4},{x:4,z:4}]},
+  // 1: Garage — 1 self + 2 hires
+  {desks:[{x:2,z:-4},{x:-4,z:-4},{x:5,z:4}]},
+  // 2: Small Office — 1 self + 4 hires
+  {desks:[{x:-4,z:-6},{x:4,z:-6},{x:-4,z:3},{x:4,z:3},{x:0,z:-6}]},
+  // 3: Studio — 1 self + 8 hires
+  {desks:[{x:-6,z:-7},{x:0,z:-7},{x:6,z:-7},{x:-6,z:0},{x:0,z:0},{x:6,z:0},{x:-6,z:6},{x:0,z:6},{x:6,z:6}]},
+  // 4: Company — 1 self + 15 hires (4×4 grid)
+  {desks:(()=>{const a=[];for(let r=0;r<4;r++)for(let c=0;c<4;c++)a.push({x:-9+c*6,z:-8+r*6});return a})()},
+  // 5: Skyscraper — CEO + 23 hires (5 pods + center column)
+  {desks:[
+    {x:0,z:-16,ceo:true},
+    {x:-13,z:-13},{x:-7,z:-13},{x:-13,z:-7},{x:-7,z:-7},
+    {x:7,z:-13},{x:13,z:-13},{x:7,z:-7},{x:13,z:-7},
+    {x:-13,z:3},{x:-7,z:3},{x:-13,z:9},{x:-7,z:9},
+    {x:7,z:3},{x:13,z:3},{x:7,z:9},{x:13,z:9},
+    {x:-3,z:-10},{x:3,z:-10},{x:-3,z:-3},{x:3,z:-3},
+    {x:-3,z:3},{x:3,z:3},{x:-3,z:9},
+  ]},
+];
+
+// Where to place game posters on the back wall per stage
+const POSTER_WALLS=[
+  {z:-7.85,startX:-4,maxCount:3,y:4.5},  // bedroom (back wall at -8)
+  {z:-9.85,startX:-5,maxCount:4,y:5},    // garage
+  {z:-11.85,startX:-6,maxCount:5,y:5.5}, // small office
+  {z:-13.85,startX:-8,maxCount:6,y:6},   // studio
+  {z:-16.85,startX:-10,maxCount:7,y:7},  // company
+  {z:-19.85,startX:-13,maxCount:8,y:7.5},// skyscraper
+];
+
+function placePeople(stage){
+  const layout=STAGE_LAYOUT[stage];if(!layout)return;
+  const emps=S.employees||[];
+  layout.desks.forEach((desk,i)=>{
+    // Draw desk (unless it's the manually-drawn CEO desk)
+    if(!desk.ceo)mkDesk(desk.x,desk.z,0);
+    // Slot 0 = self (player). Always present, gold colored.
+    // Slots 1+ = hired employees in order. Empty slot = no person (visible empty desk).
+    if(i===0){
+      const p=mkPerson(desk.x,desk.z+2,SELF_COLOR);
+      p.userData.isSelf=true;
+    }else if(i-1<emps.length){
+      const emp=emps[i-1];
+      const color=ROLE_COLORS[emp.role]||0x00aaff;
+      const p=mkPerson(desk.x,desk.z+2,color);
+      p.userData.role=emp.role;p.userData.empName=emp.name;
+    }
+  });
+}
+
+function mkGamePoster(x,y,z,color){
+  rg.add(B(1.4,1,.04,0x111,x,y,z));
+  rg.add(E(1.2,.8,.06,color,color,x,y,z+.02,.35));
+}
+
+function addGamePosters(stage){
+  const wall=POSTER_WALLS[stage];if(!wall)return;
+  const ips=(S.ips||[]).slice(-wall.maxCount);
+  const spacing=Math.min(1.9,(Math.abs(wall.startX)*2)/Math.max(1,ips.length));
+  ips.forEach((ip,i)=>{
+    const x=wall.startX+i*spacing;
+    const color=GENRE_COLORS[ip.genre]||0x00aaff;
+    mkGamePoster(x,wall.y,wall.z,color);
+  });
+}
+
+let particleSystem=null;
+function addParticles(stage){
+  particleSystem=null;
+  if(stage<2)return; // particles only from small office onward
+  const count=20+stage*25;
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(count*3);
+  const vel=[];
+  const range=15+stage*4;
+  const maxY=6+stage*.8;
+  for(let i=0;i<count;i++){
+    pos[i*3]=(Math.random()-.5)*range;
+    pos[i*3+1]=Math.random()*maxY+1;
+    pos[i*3+2]=(Math.random()-.5)*range;
+    vel.push(Math.random()*.006+.002);
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const partColor=stage>=4?0xffd700:0x00ccff;
+  const mat=new THREE.PointsMaterial({color:partColor,size:.16,transparent:true,opacity:.55});
+  const points=new THREE.Points(geo,mat);
+  rg.add(points);
+  particleSystem={points,vel,maxY};
+}
+
+function mkCoffee(x,z){
+  const g=new THREE.Group();
+  g.add(B(.18,.24,.18,0xffffff,0,2.27,0));
+  g.add(E(.18,.03,.18,0x4a2818,0x4a2818,0,2.38,0,.12));
+  g.position.set(x,0,z);
+  rg.add(g);
+}
+
+function addDeskDecor(stage){
+  const layout=STAGE_LAYOUT[stage];if(!layout)return;
+  const emps=S.employees||[];
+  layout.desks.forEach((desk,i)=>{
+    if(desk.ceo)return;
+    const occupied=(i===0)||(i-1<emps.length);
+    if(occupied&&Math.random()<.65){
+      mkCoffee(desk.x+.75,desk.z);
+    }
+  });
+}
+
+// Hire counter board (mounted on the back wall at higher stages)
+function addStaffBoard(stage){
+  if(stage<3)return; // studio+
+  const spec={3:{z:-13.85,x:-8,y:6},4:{z:-16.85,x:-12,y:6.5},5:{z:-19.85,x:-15,y:7}}[stage];
+  if(!spec)return;
+  const emps=(S.employees||[]).length;
+  const cap=HIRE_CAPS[stage];
+  const ratio=Math.max(0,Math.min(1,emps/cap));
+  rg.add(B(1.6,.9,.04,0x111,spec.x,spec.y,spec.z+.05));
+  const barW=Math.max(.06,1.4*ratio);
+  const barColor=ratio>=1?0x00ff88:ratio>.5?0xffd700:0xff6b6b;
+  rg.add(E(barW,.5,.05,barColor,barColor,spec.x-.7+barW/2,spec.y,spec.z+.08,.5));
+}
+
 function buildRoom(s){
   clr();
   if(s===0)buildBedroom();else if(s===1)buildGarage();else if(s===2)buildSmallOffice();
   else if(s===3)buildStudio();else if(s===4)buildCompany();else buildSkyscraper();
-  // Add trophies based on awards
+  placePeople(s);
+  addGamePosters(s);
+  addDeskDecor(s);
+  addParticles(s);
+  addStaffBoard(s);
+  // Dynamic award trophies on floor near back wall, sitting at ground level
   if(S.awards&&S.awards.length){
     const maxT=Math.min(S.awards.length,8);
+    const zPos=[-7.3,-9.3,-11.3,-13.3,-16.3,-19.3][s]||-15;
     for(let i=0;i<maxT;i++){
-      const xpos=-3+i*1;
-      mkTrophy(xpos,5+S.st*.2,-8-s,0xffd700);
+      const xpos=-3.5+i*1;
+      mkTrophy(xpos,.45,zPos,0xffd700);
     }
   }
 }
@@ -472,8 +617,6 @@ function buildBedroom(){
   rg.add(B(3.2,.5,4.5,0x6c5ce7,-4,.5,-4));
   rg.add(B(3,.3,4.3,0xeef,-4,.85,-4));
   rg.add(B(.9,.25,.5,0xfff,-4,1.05,-5.8));
-  mkDesk(3,-5,0);
-  mkPerson(3,-3,COLORS[0]);
   camera.position.set(20,20,20);
 }
 
@@ -487,8 +630,6 @@ function buildGarage(){
   rg.add(B(4,.15,1.5,0x8B5E3C,-5,2,-7));
   rg.add(B(3,.12,.6,0x777,-7,3.5,-sz/2+.4));rg.add(B(3,.12,.6,0x777,-7,4.5,-sz/2+.4));
   rg.add(B(1.2,1,1,0x886644,6,0.5,-7));rg.add(B(.8,.8,.8,0x997755,7.5,.4,-6));
-  mkDesk(2,-4,0);
-  mkPerson(2,-2,COLORS[0]);
   camera.position.set(22,22,22);
 }
 
@@ -499,8 +640,6 @@ function buildSmallOffice(){
   rg.add(B(.3,8,sz,0x1d3557,-sz/2,4,0));
   rg.add(E(3.5,2.2,.06,0x88bbff,0x88bbff,4,4.5,-sz/2+.2,.25));
   rg.add(B(4.5,2.8,.12,0xf0f0f0,-2,4,-sz/2+.25));
-  mkDesk(-4,-6,0);mkDesk(4,-6,0);
-  mkPerson(-4,-4,COLORS[0]);mkPerson(4,-4,COLORS[1]);
   mkPlant(8,-8);mkPlant(-9,6);
   rg.add(B(1.8,.7,1,0x8B5E3C,7,.35,4));
   camera.position.set(26,26,26);
@@ -512,11 +651,6 @@ function buildStudio(){
   rg.add(B(sz,8,.3,0x223355,0,4,-sz/2));
   rg.add(B(.3,8,sz,0x223355,-sz/2,4,0));
   rg.add(E(4,2.5,.06,0x88bbff,0x88bbff,5,4.8,-sz/2+.2,.25));
-  mkDesk(-6,-7,0);mkDesk(0,-7,0);mkDesk(6,-7,0);mkDesk(-6,0,0);
-  for(let i=0;i<4;i++){
-    const pos=[[-6,-5],[0,-5],[6,-5],[-6,2]];
-    mkPerson(pos[i][0],pos[i][1],COLORS[i]);
-  }
   rg.add(B(4,.12,2.5,0x5a3e28,3,1.1,5));
   rg.add(E(3,2,.08,0x222,0x00ccff,-1,4.5,-sz/2+.2,.15));
   mkPlant(10,-10);mkPlant(-10,8);mkPlant(10,8);
@@ -530,17 +664,12 @@ function buildCompany(){
   rg.add(B(sz,9,.3,0x2c3e50,0,4.5,-sz/2));
   rg.add(B(.3,9,sz,0x2c3e50,-sz/2,4.5,0));
   rg.add(E(5,3,.06,0x88bbff,0x88bbff,7,5,-sz/2+.2,.25));
-  for(let r=0;r<2;r++)for(let c=0;c<4;c++){
-    mkDesk(-9+c*6,-8+r*10,0);
-  }
-  for(let r=0;r<2;r++)for(let c=0;c<4;c++){
-    mkPerson(-9+c*6,-6+r*10,COLORS[(r*4+c)%8]);
-  }
+  // Static decoration trophies on shelf
   rg.add(B(5,.12,.5,0x666,0,5.8,-sz/2+.35));
   for(let i=0;i<4;i++)rg.add(E(.3,.55,.3,0xffd700,0xffd700,-1.5+i,6.25,-sz/2+.35,.3));
-  rg.add(B(6,1.2,2.5,0x5a3e28,0,.6,10));
-  rg.add(B(2,5,1.2,0x111122,-13,2.5,-13));rg.add(B(2,5,1.2,0x111122,-13,2.5,-11));
-  mkPlant(13,-13);mkPlant(-13,11);mkPlant(13,11);
+  rg.add(B(6,1.2,2.5,0x5a3e28,0,.6,13));
+  rg.add(B(2,5,1.2,0x111122,-14,2.5,-14));rg.add(B(2,5,1.2,0x111122,-14,2.5,-12));
+  mkPlant(14,-14);mkPlant(-14,14);mkPlant(14,14);
   camera.position.set(36,34,36);
 }
 
@@ -552,21 +681,15 @@ function buildSkyscraper(){
   for(let x=-16;x<=16;x+=8)for(let z=-16;z<=16;z+=8){
     rg.add(B(7,.02,7,(x+z)%16===0?0x2a3a4a:0x253545,x,.01,z));
   }
-  const pods=[[-12,-12],[-12,4],[4,-12],[4,4]];
-  let pIdx=0;
-  pods.forEach(([px,pz])=>{
-    for(let r=0;r<2;r++)for(let c=0;c<2;c++){
-      mkDesk(px+c*6,pz+r*6,0);
-      mkPerson(px+c*6,pz+r*6+2,COLORS[pIdx%8]);
-      pIdx++;
-    }
-  });
+  // CEO big desk (drawn manually since the layout marks it ceo:true)
   rg.add(B(5,.15,2.5,0x4a2810,0,2.1,-16));
   rg.add(E(2,1.2,.06,0x00ccff,0x00ccff,0,3.2,-17,.6));
-  mkPerson(0,-14,0xffd700);
+  // Lounge sofas
   rg.add(B(4,.6,2,0x333,14,0.3,0));rg.add(B(4,.6,2,0x333,-14,0.3,0));
+  // Neon ceiling lights
   for(let x=-16;x<=16;x+=8)rg.add(E(6,.08,.08,0x00ccff,0x00ccff,x,8,0,.4));
   for(let z=-16;z<=16;z+=8)rg.add(E(.08,.08,6,0x00ccff,0x00ccff,0,8,z,.4));
+  // Front award wall (decorative)
   for(let i=0;i<6;i++)rg.add(E(.5,.5,.08,0xffd700,0xffd700,-12+i*5,5,sz/2-.1,.2));
   mkPlant(-17,-17);mkPlant(17,-17);mkPlant(-17,17);mkPlant(17,17);
   camera.position.set(42,40,42);
@@ -597,8 +720,18 @@ function animate(){
       }
     }
   });
-  // Trophy glow rotation
-  trophies.forEach((tr,i)=>{tr.rotation.y=t*.3+i;});
+  // Trophy glow rotation + gentle hover
+  trophies.forEach((tr,i)=>{tr.rotation.y=t*.3+i;tr.position.y=.45+Math.sin(t*1.5+i)*.08;});
+  // Floating particles (gentle upward drift, wrap around)
+  if(particleSystem){
+    const arr=particleSystem.points.geometry.attributes.position.array;
+    const v=particleSystem.vel;const mY=particleSystem.maxY;
+    for(let i=0;i<v.length;i++){
+      arr[i*3+1]+=v[i];
+      if(arr[i*3+1]>mY)arr[i*3+1]=1;
+    }
+    particleSystem.points.geometry.attributes.position.needsUpdate=true;
+  }
   renderer.render(scene,camera);
 }
 
@@ -1284,6 +1417,8 @@ function FD(){
   S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:S.year,sequel:!!sequelInfo});
 
   setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary),eggKey?2600:100);
+  // Rebuild scene to reflect new IPs (posters), awards (trophies), and any visual updates
+  buildRoom(S.st);
   CA();UU();saveGame();
   pendingGameData=null;
   S._sequelMode=false;
@@ -1538,7 +1673,7 @@ function RenderEmps(){
       const lvl=EMP_LEVELS[e.level||0];
       const div=document.createElement('div');div.className='empcard';
       div.innerHTML=`<div class="info"><span style="font-size:18px">${role.icon}</span><div><div style="font-weight:900">${e.name}</div><div style="font-size:9px;color:var(--tx3)">${role.n} <span class="lv">${lvl.n}</span> • Exp: ${e.exp||0}</div></div></div><div style="text-align:left"><div class="sal">💼 ${fmt(e.salary)}/شهر</div></div>`;
-      const fb=document.createElement('button');fb.textContent='فصل';fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);RenderEmps();UU();saveGame();}};
+      const fb=document.createElement('button');fb.textContent='فصل';fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);buildRoom(S.st);RenderEmps();UU();saveGame();}};
       div.appendChild(fb);
       c.appendChild(div);
     });
@@ -1563,7 +1698,7 @@ function RenderEmps(){
       const role=EMP_ROLES.find(r=>r.id===cand.role);
       const lvl=EMP_LEVELS[cand.level];
       const div=document.createElement('div');div.className='empcard';
-      const can=S.money>=cand.hireCost&&S.employees.length<STG[S.st].emp*2;
+      const can=S.money>=cand.hireCost&&S.employees.length<HIRE_CAPS[S.st];
       div.innerHTML=`<div class="info"><span style="font-size:18px">${role.icon}</span><div><div style="font-weight:900">${cand.name}</div><div style="font-size:9px;color:var(--tx3)">${role.n} <span class="lv">${lvl.n}</span></div></div></div><div style="text-align:left"><div class="sal">💼 ${fmt(cand.salary)}/شهر</div><div style="font-size:9px;color:var(--g)">توظيف: ${fmt(cand.hireCost)}</div></div>`;
       const hb=document.createElement('button');hb.textContent='وظّف';hb.style.background='rgba(0,255,136,.15)';hb.style.borderColor='rgba(0,255,136,.3)';hb.style.color='var(--p)';hb.disabled=!can;
       hb.onclick=()=>{
@@ -1572,7 +1707,7 @@ function RenderEmps(){
         S.employees.push({...cand});
         S._candidates.splice(idx,1);
         sn('ok');showToast('✅ تم توظيف '+cand.name);
-        UU();saveGame();RenderEmps();CA();
+        buildRoom(S.st);UU();saveGame();RenderEmps();CA();
       };
       div.appendChild(hb);
       c.appendChild(div);
@@ -1581,7 +1716,7 @@ function RenderEmps(){
     ref.onclick=()=>{if(S.money>=1000){S.money-=1000;S._candidates=null;RenderEmps();UU();saveGame();}};
     c.appendChild(ref);
     const cap=document.createElement('div');cap.style.cssText='text-align:center;margin-top:6px;font-size:10px;color:var(--tx3)';
-    cap.textContent='السعة: '+(S.employees?.length||0)+'/'+(STG[S.st].emp*2);
+    cap.textContent='السعة: '+(S.employees?.length||0)+'/'+HIRE_CAPS[S.st];
     c.appendChild(cap);
   }
 }
