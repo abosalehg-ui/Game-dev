@@ -456,13 +456,13 @@ const SELF_COLOR=0xffd700;
 const GENRE_COLORS={action:0xff4444,rpg:0x9b59b6,sim:0x3498db,adventure:0xe67e22,strategy:0x2ecc71,horror:0x34495e,racing:0xf1c40f,puzzle:0xff69b4,mmo:0x1abc9c,br:0xff8800,vr:0xa29bfe};
 
 // Max hires per stage (first slot is always self/CEO)
-const HIRE_CAPS=[2,2,4,8,15,23];
+const HIRE_CAPS=[0,2,4,8,15,23];
 
 // Desk + person positions per stage. First slot = self/CEO, rest = employees in order.
 // ceo:true means desk is drawn manually (skip mkDesk)
 const STAGE_LAYOUT=[
-  // 0: Bedroom — 1 self + 2 hires possible (bed occupies left-back area)
-  {desks:[{x:3,z:-5},{x:-3,z:4},{x:4,z:4}]},
+  // 0: Bedroom — just the player at one desk (no hires possible at this stage)
+  {desks:[{x:3,z:-5}]},
   // 1: Garage — 1 self + 2 hires
   {desks:[{x:2,z:-4},{x:-4,z:-4},{x:5,z:4}]},
   // 2: Small Office — 1 self + 4 hires
