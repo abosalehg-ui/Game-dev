@@ -2,8 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>من الغرفة للقمة</title>
+<meta name="description" content="محاكي تطوير ألعاب فيديو ثلاثي الأبعاد — ابدأ من غرفة نومك وابنِ إمبراطورية ألعاب.">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="color-scheme" content="dark light">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-apple-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="من الغرفة للقمة">
+<meta name="mobile-web-app-capable" content="yes">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 :root{--p:#00ff88;--s:#00ccff;--d:#ff0055;--g:#ffd700;--pb:rgba(12,18,38,0.82);--pbr:rgba(0,204,255,0.12);--bg1:#0a0e1a;--bg2:#020204;--tx:#fff;--tx2:#999;--tx3:#666}
@@ -174,6 +185,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <button data-d="hard">🔥 صعب</button>
   </div>
   <button class="bs" id="bst">🎮 ابدأ رحلتك</button>
+  <button id="pwaInstall" style="display:none;margin-top:10px;padding:8px 22px;background:rgba(0,204,255,.08);border:1px solid rgba(0,204,255,.3);border-radius:18px;color:var(--s);font-family:'Cairo';font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:6px">📲 ثبّت التطبيق على جهازك</button>
 </div>
 
 <div id="at"><div class="al">🏆 إنجاز جديد</div><div class="an" id="atx"></div></div>
@@ -1816,6 +1828,38 @@ IS('normal');
 function resetSequelMode(){S._sequelMode=false;}
 window.addEventListener('beforeunload',()=>{try{saveGame()}catch(e){}});
 
+// PWA: service worker registration + install prompt
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;if(!nw)return;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed'&&navigator.serviceWorker.controller){
+            try{sn&&sn('ok')}catch(e){}
+          }
+        });
+      });
+    }).catch(()=>{});
+  });
+}
+let _deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();_deferredPrompt=e;
+  const btn=document.getElementById('pwaInstall');
+  if(btn)btn.style.display='flex';
+});
+window.addEventListener('appinstalled',()=>{
+  _deferredPrompt=null;
+  const btn=document.getElementById('pwaInstall');
+  if(btn)btn.style.display='none';
+});
+document.addEventListener('click',(ev)=>{
+  const t=ev.target&&ev.target.closest&&ev.target.closest('#pwaInstall');
+  if(!t||!_deferredPrompt)return;
+  _deferredPrompt.prompt();
+  _deferredPrompt.userChoice.finally(()=>{_deferredPrompt=null;t.style.display='none';});
+});
 </script>
 </body>
 </html>
