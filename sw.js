@@ -8,7 +8,7 @@
  *    versioned and safe to keep long-term.
  */
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const APP_SHELL = `room-to-top-shell-${VERSION}`;
 const RUNTIME = `room-to-top-runtime-${VERSION}`;
 
