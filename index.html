@@ -171,6 +171,16 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .tab-bar{display:flex;gap:4px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}
 .tab-bar button{flex:1;padding:6px;background:none;border:none;color:var(--tx3);font-family:'Cairo';font-size:11px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent}
 .tab-bar button.a{color:var(--s);border-bottom-color:var(--s)}
+
+.rivalcard{padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;margin-bottom:5px;font-size:11px;text-align:right}
+.rivalcard.me{background:rgba(255,215,0,.06);border-color:rgba(255,215,0,.3)}
+.rivalcard .rn2{font-weight:900}
+.rivalcard .rl{font-size:9px;color:var(--tx3);margin-top:2px}
+.rivalcard .share{font-weight:900;color:var(--s);float:left;direction:ltr}
+#contractBanner{display:none;padding:6px 8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.25);border-radius:6px;margin-bottom:8px;font-size:10px;color:var(--g);font-weight:700;line-height:1.5}
+.moralebar{height:10px;background:rgba(255,255,255,.06);border-radius:5px;margin:8px 0;overflow:hidden}
+.moralebar div{height:100%;transition:width .3s;border-radius:5px}
+.loanstat{padding:8px;background:rgba(0,204,255,.05);border:1px solid rgba(0,204,255,.15);border-radius:8px;margin:6px 0;font-size:11px;text-align:right;line-height:1.7}
 </style>
 </head>
 <body>
@@ -206,6 +216,8 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <button class="topbtn" onclick="OpenResearch()" id="resBtn" style="display:none">🔬</button>
     <button class="topbtn" onclick="OpenEmps()" id="empBtn" style="display:none">👥</button>
     <button class="topbtn" onclick="OpenIPs()" id="ipBtn" style="display:none">📦</button>
+    <button class="topbtn" onclick="OpenRivals()" id="rivalBtn" style="display:none">📊</button>
+    <button class="topbtn" onclick="OpenLoan()" id="loanBtn" style="display:none">🏦</button>
     <button class="topbtn" onclick="OpenSettings()">⚙️</button>
     <button class="topbtn" onclick="exportSave()">💾</button>
     <button class="topbtn" onclick="importSave()">📂</button>
@@ -217,6 +229,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 
 <div id="mp">
   <div id="df2">
+    <div id="contractBanner"></div>
     <div class="sg"><div class="sl">📂 النوع</div><div class="sr" id="gr"></div></div>
     <div class="sg"><div class="sl">🏷️ الموضوع</div><div class="sr" id="tr"></div></div>
     <div class="sg"><div class="sl">📱 المنصات (اختر واحدة أو أكثر)</div><div class="platrow" id="plr"></div></div>
@@ -250,6 +263,8 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ri" id="rvf"></div>
     <div class="ri" id="rvb"></div>
     <div class="ri" id="rvp"></div>
+    <div class="ri" id="rvl"></div>
+    <div class="ri" id="rvk"></div>
     <button class="bg" onclick="NG()">▶ التالي</button>
   </div>
 </div>
@@ -368,6 +383,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="tab-bar">
       <button class="a" onclick="EmpTab('roster')" id="tabRoster">طاقمك</button>
       <button onclick="EmpTab('hire')" id="tabHire">توظيف</button>
+      <button onclick="EmpTab('morale')" id="tabMorale">المعنويات</button>
     </div>
     <div id="empContent"></div>
     <p style="font-size:10px;color:var(--tx3);margin-top:8px">💡 رواتب شهرية تُخصم بعد كل لعبة. كل موظف يرفع محوره عند التطوير.</p>
@@ -393,11 +409,55 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
+<div class="os dim" id="rivalsModal">
+  <div class="modal">
+    <h2>📊 سوق الألعاب</h2>
+    <p>نافس الاستوديوهات الأخرى على حصة السوق — حصتك تؤثر على مبيعاتك (×0.9 إلى ×1.3) وعلى سباق جائزة لعبة العام.</p>
+    <div id="rivalsList"></div>
+    <div class="row"><button class="bg" onclick="CloseRivals()">إغلاق</button></div>
+  </div>
+</div>
+
+<div class="os dim" id="loanModal">
+  <div class="modal">
+    <h2>🏦 قرض بنكي</h2>
+    <p id="loanDesc"></p>
+    <div id="loanBody"></div>
+    <div class="row" id="loanFooter"><button class="bg" onclick="CloseLoan()">إغلاق</button></div>
+  </div>
+</div>
+
+<div class="os dim" id="contractModal">
+  <div class="modal">
+    <h2>📜 عرض عقد نشر</h2>
+    <p id="contractDesc"></p>
+    <div id="contractTerms"></div>
+    <div class="row">
+      <button class="bg" onclick="AcceptContract()">✅ قبول العقد</button>
+      <button class="bg dg" onclick="DeclineContract()">❌ رفض</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
 
 // ============ THREE.JS ============
 let scene,camera,renderer,employees=[],typingActive=false,trophies=[];
+let amb,dl,winMeshes=[],confettiBursts=[],celebrateUntil=0,walkers=0,curStage=0;
+
+// Camera base positions per stage + interactive orbit/zoom state
+const CAM_POS=[[20,20,20],[22,22,22],[26,26,26],[30,28,30],[36,34,36],[42,40,42]];
+let camCtl={yaw:0,zoom:1};
+function setCam(stage){
+  if(!camera)return;
+  const p=CAM_POS[stage]||CAM_POS[0];
+  const r=Math.hypot(p[0],p[2]),baseYaw=Math.atan2(p[0],p[2]);
+  camera.position.set(Math.sin(baseYaw+camCtl.yaw)*r,p[1],Math.cos(baseYaw+camCtl.yaw)*r);
+  camera.lookAt(0,0,0);
+  camera.zoom=camCtl.zoom;
+  camera.updateProjectionMatrix();
+}
 
 function initThree(){
   const c=document.getElementById('gC');
@@ -410,21 +470,101 @@ function initThree(){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   c.appendChild(renderer.domElement);
-  scene.add(new THREE.AmbientLight(0x556677,0.7));
-  const dl=new THREE.DirectionalLight(0xffeedd,0.9);
+  amb=new THREE.AmbientLight(0x556677,0.7);
+  scene.add(amb);
+  dl=new THREE.DirectionalLight(0xffeedd,0.9);
   dl.position.set(15,25,15);dl.castShadow=true;
   dl.shadow.mapSize.set(1024,1024);
   dl.shadow.camera.left=-30;dl.shadow.camera.right=30;dl.shadow.camera.top=30;dl.shadow.camera.bottom=-30;
   scene.add(dl);
   scene.add(new THREE.PointLight(0x00ccff,0.3,30));
+  bindCameraControls();
   animate();
+}
+
+// Drag-to-orbit + wheel/pinch-to-zoom (custom handlers, no OrbitControls dependency)
+function bindCameraControls(){
+  const cv=renderer.domElement;
+  cv.style.touchAction='none';
+  const ptrs=new Map();let lastPinch=0;
+  cv.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+  cv.addEventListener('pointermove',e=>{
+    if(!ptrs.has(e.pointerId))return;
+    const p=ptrs.get(e.pointerId);
+    if(ptrs.size===1){
+      camCtl.yaw+=(e.clientX-p.x)*0.005;
+      setCam(curStage);
+    }
+    p.x=e.clientX;p.y=e.clientY;
+    if(ptrs.size===2){
+      const [a,b]=[...ptrs.values()];
+      const dPin=Math.hypot(a.x-b.x,a.y-b.y);
+      if(lastPinch)camCtl.zoom=Math.max(0.5,Math.min(2.5,camCtl.zoom*dPin/lastPinch));
+      lastPinch=dPin;
+      setCam(curStage);
+    }
+  });
+  const end=e=>{ptrs.delete(e.pointerId);lastPinch=0;};
+  cv.addEventListener('pointerup',end);
+  cv.addEventListener('pointercancel',end);
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    camCtl.zoom=Math.max(0.5,Math.min(2.5,camCtl.zoom*(e.deltaY<0?1.1:0.9)));
+    setCam(curStage);
+  },{passive:false});
+}
+
+// Day/night cycle: each in-game year (4 games) cycles morning→noon→evening→night
+const DAY_PHASES=[
+  {bg:0x1a2238,amb:0x8899bb,ambI:0.65,dl:0xffd9b3,dlI:0.85,win:0xaaddff,winI:0.5},  // morning
+  {bg:0x0c0c14,amb:0x556677,ambI:0.7,dl:0xffeedd,dlI:0.9,win:0x88bbff,winI:0.25},   // noon
+  {bg:0x251a2e,amb:0x997766,ambI:0.6,dl:0xff9966,dlI:0.7,win:0xffaa66,winI:0.6},    // evening
+  {bg:0x05060f,amb:0x334466,ambI:0.45,dl:0x8899ff,dlI:0.35,win:0xffcc66,winI:0.95}, // night
+];
+let dayTarget=DAY_PHASES[1];
+const _dc1=new THREE.Color(),_dc2=new THREE.Color(),_dc3=new THREE.Color(),_dc4=new THREE.Color();
+function applyDayPhase(){
+  const idx=Math.max(0,Math.min(3,Math.floor(S.gamesThisYear||0)));
+  dayTarget=DAY_PHASES[idx];
+}
+
+// Celebration confetti burst (added to scene directly so buildRoom rebuilds can't wipe it)
+function spawnConfetti(n,gold){
+  if(!scene)return;
+  n=n||250;
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(n*3),col=new Float32Array(n*3),vel=[];
+  const c=new THREE.Color();
+  for(let i=0;i<n;i++){
+    pos[i*3]=(Math.random()-.5)*4;pos[i*3+1]=8+Math.random()*3;pos[i*3+2]=(Math.random()-.5)*4;
+    if(gold)c.setHSL(0.12+Math.random()*0.05,1,0.5+Math.random()*0.3);
+    else c.setHSL(Math.random(),0.9,0.6);
+    col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;
+    vel.push({x:(Math.random()-.5)*.25,y:Math.random()*.15,z:(Math.random()-.5)*.25});
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const mat=new THREE.PointsMaterial({size:.3,vertexColors:true,transparent:true,opacity:1});
+  const pts=new THREE.Points(geo,mat);
+  scene.add(pts);
+  confettiBursts.push({pts,vel,born:Date.now()});
 }
 
 function B(w,h,d,col,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:col,roughness:.6}));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m}
 function E(w,h,d,col,em,x,y,z,i){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:col,emissive:em,emissiveIntensity:i||.5,roughness:.2}));m.position.set(x,y,z);m.castShadow=true;return m}
 
 let rg;
-function clr(){if(rg)scene.remove(rg);rg=new THREE.Group();scene.add(rg);employees=[];trophies=[];}
+function clr(){if(rg)scene.remove(rg);rg=new THREE.Group();scene.add(rg);employees=[];trophies=[];winMeshes=[];walkers=0;}
+
+// Window helper: tracked for day/night emissive changes
+function mkWindow(w,h,x,y,z){
+  const m=E(w,h,.06,0x88bbff,0x88bbff,x,y,z,.25);
+  winMeshes.push(m);rg.add(m);
+  return m;
+}
+
+// Coffee corner spot per stage (idle employees wander here)
+const COFFEE_SPOTS=[null,{x:6.5,z:-6.5},{x:7,z:4},{x:3,z:5},{x:0,z:13},{x:14,z:0}];
 
 function mkPerson(x,z,color){
   const g=new THREE.Group();
@@ -600,9 +740,12 @@ function addStaffBoard(stage){
 }
 
 function buildRoom(s){
+  curStage=s;
   clr();
   if(s===0)buildBedroom();else if(s===1)buildGarage();else if(s===2)buildSmallOffice();
   else if(s===3)buildStudio();else if(s===4)buildCompany();else buildSkyscraper();
+  setCam(s);
+  applyDayPhase();
   placePeople(s);
   addGamePosters(s);
   addDeskDecor(s);
@@ -625,11 +768,10 @@ function buildBedroom(){
   rg.add(B(5,.04,3.5,0x3d2060,1,.02,1));
   rg.add(B(sz,7,.3,0x1c2444,0,3.5,-sz/2));
   rg.add(B(.3,7,sz,0x1c2444,-sz/2,3.5,0));
-  rg.add(E(2.5,1.8,.06,0x88bbff,0x88bbff,3,4.2,-sz/2+.2,.25));
+  mkWindow(2.5,1.8,3,4.2,-sz/2+.2);
   rg.add(B(3.2,.5,4.5,0x6c5ce7,-4,.5,-4));
   rg.add(B(3,.3,4.3,0xeef,-4,.85,-4));
   rg.add(B(.9,.25,.5,0xfff,-4,1.05,-5.8));
-  camera.position.set(20,20,20);
 }
 
 function buildGarage(){
@@ -642,7 +784,6 @@ function buildGarage(){
   rg.add(B(4,.15,1.5,0x8B5E3C,-5,2,-7));
   rg.add(B(3,.12,.6,0x777,-7,3.5,-sz/2+.4));rg.add(B(3,.12,.6,0x777,-7,4.5,-sz/2+.4));
   rg.add(B(1.2,1,1,0x886644,6,0.5,-7));rg.add(B(.8,.8,.8,0x997755,7.5,.4,-6));
-  camera.position.set(22,22,22);
 }
 
 function buildSmallOffice(){
@@ -650,11 +791,10 @@ function buildSmallOffice(){
   rg.add(B(sz,.3,sz,0x2a2a45,0,-.15,0));
   rg.add(B(sz,8,.3,0x1d3557,0,4,-sz/2));
   rg.add(B(.3,8,sz,0x1d3557,-sz/2,4,0));
-  rg.add(E(3.5,2.2,.06,0x88bbff,0x88bbff,4,4.5,-sz/2+.2,.25));
+  mkWindow(3.5,2.2,4,4.5,-sz/2+.2);
   rg.add(B(4.5,2.8,.12,0xf0f0f0,-2,4,-sz/2+.25));
   mkPlant(8,-8);mkPlant(-9,6);
   rg.add(B(1.8,.7,1,0x8B5E3C,7,.35,4));
-  camera.position.set(26,26,26);
 }
 
 function buildStudio(){
@@ -662,12 +802,11 @@ function buildStudio(){
   rg.add(B(sz,.3,sz,0x2c2c48,0,-.15,0));
   rg.add(B(sz,8,.3,0x223355,0,4,-sz/2));
   rg.add(B(.3,8,sz,0x223355,-sz/2,4,0));
-  rg.add(E(4,2.5,.06,0x88bbff,0x88bbff,5,4.8,-sz/2+.2,.25));
+  mkWindow(4,2.5,5,4.8,-sz/2+.2);
   rg.add(B(4,.12,2.5,0x5a3e28,3,1.1,5));
   rg.add(E(3,2,.08,0x222,0x00ccff,-1,4.5,-sz/2+.2,.15));
   mkPlant(10,-10);mkPlant(-10,8);mkPlant(10,8);
   rg.add(B(1.5,4,1,0x111122,-11,2,-11));
-  camera.position.set(30,28,30);
 }
 
 function buildCompany(){
@@ -675,14 +814,13 @@ function buildCompany(){
   rg.add(B(sz,.3,sz,0x2c3e50,0,-.15,0));
   rg.add(B(sz,9,.3,0x2c3e50,0,4.5,-sz/2));
   rg.add(B(.3,9,sz,0x2c3e50,-sz/2,4.5,0));
-  rg.add(E(5,3,.06,0x88bbff,0x88bbff,7,5,-sz/2+.2,.25));
+  mkWindow(5,3,7,5,-sz/2+.2);
   // Static decoration trophies on shelf
   rg.add(B(5,.12,.5,0x666,0,5.8,-sz/2+.35));
   for(let i=0;i<4;i++)rg.add(E(.3,.55,.3,0xffd700,0xffd700,-1.5+i,6.25,-sz/2+.35,.3));
   rg.add(B(6,1.2,2.5,0x5a3e28,0,.6,13));
   rg.add(B(2,5,1.2,0x111122,-14,2.5,-14));rg.add(B(2,5,1.2,0x111122,-14,2.5,-12));
   mkPlant(14,-14);mkPlant(-14,14);mkPlant(14,14);
-  camera.position.set(36,34,36);
 }
 
 function buildSkyscraper(){
@@ -704,34 +842,98 @@ function buildSkyscraper(){
   // Front award wall (decorative)
   for(let i=0;i<6;i++)rg.add(E(.5,.5,.08,0xffd700,0xffd700,-12+i*5,5,sz/2-.1,.2));
   mkPlant(-17,-17);mkPlant(17,-17);mkPlant(-17,17);mkPlant(17,17);
-  camera.position.set(42,40,42);
 }
 
 function animate(){
   requestAnimationFrame(animate);
   const t=Date.now()*.001;
+  const celebrating=Date.now()<celebrateUntil;
   employees.forEach((e,i)=>{
-    if(typingActive){
+    const u=e.userData||{};
+    if(celebrating){
+      // Everyone jumps and spins with arms raised
+      if(u.anim&&u.anim!=='idle'){u.anim='idle';walkers=Math.max(0,walkers-1);}
+      e.position.x=u.baseX;e.position.z=u.baseZ;
+      e.position.y=Math.abs(Math.sin(t*9+i))*1.2;
+      e.rotation.y+=0.15;
+      e.scale.y=1;
+      if(e.children[2])e.children[2].rotation.x=-2.6;
+      if(e.children[3])e.children[3].rotation.x=-2.6;
+    }else if(typingActive){
+      // Development crunch: everyone back at their desk, hands on keyboard
+      if(u.anim&&u.anim!=='idle'){u.anim='idle';walkers=Math.max(0,walkers-1);}
       e.position.y=Math.abs(Math.sin(t*7+i*.8))*.5;
       e.rotation.y=Math.sin(t*4+i)*.12;
-      if(e.children[2])e.children[2].rotation.x=Math.sin(t*11+i)*.3;
-      if(e.children[3])e.children[3].rotation.x=Math.sin(t*11+i+1.5)*.3;
-      // Subtle wandering during typing
-      if(e.userData&&e.userData.baseX!==undefined){
-        e.position.x=e.userData.baseX+Math.sin(t*.6+i*.4)*.15;
-        e.position.z=e.userData.baseZ+Math.cos(t*.5+i*.3)*.15;
+      e.scale.y=1;
+      if(e.children[2])e.children[2].rotation.x=-0.9+Math.sin(t*11+i)*.3;
+      if(e.children[3])e.children[3].rotation.x=-0.9+Math.sin(t*11+i+1.5)*.3;
+      if(u.baseX!==undefined){
+        e.position.x=u.baseX+Math.sin(t*.6+i*.4)*.15;
+        e.position.z=u.baseZ+Math.cos(t*.5+i*.3)*.15;
       }
     }else{
-      e.position.y=0;e.rotation.y=0;
-      e.scale.y=1+Math.sin(t*1.2+i*.5)*.012;
-      if(e.children[2])e.children[2].rotation.x=0;
-      if(e.children[3])e.children[3].rotation.x=0;
-      if(e.userData&&e.userData.baseX!==undefined){
-        e.position.x=e.userData.baseX;
-        e.position.z=e.userData.baseZ;
+      // Idle state machine: breathe at desk, occasionally walk to coffee corner
+      if(!u.anim)u.anim='idle';
+      if(u.anim==='idle'){
+        e.position.y=0;e.rotation.y=0;
+        e.scale.y=1+Math.sin(t*1.2+i*.5)*.012;
+        if(e.children[2])e.children[2].rotation.x=0;
+        if(e.children[3])e.children[3].rotation.x=0;
+        if(u.baseX!==undefined){e.position.x=u.baseX;e.position.z=u.baseZ;}
+        const cc=COFFEE_SPOTS[curStage];
+        if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008){
+          u.anim='walk';
+          u.tx=cc.x+(Math.random()-.5)*1.5;u.tz=cc.z+(Math.random()-.5)*1.5;
+          walkers++;
+        }
+      }else if(u.anim==='walk'||u.anim==='return'){
+        const tx=u.anim==='walk'?u.tx:u.baseX,tz=u.anim==='walk'?u.tz:u.baseZ;
+        const dx=tx-e.position.x,dz=tz-e.position.z;
+        const dist=Math.hypot(dx,dz);
+        if(dist<0.15){
+          if(u.anim==='walk'){u.anim='pause';u.pauseUntil=Date.now()+2000+Math.random()*2000;}
+          else{u.anim='idle';walkers=Math.max(0,walkers-1);}
+        }else{
+          const sp=0.045;
+          e.position.x+=dx/dist*sp;e.position.z+=dz/dist*sp;
+          e.rotation.y=Math.atan2(dx,dz);
+          e.position.y=Math.abs(Math.sin(t*10+i))*.12;
+          if(e.children[2])e.children[2].rotation.x=Math.sin(t*8+i)*.5;
+          if(e.children[3])e.children[3].rotation.x=Math.sin(t*8+i+Math.PI)*.5;
+        }
+      }else if(u.anim==='pause'){
+        e.position.y=0;
+        e.scale.y=1+Math.sin(t*1.5+i)*.015;
+        if(Date.now()>u.pauseUntil)u.anim='return';
       }
     }
   });
+  // Day/night lighting: smooth lerp toward current phase targets
+  if(amb&&dayTarget){
+    const k=0.02;
+    amb.color.lerp(_dc1.set(dayTarget.amb),k);amb.intensity+=(dayTarget.ambI-amb.intensity)*k;
+    dl.color.lerp(_dc2.set(dayTarget.dl),k);dl.intensity+=(dayTarget.dlI-dl.intensity)*k;
+    if(scene.background&&scene.background.isColor)scene.background.lerp(_dc3.set(dayTarget.bg),k);
+    _dc4.set(dayTarget.win);
+    winMeshes.forEach(w=>{
+      w.material.emissive.lerp(_dc4,k);
+      w.material.emissiveIntensity+=(dayTarget.winI-w.material.emissiveIntensity)*k;
+    });
+  }
+  // Confetti bursts: outward burst + gravity + fade, auto-dispose
+  for(let ci=confettiBursts.length-1;ci>=0;ci--){
+    const cb=confettiBursts[ci];
+    const age=(Date.now()-cb.born)/1000;
+    const arr=cb.pts.geometry.attributes.position.array;
+    cb.vel.forEach((v,i)=>{
+      v.y-=0.012;
+      arr[i*3]+=v.x;arr[i*3+1]+=v.y;arr[i*3+2]+=v.z;
+      if(arr[i*3+1]<0){arr[i*3+1]=0;v.y=0;v.x*=0.9;v.z*=0.9;}
+    });
+    cb.pts.geometry.attributes.position.needsUpdate=true;
+    cb.pts.material.opacity=Math.max(0,Math.min(1,1-(age-2)/1.5));
+    if(age>3.5){scene.remove(cb.pts);cb.pts.geometry.dispose();cb.pts.material.dispose();confettiBursts.splice(ci,1);}
+  }
   // Trophy glow rotation + gentle hover
   trophies.forEach((tr,i)=>{tr.rotation.y=t*.3+i;tr.position.y=.45+Math.sin(t*1.5+i)*.08;});
   // Floating particles (gentle upward drift, wrap around)
@@ -836,6 +1038,8 @@ const EVENTS=[
   {icon:'💻',title:'انقطاع كهرباء!',desc:'انقطع الكهرباء أسبوع كامل. تكلفة الإصلاح',good:false,type:'hack'},
   {icon:'☕',title:'استراحة قهوة!',desc:'فريقك مرتاح وأبدع! +1.5 تقييم',good:true,type:'festival'},
   {icon:'📡',title:'مشكلة سيرفر!',desc:'تكلفة استعادة 15% من الرصيد',good:false,type:'hack'},
+  {icon:'😤',title:'إحباط في الفريق!',desc:'ضغط العمل أرهق الفريق. المعنويات -12',good:false,type:'moraleDown'},
+  {icon:'🎂',title:'عيد ميلاد في المكتب!',desc:'كيكة وقهوة للجميع! المعنويات +10',good:true,type:'moraleUp'},
 ];
 
 const EGGS={
@@ -873,6 +1077,10 @@ const ACHS=[
   {id:'emp5',n:'مدير ناجح (5 موظفين)',ch:s=>(s.employees||[]).length>=5},
   {id:'pr1',n:'⭐ Prestige أول!',ch:s=>(s.prestige?.level||0)>=1},
   {id:'award3',n:'3 جوائز سنوية',ch:s=>(s.awards||[]).length>=3},
+  {id:'mkt40',n:'متصدر السوق (40%)',ch:s=>{const r=s.rivals||[];if(!r.length||(s.gc||0)<5)return false;const pw=Math.max(100,(s.fn||0)*1.2+100);return pw/(pw+r.reduce((a,x)=>a+x.fans,0))>=0.4}},
+  {id:'goty2',n:'هزمت المنافسين ×2',ch:s=>(s.gotyWins||0)>=2},
+  {id:'loan1',n:'سدّدت قرضاً كاملاً',ch:s=>(s.loansRepaid||0)>=1},
+  {id:'eng3',n:'محرك ألعاب v3',ch:s=>(s.engineVersion||0)>=3},
 ];
 
 const NA=['حرب','مغامرة','أبطال','عالم','ملحمة','أساطير','سقوط','صعود','ظلال','نجوم','فجر','غروب','حصار','ملوك','سيوف','رحلة','بوابة','لهيب','أرض','درب','وحوش','أمواج','رعد','جبال','صحراء','نسر','سحاب','بحر','صدى','تاج','عرش','رمح'];
@@ -895,6 +1103,38 @@ const RESEARCH=[
   {id:'cloud',n:'حفظ سحابي',cost:3,desc:'+10% بقاء معجبين'},
   {id:'aiart',n:'فن AI مساعد',cost:8,desc:'-15% تكلفة + 0.3 تقييم'},
 ];
+
+// Engine versions: v1 = the 'engine' research node; v2+ are paid upgrades (money + research pts)
+const ENGINE_VERSIONS=[
+  {v:1,cost:0,res:0,costDisc:0.8,score:0},
+  {v:2,cost:150000,res:4,costDisc:0.75,score:0.2},
+  {v:3,cost:600000,res:6,costDisc:0.7,score:0.4},
+  {v:4,cost:2500000,res:8,costDisc:0.65,score:0.6},
+];
+
+// AI rival studios competing for market share + GOTY
+const RIVAL_DEFS=[
+  {id:'falcon',name:'استوديو الصقر',icon:'🦅'},
+  {id:'palm',name:'ألعاب النخلة',icon:'🌴'},
+  {id:'mirage',name:'استوديوهات السراب',icon:'🏜️'},
+  {id:'bolt',name:'فريق البرق',icon:'⚡'},
+];
+function initRivals(){
+  return RIVAL_DEFS.map(r=>({
+    id:r.id,
+    quality:4.5+Math.random()*1.5,
+    fans:1500+Math.floor(Math.random()*4500),
+    games:0,lastGame:null,bestThisYear:0,bestName:null,
+  }));
+}
+
+const PUBLISHERS=[
+  {n:'ناشر الخليج',icon:'🏢'},
+  {n:'أوميغا غيمز',icon:'🎯'},
+  {n:'شركة الأفق',icon:'🌅'},
+  {n:'بكسل ستار',icon:'⭐'},
+];
+const LOAN_INTEREST={easy:0.10,normal:0.15,hard:0.20};
 
 const EMP_ROLES=[
   {id:'designer',n:'مصمم',icon:'🎨',skill:'design',baseSalary:1500},
@@ -930,7 +1170,7 @@ const CONVENTIONS=[
 
 // ============ STATE ============
 let S={};
-const SAVE_VERSION=2;
+const SAVE_VERSION=3;
 
 function IS(diff){
   const d=diff||'normal';
@@ -954,13 +1194,22 @@ function IS(diff){
     awards:[],
     prestige:{level:0,bonus:0},
     conventionCooldown:0,
+    rivals:initRivals(),
+    morale:75,
+    loan:null,
+    engineVersion:0,
+    contract:null,
+    contractCooldown:0,
+    loansRepaid:0,
+    gotyWins:0,
+    partyUsed:false,
   };
 }
 
 function migrateSave(p){
   // Migrate older saves to latest schema
   if(!p.saveVersion){
-    p.saveVersion=SAVE_VERSION;
+    p.saveVersion=2;
     if(!p.audio)p.audio={volume:0.6,muted:false};
     if(!p.theme)p.theme='dark';
     if(!p.difficulty)p.difficulty='normal';
@@ -975,6 +1224,18 @@ function migrateSave(p){
     if(!p.awards)p.awards=[];
     if(!p.prestige)p.prestige={level:0,bonus:0};
     if(!p.conventionCooldown)p.conventionCooldown=0;
+  }
+  if(p.saveVersion<3){
+    p.saveVersion=3;
+    if(!p.rivals)p.rivals=initRivals();
+    if(p.morale===undefined)p.morale=75;
+    if(p.loan===undefined)p.loan=null;
+    if(p.engineVersion===undefined)p.engineVersion=((p.research&&p.research.unlocked)||[]).includes('engine')?1:0;
+    if(p.contract===undefined)p.contract=null;
+    if(!p.contractCooldown)p.contractCooldown=0;
+    if(!p.loansRepaid)p.loansRepaid=0;
+    if(!p.gotyWins)p.gotyWins=0;
+    if(p.partyUsed===undefined)p.partyUsed=false;
   }
   return p;
 }
@@ -1031,10 +1292,12 @@ function showToast(text){
   showToast._t=setTimeout(()=>t.classList.remove('show'),2800);
 }
 
+function engineData(){return (S.engineVersion||0)>0?ENGINE_VERSIONS[S.engineVersion-1]:null;}
 function getDevCost(){
   let base=STG[S.st].devCost*DIFFICULTY[S.difficulty].costMult;
   const platMult=S.platforms.reduce((a,p)=>a+PLATFORMS.find(x=>x.id===p).costMult,0)||1;
-  const engineDisc=isResearched('engine')?0.8:1;
+  const eng=engineData();
+  const engineDisc=eng?eng.costDisc:1;
   const aiDisc=isResearched('aiart')?0.85:1;
   let cost=base*platMult*engineDisc*aiDisc;
   if(S._sequelMode)cost*=0.5;
@@ -1042,6 +1305,18 @@ function getDevCost(){
 }
 function getTotalSalary(){return (S.employees||[]).reduce((a,e)=>a+e.salary,0);}
 function isResearched(id){return (S.research?.unlocked||[]).includes(id);}
+
+// Studio morale 0-100: multiplies employee skill output (×0.75 at 0 → ×1.15 at 100)
+function moraleMult(){return 0.75+((S.morale??75)/100)*0.4;}
+
+// Market share: fans are the proxy, with a slight player bias so early game isn't punishing
+function getShares(){
+  const pw=Math.max(100,(S.fn||0)*1.2+100);
+  const tot=pw+(S.rivals||[]).reduce((a,r)=>a+r.fans,0);
+  return {player:tot>0?pw/tot:1,playerW:pw,total:tot};
+}
+
+function loanCap(){return Math.floor(STG[S.st].devCost*5*DIFFICULTY[S.difficulty].costMult);}
 
 function UU(){
   document.getElementById('dm').textContent=fmt(S.money);
@@ -1077,6 +1352,16 @@ function UU(){
   // Prestige badge
   document.getElementById('prBox').style.display=(S.prestige.level||0)>0?'flex':'none';
   document.getElementById('dpr').textContent=S.prestige.level||0;
+  // Rivals + loan buttons
+  document.getElementById('rivalBtn').style.display=S.gc>=1?'inline-block':'none';
+  document.getElementById('loanBtn').style.display=S.st>=1?'inline-block':'none';
+  // Active publisher contract banner
+  const cb=document.getElementById('contractBanner');
+  if(S.contract&&S.contract.active){
+    const g=GENRES.find(x=>x.id===S.contract.genre);
+    cb.style.display='block';
+    cb.innerHTML='📜 عقد '+S.contract.icon+' '+S.contract.publisher+': لعبة '+(g?g.icon+' '+g.name:'')+' بتقييم ≥ '+S.contract.minScore+' — الدفعة: '+fmt(S.contract.payment)+' 💰 — متبقي '+S.contract.gamesLeft+' إصدار';
+  }else cb.style.display='none';
 }
 
 function BS2(){
@@ -1085,6 +1370,7 @@ function BS2(){
   GENRES.forEach(g=>{
     const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
     if(g.research&&!isResearched(g.research)){b.classList.add('lock');b.disabled=true;b.title='يحتاج بحثاً';}
+    else if(S.contract&&S.contract.active&&g.id!==S.contract.genre){b.classList.add('lock');b.disabled=true;b.title='ملتزم بعقد نشر';}
     else b.onclick=()=>{S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
     if(S.genre===g.id)b.classList.add('a');
     gr.appendChild(b);
@@ -1291,7 +1577,7 @@ function FD(){
   (S.employees||[]).forEach(e=>{
     const role=EMP_ROLES.find(r=>r.id===e.role);
     const lvl=EMP_LEVELS[e.level||0];
-    if(role&&role.skill)skillBonus[role.skill]+=lvl.mult;
+    if(role&&role.skill)skillBonus[role.skill]+=lvl.mult*moraleMult();
   });
   const eDesign=S.sl.design*(1+skillBonus.design*0.15)*(isResearched('design')?1.3:1);
   const eCode=S.sl.code*(1+skillBonus.code*0.15)*(isResearched('code')?1.3:1);
@@ -1309,6 +1595,11 @@ function FD(){
   if(isResearched('hd'))raw+=0.5;
   // E-sports bonus for action/racing
   if(isResearched('esports')&&(genre.id==='action'||genre.id==='racing'))raw+=1;
+  // Engine version score bonus (v2+)
+  const eng=engineData();
+  if(eng&&eng.score)raw+=eng.score;
+  // Studio morale nudge (±0.5 max)
+  raw+=Math.max(-0.5,Math.min(0.5,((S.morale??75)-50)/100));
   // QA mode effects
   let bugCount=0;
   if(S.qaMode==='quick'){
@@ -1368,8 +1659,10 @@ function FD(){
   sales*=DIFFICULTY[S.difficulty].rewardMult;
   // Prestige bonus
   sales*=(1+S.prestige.level*0.1);
+  // Market share vs rival studios (×0.9 at 0% share → ×1.3 at 100%)
+  sales*=0.9+getShares().player*0.4;
 
-  const rev=Math.floor(sales*(1.5+S.st*1.0));
+  let rev=Math.floor(sales*(1.5+S.st*1.0));
 
   let fd=0;
   if(avg>=9)fd=200+(Math.random()*300|0);else if(avg>=7)fd=50+(Math.random()*100|0);
@@ -1381,20 +1674,63 @@ function FD(){
   // Modding research for RPG/Sim
   if(isResearched('modding')&&(genre.id==='rpg'||genre.id==='sim')&&fd>0)fd=Math.floor(fd*1.3);
 
+  // Publisher contract settlement: fixed payment replaces market revenue
+  let contractResult=null;
+  if(S.contract&&S.contract.active&&genre.id===S.contract.genre){
+    const c=S.contract;
+    let pay=c.payment,txt,cls='ps';
+    if(avg>=c.minScore){pay+=c.bonus;txt='تم التسليم + مكافأة '+fmt(c.bonus)+' 💰';}
+    else if(avg<c.minScore-2){pay-=c.penalty;txt='جودة منخفضة! غرامة -'+fmt(c.penalty);cls='ng';}
+    else{txt='تم التسليم (بدون مكافأة)';cls='gl';}
+    rev=Math.max(0,pay);
+    fd=Math.floor(fd/2);
+    contractResult={pub:c.publisher,icon:c.icon,txt,cls};
+    S.contract=null;
+  }else if(S.contract&&S.contract.active){
+    S.contract.gamesLeft--;
+    if(S.contract.gamesLeft<=0){
+      S.contract=null;
+      S.fn=Math.max(0,S.fn-500);
+      S.morale=Math.max(0,(S.morale??75)-5);
+      showToast('📜 انتهت مهلة العقد! -500 معجب');
+    }
+  }
+
   S.money+=rev;S.fn=Math.max(0,S.fn+fd);S.gc++;S.gamesThisYear++;
   if(S.money>S.pm)S.pm=S.money;if(avg>S.bs)S.bs=avg;
   if(avg>=8)S.sk++;else S.sk=0;S.gse++;
+
+  // Morale shifts from release outcome + crunch
+  let dMorale=0;
+  if(avg>=8)dMorale+=6;else if(avg>=7)dMorale+=3;else if(avg<5)dMorale-=8;
+  if(S.qaMode==='quick')dMorale-=4;
+  S.morale=Math.max(0,Math.min(100,(S.morale??75)+dMorale));
+  S.partyUsed=false;
 
   // Pay salaries
   const salary=getTotalSalary();
   if(salary>0)S.money=Math.max(0,S.money-salary);
 
+  // Loan installment
+  let loanPay=0;
+  if(S.loan){
+    loanPay=Math.min(S.loan.perGame,S.loan.remaining);
+    const paid=Math.min(loanPay,Math.floor(S.money));
+    S.money-=paid;S.loan.remaining-=paid;
+    if(paid<loanPay){S.fn=Math.max(0,S.fn-300);showToast('🏦 تعثرت في سداد القسط! -300 معجب');}
+    S.loan.gamesLeft--;
+    if(S.loan.remaining<=0){
+      S.loan=null;S.loansRepaid=(S.loansRepaid||0)+1;
+      showToast('🏦 سدّدت القرض بالكامل! 🎉');
+    }else if(S.loan.gamesLeft<=0){S.loan.perGame=S.loan.remaining;S.loan.gamesLeft=1;}
+  }
+
   // Research points
   S.research.points+=1;
   if(avg>=8)S.research.points+=2;
 
-  // Track IP - save score-7+ games
-  if(avg>=7&&!sequelInfo){
+  // Track IP - save score-7+ games (contract games belong to the publisher, no IP)
+  if(avg>=7&&!sequelInfo&&!contractResult){
     S.ips.push({
       id:'ip_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
       name:gameName.replace(eggKey||'','').trim()||gameName,
@@ -1417,18 +1753,32 @@ function FD(){
     }
   });
 
+  // Low morale resignation risk
+  if((S.morale??75)<30&&(S.employees||[]).length){
+    for(let i=S.employees.length-1;i>=0;i--){
+      if(Math.random()<0.15){
+        const quitter=S.employees.splice(i,1)[0];
+        showToast('🚪 '+quitter.name+' استقال بسبب انخفاض المعنويات!');
+      }
+    }
+  }
+
+  // Rival studios tick: they release games, gain/lose fans, drift in quality
+  TickRivals();
+
   // Year tracking - every 4 games = 1 year
   if(S.gamesThisYear>=4){
     S.gamesThisYear=0;S.year++;
     setTimeout(()=>CheckGOTY(),3000);
   }
 
-  // Convention cooldown
+  // Convention + contract cooldowns
   if(S.conventionCooldown>0)S.conventionCooldown--;
+  if(S.contractCooldown>0)S.contractCooldown--;
 
-  S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:S.year,sequel:!!sequelInfo});
+  S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:S.year,sequel:!!sequelInfo,contract:!!contractResult});
 
-  setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary),eggKey?2600:100);
+  setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult),eggKey?2600:100);
   // Rebuild scene to reflect new IPs (posters), awards (trophies), and any visual updates
   buildRoom(S.st);
   CA();UU();saveGame();
@@ -1438,25 +1788,62 @@ function FD(){
   S.qaMode=null;
 }
 
-function CheckGOTY(){
-  // Check best score of the past year
-  const lastYearGames=S.hist.filter(h=>h.year===S.year-1);
-  if(lastYearGames.length===0)return;
-  const best=lastYearGames.reduce((a,b)=>a.score>b.score?a:b);
-  if(best.score>=8.5){
-    S.awards.push({year:S.year-1,game:best.name,score:best.score});
-    S.money+=Math.floor(100000*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
-    S.fn+=2000;
-    document.getElementById('evi').textContent='🏆';
-    const te=document.getElementById('evt2');te.textContent='جائزة لعبة العام!';te.className='et gd2';
-    document.getElementById('evd').textContent='لعبة "'+best.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+'! +100K مكافأة + 2K معجب';
-    document.getElementById('se').classList.add('show');sn('egg');
-    buildRoom(S.st); // refresh to add trophy
-    UU();saveGame();CA();
-  }
+// Rival simulation tick: each release, rivals may ship a game, fans/quality drift
+function TickRivals(){
+  const share=getShares().player;
+  (S.rivals||[]).forEach(r=>{
+    if(Math.random()<0.65){
+      const score=Math.max(1,Math.min(10,Math.round((r.quality+(Math.random()+Math.random()+Math.random()-1.5)*0.8)*10)/10));
+      const name=NA[Math.random()*NA.length|0]+' '+NB[Math.random()*NB.length|0];
+      r.games++;r.lastGame={name,score,year:S.year};
+      if(score>r.bestThisYear){r.bestThisYear=score;r.bestName=name;}
+      if(score>=7)r.fans+=Math.floor(score*120);
+      else if(score<5)r.fans=Math.max(500,r.fans-Math.floor(r.fans*0.05));
+      else r.fans+=Math.floor(score*40);
+    }
+    // Quality converges toward an industry baseline that rises with the years,
+    // with rubber-banding: rivals fight back when the player dominates
+    const target=5+S.year*0.25;
+    r.quality+=(target-r.quality)*0.06;
+    if(share>0.5)r.quality+=0.1;
+    else if(share<0.15)r.quality-=0.05;
+    r.quality=Math.max(3,Math.min(9.5,r.quality));
+  });
 }
 
-function showRev(name,scores,avg,rev,fd,bugCount,salary){
+function CheckGOTY(){
+  // GOTY race: player's best game vs the best rival release this year
+  const lastYearGames=S.hist.filter(h=>h.year===S.year-1);
+  const playerBest=lastYearGames.length?lastYearGames.reduce((a,b)=>a.score>b.score?a:b):null;
+  let rivalBest=null;
+  (S.rivals||[]).forEach(r=>{if(r.bestThisYear>0&&(!rivalBest||r.bestThisYear>rivalBest.bestThisYear))rivalBest=r;});
+  const pScore=playerBest?playerBest.score:0;
+  const rScore=rivalBest?rivalBest.bestThisYear:0;
+  if(pScore>=8.5&&pScore>=rScore){
+    S.awards.push({year:S.year-1,game:playerBest.name,score:pScore});
+    S.money+=Math.floor(100000*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
+    S.fn+=2000;
+    if(rScore>0)S.gotyWins=(S.gotyWins||0)+1;
+    document.getElementById('evi').textContent='🏆';
+    const te=document.getElementById('evt2');te.textContent='جائزة لعبة العام!';te.className='et gd2';
+    const beat=rScore>0?' متفوقاً على المنافسين ('+rScore+')':'';
+    document.getElementById('evd').textContent='لعبة "'+playerBest.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+beat+'! +100K مكافأة + 2K معجب';
+    document.getElementById('se').classList.add('show');sn('egg');
+    spawnConfetti(500,true);celebrateUntil=Date.now()+4000;
+    buildRoom(S.st); // refresh to add trophy
+  }else if(rScore>=8.5){
+    rivalBest.fans+=2000;
+    const def=RIVAL_DEFS.find(d=>d.id===rivalBest.id)||{name:'منافس',icon:'🏢'};
+    document.getElementById('evi').textContent='🏆';
+    const te=document.getElementById('evt2');te.textContent='منافسك خطف لعبة العام!';te.className='et bd3';
+    document.getElementById('evd').textContent=def.icon+' '+def.name+' فاز بجائزة لعبة العام عن "'+(rivalBest.bestName||'لعبته الأخيرة')+'" ('+rScore+')! نافسه على اللقب السنة القادمة.';
+    document.getElementById('se').classList.add('show');sn('f');
+  }
+  (S.rivals||[]).forEach(r=>{r.bestThisYear=0;r.bestName=null;});
+  UU();saveGame();CA();
+}
+
+function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult){
   document.getElementById('sr2').classList.add('show');
   document.getElementById('rvn').textContent='🎮 '+name;
   document.getElementById('rva').innerHTML='المعدل: <span class="gl">'+avg+' / 10</span>';
@@ -1466,6 +1853,11 @@ function showRev(name,scores,avg,rev,fd,bugCount,salary){
   if(bugCount>0)bugLine.innerHTML='🐛 بَقّات: <span class="ng">'+bugCount+'</span>';else bugLine.innerHTML='';
   const payLine=document.getElementById('rvp');
   if(salary>0)payLine.innerHTML='💼 رواتب: <span class="ng">-'+fmt(salary)+'</span>';else payLine.innerHTML='';
+  const loanLine=document.getElementById('rvl');
+  if(loanPay>0)loanLine.innerHTML='🏦 قسط القرض: <span class="ng">-'+fmt(loanPay)+'</span>';else loanLine.innerHTML='';
+  const conLine=document.getElementById('rvk');
+  if(contractResult)conLine.innerHTML='📜 '+contractResult.icon+' '+contractResult.pub+': <span class="'+contractResult.cls+'">'+contractResult.txt+'</span>';else conLine.innerHTML='';
+  if(avg>=8){spawnConfetti(250);celebrateUntil=Date.now()+4000;}
   const cd=document.getElementById('rvc');cd.innerHTML='';
   scores.forEach((sc,i)=>{
     const c=document.createElement('div');c.className='sc '+(sc>=8?'gr':sc>=5?'gd':'bd2');c.textContent=sc.toFixed(1);
@@ -1478,8 +1870,14 @@ window.NG=function(){
   document.getElementById('pt').style.display='flex';
   S.genre=null;S.topic=null;document.querySelectorAll('#gr .sb2,#tr .sb2').forEach(b=>b.classList.remove('a'));
   document.getElementById('gni').value='';S.dev=false;
-  if(S.money<getDevCost()&&S.money<500){GO();return}
+  if(S.money<getDevCost()&&S.money<500){
+    // Last chance: bank loan rescue before bankruptcy (from garage stage onward)
+    if(!S.loan&&S.st>=1&&loanCap()>0){OpenLoan(true);return}
+    GO();return
+  }
   if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
+  // Publisher contract offer chance
+  if(S.gc>=4&&!S.contract&&(S.contractCooldown||0)<=0&&Math.random()<.22){ShowContractOffer();return}
   // Convention chance
   if(S.gc>=3&&S.conventionCooldown<=0&&Math.random()<.25){S.gse=0;TC();return}
   if(S.gse>=3&&Math.random()<.45){S.gse=0;TE();return}
@@ -1494,17 +1892,23 @@ function TE(){
   if(ev.type==='trend'){const rt=TOPICS[Math.random()*TOPICS.length|0];S.tt=rt.id;desc=desc.replace('{topic}',rt.icon+' '+rt.name);S.em='trend';}
   else if(ev.type==='recession')S.em='recession';
   else if(ev.type==='festival')S.em='festival';
-  else if(ev.type==='competitor')S.fn=Math.max(0,S.fn-Math.floor(S.fn*.15));
+  else if(ev.type==='competitor'){
+    S.fn=Math.max(0,S.fn-Math.floor(S.fn*.15));
+    const rr=(S.rivals||[])[Math.random()*(S.rivals||[]).length|0];
+    if(rr){const def=RIVAL_DEFS.find(d=>d.id===rr.id);if(def)desc=def.icon+' '+def.name+' أصدر لعبة ضخمة! -15% معجبين.';rr.fans+=500;}
+  }
   else if(ev.type==='publisher')S.em='publisher';
-  else if(ev.type==='award')S.fn+=500;
-  else if(ev.type==='hack')S.money=Math.max(0,S.money-Math.floor(S.money*.2));
+  else if(ev.type==='award'){S.fn+=500;S.morale=Math.min(100,(S.morale??75)+4);}
+  else if(ev.type==='hack'){S.money=Math.max(0,S.money-Math.floor(S.money*.2));S.morale=Math.max(0,(S.morale??75)-5);}
   else if(ev.type==='buyout')S.money+=Math.floor(50000+S.st*30000+Math.random()*50000);
   else if(ev.type==='quit')S.em='quit';
   else if(ev.type==='piracy')S.em='piracy';
-  else if(ev.type==='gift')S.money+=15000;
+  else if(ev.type==='gift'){S.money+=15000;S.morale=Math.min(100,(S.morale??75)+4);}
   else if(ev.type==='viral')S.fn+=800;
   else if(ev.type==='youtuber')S.fn+=1200;
-  else if(ev.type==='strike')S.em='strike';
+  else if(ev.type==='strike'){S.em='strike';S.morale=Math.max(0,(S.morale??75)-5);}
+  else if(ev.type==='moraleDown')S.morale=Math.max(0,(S.morale??75)-12);
+  else if(ev.type==='moraleUp')S.morale=Math.min(100,(S.morale??75)+10);
   document.getElementById('evi').textContent=ev.icon;
   const te=document.getElementById('evt2');te.textContent=ev.title;te.className='et '+(ev.good?'gd2':'bd3');
   document.getElementById('evd').textContent=desc;
@@ -1557,7 +1961,9 @@ function SU(){
   document.getElementById('su').classList.add('show');
 }
 window.DU=function(){
-  S.money-=STG[S.st].upgCost;S.st++;buildRoom(S.st);
+  S.money-=STG[S.st].upgCost;S.st++;
+  camCtl.yaw=0;camCtl.zoom=1; // fresh camera reveal for the new office
+  buildRoom(S.st);
   const mx=STG[S.st].maxPts,old=S.sl.design+S.sl.code+S.sl.sound||1,r=mx/(old);
   S.sl.design=Math.floor(S.sl.design*r*.9);S.sl.code=Math.floor(S.sl.code*r*.9);
   S.sl.sound=Math.max(0,mx-S.sl.design-S.sl.code);
@@ -1644,6 +2050,30 @@ window.OpenResearch=function(){
 function RenderResearch(){
   document.getElementById('resPts').textContent=S.research.points;
   const list=document.getElementById('resList');list.innerHTML='';
+  // Engine upgrade card (appears once base engine research is unlocked)
+  if((S.engineVersion||0)>=1){
+    const cur=ENGINE_VERSIONS[S.engineVersion-1];
+    const next=ENGINE_VERSIONS[S.engineVersion];
+    const div=document.createElement('div');
+    div.className='resnode done';
+    let html='<div><div style="font-weight:900">⚙️ محرك ألعاب v'+cur.v+'</div><div style="font-size:9px;color:var(--tx3)">خصم تكلفة '+Math.round((1-cur.costDisc)*100)+'%'+(cur.score?' • +'+cur.score+' تقييم':'')+'</div></div>';
+    div.innerHTML=html;
+    if(next){
+      const can=S.money>=next.cost&&S.research.points>=next.res;
+      const btn=document.createElement('button');
+      btn.textContent='ترقية v'+next.v+' ('+fmt(next.cost)+' 💰 + '+next.res+' 🔬)';
+      btn.disabled=!can;
+      btn.onclick=()=>{
+        if(S.money<next.cost||S.research.points<next.res)return;
+        S.money-=next.cost;S.research.points-=next.res;
+        S.engineVersion=next.v;
+        sn('ok');showToast('⚙️ ترقية المحرك إلى v'+next.v+'!');
+        RenderResearch();UU();saveGame();CA();
+      };
+      div.appendChild(btn);
+    }
+    list.appendChild(div);
+  }
   RESEARCH.forEach(r=>{
     const done=isResearched(r.id);
     const can=S.research.points>=r.cost&&!done;
@@ -1656,6 +2086,7 @@ function RenderResearch(){
         if(S.research.points<r.cost)return;
         S.research.points-=r.cost;
         S.research.unlocked.push(r.id);
+        if(r.id==='engine')S.engineVersion=Math.max(S.engineVersion||0,1);
         sn('ok');showToast('🔬 بحث جديد: '+r.n);
         RenderResearch();UU();BS2();saveGame();CA();
       };
@@ -1674,10 +2105,59 @@ window.EmpTab=function(tab){
   empTab=tab;
   document.getElementById('tabRoster').classList.toggle('a',tab==='roster');
   document.getElementById('tabHire').classList.toggle('a',tab==='hire');
+  document.getElementById('tabMorale').classList.toggle('a',tab==='morale');
   RenderEmps();
 };
+function moraleEmoji(m){return m>=80?'😄':m>=60?'🙂':m>=40?'😐':m>=25?'😟':'😡';}
 function RenderEmps(){
   const c=document.getElementById('empContent');c.innerHTML='';
+  if(empTab==='morale'){
+    const m=Math.round(S.morale??75);
+    const col=m>=60?'var(--p)':m>=40?'var(--g)':'var(--d)';
+    const head=document.createElement('div');
+    head.style.cssText='text-align:center;font-size:13px;font-weight:900';
+    head.innerHTML=moraleEmoji(m)+' معنويات الاستوديو: <span style="color:'+col+'">'+m+'/100</span>';
+    c.appendChild(head);
+    const bar=document.createElement('div');bar.className='moralebar';
+    bar.innerHTML='<div style="width:'+m+'%;background:'+col+'"></div>';
+    c.appendChild(bar);
+    const info=document.createElement('p');
+    info.style.cssText='font-size:10px;color:var(--tx3);text-align:center';
+    info.textContent='المعنويات تؤثر على إنتاجية الموظفين والتقييم. ترتفع بالنجاحات وتنخفض بالإخفاقات والإطلاق السريع. تحت 30: خطر استقالات!';
+    c.appendChild(info);
+    const partyCost=5000+S.st*15000;
+    const pb=document.createElement('button');pb.className='bg';pb.style.cssText='display:block;width:100%;margin:6px 0';
+    pb.textContent='🎉 حفلة للفريق ('+fmt(partyCost)+' 💰) +15';
+    pb.disabled=S.partyUsed||S.money<partyCost;
+    if(S.partyUsed)pb.textContent='🎉 حفلة للفريق (مرة لكل إصدار)';
+    pb.onclick=()=>{
+      if(S.partyUsed||S.money<partyCost)return;
+      S.money-=partyCost;S.partyUsed=true;
+      S.morale=Math.min(100,(S.morale??75)+15);
+      sn('ok');showToast('🎉 حفلة رائعة! المعنويات +15');
+      RenderEmps();UU();saveGame();
+    };
+    c.appendChild(pb);
+    const bonusCost=getTotalSalary()*2;
+    const bb=document.createElement('button');bb.className='bg gl';bb.style.cssText='display:block;width:100%;margin:6px 0';
+    bb.textContent='💰 مكافآت مالية ('+fmt(bonusCost)+' 💰) +25';
+    bb.disabled=!bonusCost||S.money<bonusCost;
+    bb.onclick=()=>{
+      if(!bonusCost||S.money<bonusCost)return;
+      S.money-=bonusCost;
+      S.morale=Math.min(100,(S.morale??75)+25);
+      sn('ok');showToast('💰 وزّعت مكافآت! المعنويات +25');
+      RenderEmps();UU();saveGame();
+    };
+    c.appendChild(bb);
+    if(!(S.employees||[]).length){
+      const solo=document.createElement('p');
+      solo.style.cssText='font-size:10px;color:var(--tx3);text-align:center;margin-top:6px';
+      solo.textContent='💡 أنت تعمل وحدك حالياً — أهمية المعنويات تزداد مع توظيف فريق.';
+      c.appendChild(solo);
+    }
+    return;
+  }
   if(empTab==='roster'){
     if(!S.employees||!S.employees.length){c.innerHTML='<p style="text-align:center;color:var(--tx3);padding:14px">لا يوجد موظفون. اضغط "توظيف" للبدء.</p>';return;}
     S.employees.forEach((e,idx)=>{
@@ -1780,6 +2260,139 @@ function StartDLC(ip){
 }
 
 // Sequel cost logic is integrated directly inside getDevCost via S._sequelMode flag.
+
+// ============ BANK LOANS ============
+let loanRescue=false;
+window.OpenLoan=function(rescue){
+  loanRescue=!!rescue;
+  RenderLoan();
+  document.getElementById('loanModal').classList.add('show');
+  if(rescue)sn('f');
+};
+window.CloseLoan=function(){
+  document.getElementById('loanModal').classList.remove('show');
+  if(loanRescue){loanRescue=false;openPanel();UU();} // rescue declined: panel back (freelance still possible)
+};
+function RenderLoan(){
+  const desc=document.getElementById('loanDesc');
+  const body=document.getElementById('loanBody');body.innerHTML='';
+  const interest=LOAN_INTEREST[S.difficulty]??0.15;
+  if(S.loan){
+    desc.textContent='لديك قرض نشط — يُسدد قسط تلقائياً بعد كل إصدار.';
+    const st=document.createElement('div');st.className='loanstat';
+    st.innerHTML='💵 المتبقي: <b style="color:var(--d)">'+fmt(S.loan.remaining)+'</b><br>📆 القسط لكل لعبة: <b>'+fmt(S.loan.perGame)+'</b><br>⏳ أقساط متبقية: <b>'+S.loan.gamesLeft+'</b>';
+    body.appendChild(st);
+    const payAll=document.createElement('button');payAll.className='bg gl';payAll.style.cssText='display:block;width:100%;margin:6px 0';
+    payAll.textContent='💸 سداد مبكر كامل ('+fmt(S.loan.remaining)+')';
+    payAll.disabled=S.money<S.loan.remaining;
+    payAll.onclick=()=>{
+      if(S.money<S.loan.remaining)return;
+      S.money-=S.loan.remaining;S.loan=null;
+      S.loansRepaid=(S.loansRepaid||0)+1;
+      sn('ok');showToast('🏦 سدّدت القرض بالكامل! 🎉');
+      RenderLoan();UU();saveGame();CA();
+    };
+    body.appendChild(payAll);
+  }else{
+    const cap=loanCap();
+    desc.textContent=(loanRescue?'⚠️ أنت على حافة الإفلاس! خذ قرضاً للنجاة. ':'')+'سقف القرض حسب مرحلتك: '+fmt(cap)+' 💰 — فائدة '+Math.round(interest*100)+'% تُسدد على 8 إصدارات.';
+    [[0.25,'صغير'],[0.5,'متوسط'],[1,'كامل']].forEach(([frac,label])=>{
+      const amount=Math.floor(cap*frac);
+      const total=Math.floor(amount*(1+interest));
+      const opt=document.createElement('div');opt.className='mkt-opt';
+      opt.innerHTML='<div class="mt">🏦 قرض '+label+': '+fmt(amount)+' 💰</div><div class="md">السداد الكلي: '+fmt(total)+' • القسط: '+fmt(Math.ceil(total/8))+'/لعبة × 8</div>';
+      opt.onclick=()=>TakeLoan(frac);
+      body.appendChild(opt);
+    });
+    if(loanRescue){
+      const giveUp=document.createElement('button');giveUp.className='bg dg';giveUp.style.cssText='display:block;width:100%;margin-top:8px';
+      giveUp.textContent='💸 تجاهل وأعلن الإفلاس';
+      giveUp.onclick=()=>{loanRescue=false;CloseLoan();GO();};
+      body.appendChild(giveUp);
+    }
+  }
+}
+window.TakeLoan=function(frac){
+  if(S.loan)return;
+  const cap=loanCap();
+  const interest=LOAN_INTEREST[S.difficulty]??0.15;
+  const principal=Math.floor(cap*frac);
+  const remaining=Math.floor(principal*(1+interest));
+  S.loan={principal,remaining,perGame:Math.ceil(remaining/8),gamesLeft:8};
+  S.money+=principal;
+  const wasRescue=loanRescue;
+  CloseLoan();
+  sn('ok');showToast('🏦 حصلت على قرض '+fmt(principal)+' 💰');
+  UU();saveGame();
+  if(wasRescue)openPanel();
+};
+
+// ============ PUBLISHER CONTRACTS ============
+function MakeContractOffer(){
+  const pub=PUBLISHERS[Math.random()*PUBLISHERS.length|0];
+  const unlocked=GENRES.filter(g=>!g.research||isResearched(g.research));
+  const g=unlocked[Math.random()*unlocked.length|0];
+  const payment=Math.floor(STG[S.st].devCost*2.2*DIFFICULTY[S.difficulty].rewardMult);
+  return {
+    publisher:pub.n,icon:pub.icon,genre:g.id,
+    minScore:S.st>=3?7.5:7,
+    payment,bonus:Math.floor(payment*0.5),penalty:Math.floor(payment*0.35),
+    gamesLeft:2,active:false,
+  };
+}
+function ShowContractOffer(){
+  S._contractOffer=MakeContractOffer();
+  const o=S._contractOffer;
+  const g=GENRES.find(x=>x.id===o.genre);
+  document.getElementById('contractDesc').textContent=o.icon+' '+o.publisher+' يريد منك تطوير لعبة حصرية. الدفعة ثابتة بدل إيرادات السوق، واللعبة ملك للناشر (بدون IP).';
+  document.getElementById('contractTerms').innerHTML=
+    '<div class="loanstat">🎮 النوع المطلوب: <b>'+(g?g.icon+' '+g.name:'')+'</b><br>'+
+    '💰 الدفعة: <b style="color:var(--g)">'+fmt(o.payment)+'</b><br>'+
+    '⭐ مكافأة (تقييم ≥ '+o.minScore+'): <b style="color:var(--p)">+'+fmt(o.bonus)+'</b><br>'+
+    '⚠️ غرامة (تقييم < '+(o.minScore-2)+'): <b style="color:var(--d)">-'+fmt(o.penalty)+'</b><br>'+
+    '⏳ المهلة: إصداران</div>';
+  document.getElementById('contractModal').classList.add('show');
+  sn('ev');
+}
+window.AcceptContract=function(){
+  if(!S._contractOffer)return;
+  S.contract={...S._contractOffer,active:true};
+  S._contractOffer=null;
+  S.contractCooldown=5;
+  S.genre=S.contract.genre;S.topic=null;
+  document.getElementById('contractModal').classList.remove('show');
+  sn('ok');showToast('📜 وقّعت العقد مع '+S.contract.icon+' '+S.contract.publisher);
+  BS2();openPanel();UU();saveGame();
+};
+window.DeclineContract=function(){
+  S._contractOffer=null;
+  S.contractCooldown=2;
+  document.getElementById('contractModal').classList.remove('show');
+  openPanel();UU();saveGame();
+};
+
+// ============ RIVAL STUDIOS PANEL ============
+window.OpenRivals=function(){RenderRivals();document.getElementById('rivalsModal').classList.add('show');};
+window.CloseRivals=function(){document.getElementById('rivalsModal').classList.remove('show');};
+function RenderRivals(){
+  const list=document.getElementById('rivalsList');list.innerHTML='';
+  const sh=getShares();
+  const rows=[{name:'استوديوك',icon:'🏠',w:sh.playerW,me:true,last:S.hist[0]?{name:S.hist[0].name,score:S.hist[0].score}:null,fans:S.fn}];
+  (S.rivals||[]).forEach(r=>{
+    const def=RIVAL_DEFS.find(d=>d.id===r.id)||{name:'منافس',icon:'🏢'};
+    rows.push({name:def.name,icon:def.icon,w:r.fans,last:r.lastGame,fans:r.fans});
+  });
+  rows.sort((a,b)=>b.w-a.w);
+  rows.forEach(row=>{
+    const pct=sh.total>0?Math.round(row.w/sh.total*100):0;
+    const div=document.createElement('div');
+    div.className='rivalcard'+(row.me?' me':'');
+    div.innerHTML='<span class="share">'+pct+'%</span><div class="rn2">'+row.icon+' '+row.name+(row.me?' (أنت)':'')+'</div>'+
+      '<div class="hype"><div style="width:'+pct+'%"></div></div>'+
+      '<div class="rl">👥 '+fmt(row.fans)+' معجب'+(row.last?' • آخر لعبة: "'+row.last.name+'" ('+row.last.score+')':' • لم يصدر شيئاً بعد')+'</div>';
+    list.appendChild(div);
+  });
+}
 
 // ============ SETTINGS BINDINGS ============
 function bindSettings(){
