@@ -195,6 +195,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <button data-d="hard">🔥 صعب</button>
   </div>
   <button class="bs" id="bst">🎮 ابدأ رحلتك</button>
+  <button class="bs" id="bnew" style="display:none;background:linear-gradient(135deg,#ff9d00,#ff0055);box-shadow:0 0 16px rgba(255,100,60,.25)">🆕 لعبة جديدة</button>
   <button id="pwaInstall" style="display:none;margin-top:10px;padding:8px 22px;background:rgba(0,204,255,.08);border:1px solid rgba(0,204,255,.3);border-radius:18px;color:var(--s);font-family:'Cairo';font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:6px">📲 ثبّت التطبيق على جهازك</button>
 </div>
 
@@ -261,6 +262,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ri" id="rva"></div>
     <div class="ri" id="rvs"></div>
     <div class="ri" id="rvf"></div>
+    <div class="ri" id="rvq"></div>
     <div class="ri" id="rvb"></div>
     <div class="ri" id="rvp"></div>
     <div class="ri" id="rvl"></div>
@@ -554,7 +556,18 @@ function B(w,h,d,col,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
 function E(w,h,d,col,em,x,y,z,i){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:col,emissive:em,emissiveIntensity:i||.5,roughness:.2}));m.position.set(x,y,z);m.castShadow=true;return m}
 
 let rg;
-function clr(){if(rg)scene.remove(rg);rg=new THREE.Group();scene.add(rg);employees=[];trophies=[];winMeshes=[];walkers=0;}
+function clr(){
+  if(rg){
+    rg.traverse(o=>{
+      if(o.isMesh||o.isPoints){
+        if(o.geometry)o.geometry.dispose();
+        if(o.material&&o.material.dispose)o.material.dispose();
+      }
+    });
+    scene.remove(rg);
+  }
+  rg=new THREE.Group();scene.add(rg);employees=[];trophies=[];winMeshes=[];walkers=0;
+}
 
 // Window helper: tracked for day/night emissive changes
 function mkWindow(w,h,x,y,z){
@@ -1030,7 +1043,7 @@ const EVENTS=[
   {icon:'🎁',title:'هدية من معجب!',desc:'معجب أرسل تبرع! +15,000 💰',good:true,type:'gift'},
   {icon:'📱',title:'انتشار فيروسي!',desc:'لعبتك أصبحت ترند! +800 معجب',good:true,type:'viral'},
   {icon:'🎥',title:'يوتيوبر مشهور!',desc:'يوتيوبر لعب لعبتك على الهواء! +1,200 معجب',good:true,type:'youtuber'},
-  {icon:'🔥',title:'احترق الكمبيوتر!',desc:'احتراق كروت الشاشة بسبب الكيبل.',good:false,type:'strike'},
+  {icon:'🔥',title:'احترق الكمبيوتر!',desc:'احتراق كروت الشاشة بسبب الكيبل. تكلفة لعبتك القادمة مضاعفة ×2!',good:false,type:'strike'},
   // Arabic flavor events
   {icon:'🌙',title:'موسم رمضان!',desc:'الناس مشغولين بالعبادة. المبيعات -30%',good:false,type:'recession'},
   {icon:'🎉',title:'موسم الرياض!',desc:'موسم الرياض رفع الحماس! المبيعات +60%',good:true,type:'publisher'},
@@ -1282,14 +1295,22 @@ window.importSave=function(){
     r.readAsText(e.target.files[0]);
   };i.click();
 };
-function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString('ar')}
+function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString('en-US')}
 
+// Toast queue: multiple simultaneous messages (promotion + loan + resignation...) show one after another
+let _toastQ=[],_toastBusy=false;
 function showToast(text){
-  document.getElementById('atx').textContent=text;
+  _toastQ.push(text);
+  if(_toastQ.length>6)_toastQ=_toastQ.slice(-6);
+  if(!_toastBusy)nextToast();
+}
+function nextToast(){
+  if(!_toastQ.length){_toastBusy=false;return}
+  _toastBusy=true;
+  document.getElementById('atx').textContent=_toastQ.shift();
   const t=document.getElementById('at');
   t.classList.add('show');
-  clearTimeout(showToast._t);
-  showToast._t=setTimeout(()=>t.classList.remove('show'),2800);
+  setTimeout(()=>{t.classList.remove('show');setTimeout(nextToast,300);},2200);
 }
 
 function engineData(){return (S.engineVersion||0)>0?ENGINE_VERSIONS[S.engineVersion-1]:null;}
@@ -1301,6 +1322,7 @@ function getDevCost(){
   const aiDisc=isResearched('aiart')?0.85:1;
   let cost=base*platMult*engineDisc*aiDisc;
   if(S._sequelMode)cost*=0.5;
+  if(S.em==='strike')cost*=2; // burned PCs event: next game costs double
   return Math.floor(cost);
 }
 function getTotalSalary(){return (S.employees||[]).reduce((a,e)=>a+e.salary,0);}
@@ -1364,6 +1386,13 @@ function UU(){
   }else cb.style.display='none';
 }
 
+// Manually switching genre/topic cancels a pending sequel setup (half cost + IP bonus)
+function clearSequelSetup(){
+  if(!S._sequelMode)return;
+  S._sequelMode=false;pendingGameData=null;
+  document.getElementById('gni').value='';
+  showToast('🔄 أُلغي وضع الجزء الثاني');
+}
 function BS2(){
   const gr=document.getElementById('gr'),tr=document.getElementById('tr');
   gr.innerHTML='';tr.innerHTML='';
@@ -1371,13 +1400,15 @@ function BS2(){
     const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
     if(g.research&&!isResearched(g.research)){b.classList.add('lock');b.disabled=true;b.title='يحتاج بحثاً';}
     else if(S.contract&&S.contract.active&&g.id!==S.contract.genre){b.classList.add('lock');b.disabled=true;b.title='ملتزم بعقد نشر';}
-    else b.onclick=()=>{S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
+    else b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
     if(S.genre===g.id)b.classList.add('a');
     gr.appendChild(b);
   });
   TOPICS.forEach(t=>{
-    const b=document.createElement('button');b.className='sb2';b.textContent=t.icon+' '+t.name;
-    b.onclick=()=>{S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
+    const b=document.createElement('button');b.className='sb2';
+    // Highlight the trending topic so the ×2 sales opportunity is visible
+    b.textContent=t.icon+' '+t.name+(S.em==='trend'&&S.tt===t.id?' 🔥':'');
+    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
     if(S.topic===t.id)b.classList.add('a');
     tr.appendChild(b);
   });
@@ -1473,9 +1504,7 @@ window.FL=function(){
 
 window.SD=function(){
   if(!S.genre||!S.topic||S.dev||S.platforms.length===0)return;
-  const cost=getDevCost()*(S.em==='strike'?2:1);
-  if(S.money<cost)return;
-  if(S.em==='strike')S.em=null;
+  if(S.money<getDevCost())return;
   // Open marketing modal first
   OpenMkt();
 };
@@ -1537,7 +1566,9 @@ window.ChooseQA=function(mode){
 
 function StartDevelopment(){
   const cost=getDevCost();
-  S.money-=cost;S.dev=true;UU();sn('c');
+  S.money-=cost;S.dev=true;
+  if(S.em==='strike')S.em=null; // double cost paid, consume the event
+  UU();sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
   document.getElementById('sp').classList.add('show');
   typingActive=true;
@@ -1697,6 +1728,7 @@ function FD(){
   }
 
   S.money+=rev;S.fn=Math.max(0,S.fn+fd);S.gc++;S.gamesThisYear++;
+  const relYear=S.year; // release belongs to the current year even if the year rolls over below
   if(S.money>S.pm)S.pm=S.money;if(avg>S.bs)S.bs=avg;
   if(avg>=8)S.sk++;else S.sk=0;S.gse++;
 
@@ -1766,19 +1798,19 @@ function FD(){
   // Rival studios tick: they release games, gain/lose fans, drift in quality
   TickRivals();
 
-  // Year tracking - every 4 games = 1 year
+  // Year tracking - every 4 games = 1 year (GOTY runs after the review modal closes)
   if(S.gamesThisYear>=4){
     S.gamesThisYear=0;S.year++;
-    setTimeout(()=>CheckGOTY(),3000);
+    S._pendingGOTY=true;
   }
 
   // Convention + contract cooldowns
   if(S.conventionCooldown>0)S.conventionCooldown--;
   if(S.contractCooldown>0)S.contractCooldown--;
 
-  S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:S.year,sequel:!!sequelInfo,contract:!!contractResult});
+  S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:relYear,sequel:!!sequelInfo,contract:!!contractResult});
 
-  setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult),eggKey?2600:100);
+  setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,syn,bal),eggKey?2600:100);
   // Rebuild scene to reflect new IPs (posters), awards (trophies), and any visual updates
   buildRoom(S.st);
   CA();UU();saveGame();
@@ -1812,8 +1844,10 @@ function TickRivals(){
 }
 
 function CheckGOTY(){
-  // GOTY race: player's best game vs the best rival release this year
-  const lastYearGames=S.hist.filter(h=>h.year===S.year-1);
+  // GOTY race: player's best game vs the best rival release this year.
+  // Returns true when it opened the announcement modal.
+  let shown=false;
+  const lastYearGames=S.hist.filter(h=>h.year===S.year-1&&!h.dlc);
   const playerBest=lastYearGames.length?lastYearGames.reduce((a,b)=>a.score>b.score?a:b):null;
   let rivalBest=null;
   (S.rivals||[]).forEach(r=>{if(r.bestThisYear>0&&(!rivalBest||r.bestThisYear>rivalBest.bestThisYear))rivalBest=r;});
@@ -1831,6 +1865,7 @@ function CheckGOTY(){
     document.getElementById('se').classList.add('show');sn('egg');
     spawnConfetti(500,true);celebrateUntil=Date.now()+4000;
     buildRoom(S.st); // refresh to add trophy
+    shown=true;
   }else if(rScore>=8.5){
     rivalBest.fans+=2000;
     const def=RIVAL_DEFS.find(d=>d.id===rivalBest.id)||{name:'منافس',icon:'🏢'};
@@ -1838,17 +1873,23 @@ function CheckGOTY(){
     const te=document.getElementById('evt2');te.textContent='منافسك خطف لعبة العام!';te.className='et bd3';
     document.getElementById('evd').textContent=def.icon+' '+def.name+' فاز بجائزة لعبة العام عن "'+(rivalBest.bestName||'لعبته الأخيرة')+'" ('+rScore+')! نافسه على اللقب السنة القادمة.';
     document.getElementById('se').classList.add('show');sn('f');
+    shown=true;
   }
   (S.rivals||[]).forEach(r=>{r.bestThisYear=0;r.bestName=null;});
   UU();saveGame();CA();
+  return shown;
 }
 
-function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult){
+function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,syn,bal){
   document.getElementById('sr2').classList.add('show');
   document.getElementById('rvn').textContent='🎮 '+name;
   document.getElementById('rva').innerHTML='المعدل: <span class="gl">'+avg+' / 10</span>';
   document.getElementById('rvs').innerHTML='الأرباح: <span class="gl">'+fmt(rev)+' 💰</span>';
   document.getElementById('rvf').innerHTML='المعجبون: '+(fd>=0?'<span class="ps">+'+fd+' 👥</span>':'<span class="ng">'+fd+' 👥</span>');
+  // Learnable feedback: how good was the genre/topic combo and the slider distribution
+  const comboTxt=syn>=2?'<span class="ps">مثالية ⭐</span>':syn>=1?'<span class="ps">جيدة 👍</span>':syn<=-1?'<span class="ng">ضعيفة 👎</span>':'<span class="gl">عادية 😐</span>';
+  const balTxt=bal>=0.85?'<span class="ps">ممتاز 🎯</span>':bal>=0.6?'<span class="gl">جيد 👌</span>':'<span class="ng">بعيد عن المثالي ⚠️</span>';
+  document.getElementById('rvq').innerHTML='التوليفة: '+comboTxt+' • التوزيع: '+balTxt;
   const bugLine=document.getElementById('rvb');
   if(bugCount>0)bugLine.innerHTML='🐛 بَقّات: <span class="ng">'+bugCount+'</span>';else bugLine.innerHTML='';
   const payLine=document.getElementById('rvp');
@@ -1868,8 +1909,10 @@ function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult){
 window.NG=function(){
   document.getElementById('sr2').classList.remove('show');
   document.getElementById('pt').style.display='flex';
-  S.genre=null;S.topic=null;document.querySelectorAll('#gr .sb2,#tr .sb2').forEach(b=>b.classList.remove('a'));
+  S.genre=null;S.topic=null;BS2();
   document.getElementById('gni').value='';S.dev=false;
+  // Year rolled over with this release: run the GOTY ceremony first (award money may even save a broke studio)
+  if(S._pendingGOTY){S._pendingGOTY=false;if(CheckGOTY())return;}
   if(S.money<getDevCost()&&S.money<500){
     // Last chance: bank loan rescue before bankruptcy (from garage stage onward)
     if(!S.loan&&S.st>=1&&loanCap()>0){OpenLoan(true);return}
@@ -1901,7 +1944,15 @@ function TE(){
   else if(ev.type==='award'){S.fn+=500;S.morale=Math.min(100,(S.morale??75)+4);}
   else if(ev.type==='hack'){S.money=Math.max(0,S.money-Math.floor(S.money*.2));S.morale=Math.max(0,(S.morale??75)-5);}
   else if(ev.type==='buyout')S.money+=Math.floor(50000+S.st*30000+Math.random()*50000);
-  else if(ev.type==='quit')S.em='quit';
+  else if(ev.type==='quit'){
+    S.em='quit';
+    if((S.employees||[]).length){
+      const q=S.employees.splice(Math.random()*S.employees.length|0,1)[0];
+      const qr=EMP_ROLES.find(r=>r.id===q.role);
+      desc=(qr?qr.icon+' ':'')+q.name+' استقال ورحل! التقييم القادم -0.5';
+      buildRoom(S.st);
+    }
+  }
   else if(ev.type==='piracy')S.em='piracy';
   else if(ev.type==='gift'){S.money+=15000;S.morale=Math.min(100,(S.morale??75)+4);}
   else if(ev.type==='viral')S.fn+=800;
@@ -1916,6 +1967,7 @@ function TE(){
 }
 window.CE=function(){
   document.getElementById('se').classList.remove('show');
+  BS2(); // refresh genre/topic buttons (trend marker, employee changes)
   if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
   openPanel();UU();
 };
@@ -2252,7 +2304,7 @@ function StartDLC(ip){
   const fans=Math.floor(50+ip.bestScore*30);
   S.fn+=fans;
   S.gc++;
-  S.hist.unshift({name:ip.name+' DLC',genre:GENRES.find(g=>g.id===ip.genre).name,topic:TOPICS.find(t=>t.id===ip.topic).name,score:ip.bestScore,revenue:rev,year:S.year});
+  S.hist.unshift({name:ip.name+' DLC',genre:GENRES.find(g=>g.id===ip.genre).name,topic:TOPICS.find(t=>t.id===ip.topic).name,score:ip.bestScore,revenue:rev,year:S.year,dlc:true});
   sn('ok');
   showToast('📦 DLC مُنطلق! +'+fmt(rev)+' 💰 و +'+fans+' معجب');
   document.getElementById('ipModal').classList.remove('show');
@@ -2422,14 +2474,25 @@ function bindDifficulty(){
 }
 
 // ============ START ============
-document.getElementById('bst').onclick=function(){
+function startGame(fresh){
   document.getElementById('ss').style.display='none';
-  const loaded=loadGame();
-  if(!loaded)IS(window._selectedDiff||'normal');
+  if(fresh||!loadGame())IS(window._selectedDiff||'normal');
   applyTheme();
   buildRoom(S.st);BS2();SS2();BPlatforms();
   document.getElementById('nm').style.display='block';
-  openPanel();UU();sn('ok');CA();
+  openPanel();UU();sn('ok');CA();saveGame();
+}
+let _hasSave=false;
+try{_hasSave=!!localStorage.getItem('gd_save')}catch(e){}
+if(_hasSave){
+  // Existing save: main button continues it; a second button starts fresh with the chosen difficulty
+  document.getElementById('bst').textContent='▶ متابعة رحلتك';
+  document.getElementById('bnew').style.display='inline-block';
+  document.querySelector('#ss .sl').textContent='🎯 الصعوبة (للعبة الجديدة فقط)';
+}
+document.getElementById('bst').onclick=()=>startGame(!_hasSave);
+document.getElementById('bnew').onclick=()=>{
+  if(confirm('بداية جديدة ستحذف تقدمك المحفوظ نهائياً. متأكد؟'))startGame(true);
 };
 
 bindDifficulty();
@@ -2437,8 +2500,6 @@ bindSettings();
 initThree();
 IS('normal');
 
-// Clear sequel mode after game completes
-function resetSequelMode(){S._sequelMode=false;}
 window.addEventListener('beforeunload',()=>{try{saveGame()}catch(e){}});
 
 // PWA: service worker registration + install prompt
