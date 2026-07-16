@@ -4,11 +4,12 @@
  *  - Network-first for navigations (so new releases ship immediately when
  *    online) with offline fallback to the cached index.
  *  - Stale-while-revalidate for same-origin static assets (icons, manifest).
- *  - Cache-first for the Three.js CDN bundle and Google Fonts, which are
- *    versioned and safe to keep long-term.
+ *  - Cache-first for Google Fonts, which are versioned and safe long-term.
+ *  - Three.js is now vendored locally (./vendor/three.module.js) and pre-cached
+ *    as part of the app shell, so the game works fully offline from first load.
  */
 
-const VERSION = 'v1.2.0';
+const VERSION = 'v1.3.0';
 const APP_SHELL = `room-to-top-shell-${VERSION}`;
 const RUNTIME = `room-to-top-runtime-${VERSION}`;
 
@@ -16,6 +17,7 @@ const PRECACHE_URLS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './vendor/three.module.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

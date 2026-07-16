@@ -213,7 +213,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="st" id="prBox" style="display:none">⭐ <span class="v" id="dpr" style="color:var(--g)">0</span></div>
   </div>
   <div id="topbar2">
-    <button class="topbtn" onclick="TH()">📜</button>
+    <button class="topbtn" onclick="toggleHistory()">📜</button>
     <button class="topbtn" onclick="OpenResearch()" id="resBtn" style="display:none">🔬</button>
     <button class="topbtn" onclick="OpenEmps()" id="empBtn" style="display:none">👥</button>
     <button class="topbtn" onclick="OpenIPs()" id="ipBtn" style="display:none">📦</button>
@@ -226,7 +226,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   <div id="hp"></div>
 </div>
 
-<div id="pt" onclick="TP()"><span class="ar" id="pa">▲</span></div>
+<div id="pt" onclick="togglePanel()"><span class="ar" id="pa">▲</span></div>
 
 <div id="mp">
   <div id="df2">
@@ -239,9 +239,9 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code"><div class="stb"><div class="stf cd" id="fc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
     <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound"><div class="stb"><div class="stf sn2" id="fs"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
     <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#ccc;font-family:'Cairo';font-size:11px;outline:none"></div>
-    <button class="bd" id="bdev" onclick="SD()">🚀 طوّر اللعبة</button>
+    <button class="bd" id="bdev" onclick="startDevelop()">🚀 طوّر اللعبة</button>
     <div class="dc" id="dcc">تكلفة: 2,000</div>
-    <button class="bd" id="bfree" onclick="FL()" style="display:none;background:linear-gradient(135deg,#ffb347,#ff6b6b);margin-top:6px">💼 عمل حر (بدون تكلفة)</button>
+    <button class="bd" id="bfree" onclick="freelance()" style="display:none;background:linear-gradient(135deg,#ffb347,#ff6b6b);margin-top:6px">💼 عمل حر (بدون تكلفة)</button>
     <div class="dc" id="freeDesc" style="display:none;color:#ffb347">أرباح قليلة بدون تقييم أو معجبين</div>
   </div>
 </div>
@@ -267,7 +267,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ri" id="rvp"></div>
     <div class="ri" id="rvl"></div>
     <div class="ri" id="rvk"></div>
-    <button class="bg" onclick="NG()">▶ التالي</button>
+    <button class="bg" onclick="nextGame()">▶ التالي</button>
   </div>
 </div>
 
@@ -276,7 +276,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ei" id="evi"></div>
     <div class="et" id="evt2"></div>
     <div class="ed" id="evd"></div>
-    <button class="bg" onclick="CE()">حسناً</button>
+    <button class="bg" onclick="closeEvent()">حسناً</button>
   </div>
 </div>
 
@@ -287,8 +287,8 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ud" id="upd"></div>
     <div class="uc" id="upc"></div>
     <div class="ub" style="justify-content:center">
-      <button class="bg" onclick="DU()">✅ ترقية</button>
-      <button class="bg dg" onclick="CU()">❌ لاحقاً</button>
+      <button class="bg" onclick="doUpgrade()">✅ ترقية</button>
+      <button class="bg dg" onclick="cancelUpgrade()">❌ لاحقاً</button>
     </div>
   </div>
 </div>
@@ -304,7 +304,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
       <div style="font-size:10px;color:var(--tx2);margin-bottom:6px">ابدأ من جديد مع <span id="prGain" style="color:var(--g)">0</span> نقطة Prestige (+10% أرباح لكل نقطة)</div>
       <button class="bg gl" onclick="DoPrestige()">⭐ Prestige</button>
     </div>
-    <button class="bg dg" onclick="RG()" style="margin-top:16px;font-size:14px;padding:10px 28px">🔄 حاول مرة أخرى</button>
+    <button class="bg dg" onclick="restartGame()" style="margin-top:16px;font-size:14px;padding:10px 28px">🔄 حاول مرة أخرى</button>
   </div>
 </div>
 
@@ -442,7 +442,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 </div>
 
 <script type="module">
-import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+import * as THREE from './vendor/three.module.js';
 
 // ============ THREE.JS ============
 let scene,camera,renderer,employees=[],typingActive=false,trophies=[];
@@ -1192,7 +1192,7 @@ const CONVENTIONS=[
 let S={};
 const SAVE_VERSION=4;
 
-function IS(diff){
+function initState(diff){
   const d=diff||'normal';
   S={
     saveVersion:SAVE_VERSION,
@@ -1334,7 +1334,7 @@ window.importSave=function(){
         d=migrateSave(d);
         Object.assign(S,d);
         applyTheme();
-        buildRoom(S.st);BS2();SS2();BPlatforms();UU();saveGame();
+        buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();updateUI();saveGame();
         showToast('✅ تم تحميل الحفظ!');
       }catch(e){alert('ملف غير صالح')}
     };
@@ -1386,7 +1386,7 @@ function getShares(){
 
 function loanCap(){return Math.floor(STG[S.st].devCost*5*DIFFICULTY[S.difficulty].costMult);}
 
-function UU(){
+function updateUI(){
   document.getElementById('dm').textContent=fmt(S.money);
   document.getElementById('df').textContent=fmt(S.fn);
   document.getElementById('ds').textContent=STG[S.st].name;
@@ -1439,14 +1439,14 @@ function clearSequelSetup(){
   document.getElementById('gni').value='';
   showToast('🔄 أُلغي وضع الجزء الثاني');
 }
-function BS2(){
+function buildSelectors(){
   const gr=document.getElementById('gr'),tr=document.getElementById('tr');
   gr.innerHTML='';tr.innerHTML='';
   GENRES.forEach(g=>{
     const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
     if(g.research&&!isResearched(g.research)){b.classList.add('lock');b.disabled=true;b.title='يحتاج بحثاً';}
     else if(S.contract&&S.contract.active&&g.id!==S.contract.genre){b.classList.add('lock');b.disabled=true;b.title='ملتزم بعقد نشر';}
-    else b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
+    else b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
     if(S.genre===g.id)b.classList.add('a');
     gr.appendChild(b);
   });
@@ -1454,7 +1454,7 @@ function BS2(){
     const b=document.createElement('button');b.className='sb2';
     // Highlight the trending topic so the ×2 sales opportunity is visible
     b.textContent=t.icon+' '+t.name+(S.em==='trend'&&S.tt===t.id?' 🔥':'');
-    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
+    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
     if(S.topic===t.id)b.classList.add('a');
     tr.appendChild(b);
   });
@@ -1470,13 +1470,13 @@ function BPlatforms(){
         if(S.platforms.length>1)S.platforms=S.platforms.filter(x=>x!==p.id);
         else return; // need at least one
       }else S.platforms.push(p.id);
-      BPlatforms();UU();
+      BPlatforms();updateUI();
     };
     pr.appendChild(b);
   });
 }
 
-function SS2(){
+function bindSliders(){
   document.querySelectorAll('.stw').forEach(w=>{
     if(w.dataset.bound)return;w.dataset.bound='1';
     const k=w.dataset.s;let dr=false;
@@ -1484,7 +1484,7 @@ function SS2(){
       const r=w.getBoundingClientRect();const cx=e.clientX??e.touches?.[0]?.clientX??0;
       const p=Math.max(0,Math.min(1,(cx-r.left)/r.width));const mx=STG[S.st].maxPts;
       const nv=Math.round(p*mx);const ot=Object.keys(S.sl).filter(x=>x!==k);
-      const os=ot.reduce((s,x)=>s+S.sl[x],0);S.sl[k]=Math.max(0,Math.min(nv,mx-os));UU();
+      const os=ot.reduce((s,x)=>s+S.sl[x],0);S.sl[k]=Math.max(0,Math.min(nv,mx-os));updateUI();
     }
     w.addEventListener('mousedown',e=>{dr=true;calc(e)});
     w.addEventListener('touchstart',e=>{dr=true;calc(e);e.preventDefault()},{passive:false});
@@ -1496,7 +1496,7 @@ function SS2(){
 }
 
 let po=false;
-window.TP=function(){po=!po;document.getElementById('mp').classList.toggle('open',po);document.getElementById('pt').classList.toggle('open',po);document.getElementById('pa').textContent=po?'▼':'▲';};
+window.togglePanel=function(){po=!po;document.getElementById('mp').classList.toggle('open',po);document.getElementById('pt').classList.toggle('open',po);document.getElementById('pa').textContent=po?'▼':'▲';};
 
 // ============ AUDIO (single context, volume control) ============
 let ac;
@@ -1527,7 +1527,7 @@ function applyTheme(){
 // ============ DEVELOP ============
 let pendingGameData=null; // holds game state during QA/marketing flow
 
-window.FL=function(){
+window.freelance=function(){
   if(S.dev)return;S.dev=true;sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
   document.getElementById('sp').classList.add('show');typingActive=true;
@@ -1545,13 +1545,13 @@ window.FL=function(){
       const earn=Math.floor(Math.min(raw,cap));
       S.money+=earn;S.dev=false;S.gse++;
       document.getElementById('pt').style.display='flex';
-      openPanel();UU();
+      openPanel();updateUI();
       showToast('💼 عمل حر: +'+fmt(earn));
     }
   },50);
 };
 
-window.SD=function(){
+window.startDevelop=function(){
   if(!S.genre||!S.topic||S.dev||S.platforms.length===0)return;
   if(S.money<getDevCost())return;
   // Open marketing modal first
@@ -1593,7 +1593,7 @@ function OpenQA(){
 
 window.CancelMkt=function(){
   document.getElementById('mktModal').classList.remove('show');
-  openPanel();UU();
+  openPanel();updateUI();
 };
 
 window.CancelQA=function(){
@@ -1601,7 +1601,7 @@ window.CancelQA=function(){
   // Refund marketing cost
   if(S.marketing.cost){S.money+=S.marketing.cost;S.marketing={hype:0,campaign:null,cost:0,bonus:0};}
   S.pendingDevCost=0; // flow cancelled: nothing left in-flight
-  openPanel();UU();
+  openPanel();updateUI();
 };
 
 window.ChooseQA=function(mode){
@@ -1621,7 +1621,7 @@ function StartDevelopment(){
   S.money-=cost;S.dev=true;
   S.pendingDevCost=(S.pendingDevCost||0)+cost; // track in-flight spend for reload refund
   if(S.em==='strike')S.em=null; // double cost paid, consume the event
-  UU();sn('c');
+  updateUI();sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
   document.getElementById('sp').classList.add('show');
   typingActive=true;
@@ -1631,11 +1631,11 @@ function StartDevelopment(){
     step++;document.getElementById('pf').style.width=(step/total*100)+'%';
     document.getElementById('ppx').textContent=ph[Math.min(Math.floor(step/total*ph.length),ph.length-1)];
     if(step%7===0)sn('t');
-    if(step>=total){clearInterval(iv);FD();}
+    if(step>=total){clearInterval(iv);finishDevelopment();}
   },50);
 }
 
-function FD(){
+function finishDevelopment(){
   typingActive=false;document.getElementById('sp').classList.remove('show');
   const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
   const custName=document.getElementById('gni').value.trim().slice(0,60);
@@ -1871,7 +1871,7 @@ function FD(){
   setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,syn,bal),eggKey?2600:100);
   // Rebuild scene to reflect new IPs (posters), awards (trophies), and any visual updates
   buildRoom(S.st);
-  CA();UU();saveGame();
+  checkAchievements();updateUI();saveGame();
   pendingGameData=null;
   S._sequelMode=false;
   S.marketing={hype:0,campaign:null,cost:0,bonus:0};
@@ -1935,7 +1935,7 @@ function CheckGOTY(){
     shown=true;
   }
   (S.rivals||[]).forEach(r=>{r.bestThisYear=0;r.bestName=null;});
-  UU();saveGame();CA();
+  updateUI();saveGame();checkAchievements();
   return shown;
 }
 
@@ -1965,31 +1965,31 @@ function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,s
   });
 }
 
-window.NG=function(){
+window.nextGame=function(){
   document.getElementById('sr2').classList.remove('show');
   document.getElementById('pt').style.display='flex';
-  S.genre=null;S.topic=null;BS2();
+  S.genre=null;S.topic=null;buildSelectors();
   document.getElementById('gni').value='';S.dev=false;
   // Year rolled over with this release: run the GOTY ceremony first (award money may even save a broke studio)
   if(S._pendingGOTY){S._pendingGOTY=false;if(CheckGOTY())return;}
   if(S.money<getDevCost()&&S.money<500){
     // Last chance: bank loan rescue before bankruptcy (from garage stage onward)
     if(!S.loan&&S.st>=1&&loanCap()>0){OpenLoan(true);return}
-    GO();return
+    gameOver();return
   }
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
   // Publisher contract offer chance
   if(S.gc>=4&&!S.contract&&(S.contractCooldown||0)<=0&&Math.random()<.22){ShowContractOffer();return}
   // Convention chance
-  if(S.gc>=3&&S.conventionCooldown<=0&&Math.random()<.25){S.gse=0;TC();return}
-  if(S.gse>=3&&Math.random()<.45){S.gse=0;TE();return}
-  openPanel();UU();
+  if(S.gc>=3&&S.conventionCooldown<=0&&Math.random()<.25){S.gse=0;triggerConvention();return}
+  if(S.gse>=3&&Math.random()<.45){S.gse=0;triggerEvent();return}
+  openPanel();updateUI();
 };
 
 function openPanel(){po=true;document.getElementById('mp').classList.add('open');document.getElementById('pt').classList.add('open');document.getElementById('pa').textContent='▼';document.getElementById('pt').style.display='flex';}
 
 // ============ EVENTS ============
-function TE(){
+function triggerEvent(){
   // Filter out events that don't fit the current state (e.g. an employee
   // can't resign when the studio is still a one-person operation).
   const pool=EVENTS.filter(e=>{
@@ -2028,17 +2028,17 @@ function TE(){
   document.getElementById('evi').textContent=ev.icon;
   const te=document.getElementById('evt2');te.textContent=ev.title;te.className='et '+(ev.good?'gd2':'bd3');
   document.getElementById('evd').textContent=desc;
-  document.getElementById('se').classList.add('show');sn('ev');UU();
+  document.getElementById('se').classList.add('show');sn('ev');updateUI();
 }
-window.CE=function(){
+window.closeEvent=function(){
   document.getElementById('se').classList.remove('show');
-  BS2(); // refresh genre/topic buttons (trend marker, employee changes)
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
-  openPanel();UU();
+  buildSelectors(); // refresh genre/topic buttons (trend marker, employee changes)
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
+  openPanel();updateUI();
 };
 
 // ============ CONVENTIONS ============
-function TC(){
+function triggerConvention(){
   const conv=CONVENTIONS[Math.random()*CONVENTIONS.length|0];
   document.getElementById('convTitle').textContent=conv.n;
   document.getElementById('convDesc').textContent=conv.desc;
@@ -2062,34 +2062,34 @@ function JoinConv(opt){
   if(opt.research)S.research.points+=opt.research;
   document.getElementById('conventionModal').classList.remove('show');
   showToast('🎪 شاركت في المعرض! +'+fmt(opt.fans)+' معجب');
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
-  openPanel();UU();saveGame();
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
+  openPanel();updateUI();saveGame();
 }
 window.SkipConv=function(){
   document.getElementById('conventionModal').classList.remove('show');
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
-  openPanel();UU();
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
+  openPanel();updateUI();
 };
 
 // ============ UPGRADE ============
-function SU(){
+function showUpgrade(){
   const nx=STG[S.st+1];document.getElementById('upd').textContent='الانتقال إلى: '+nx.name;
   document.getElementById('upc').textContent='التكلفة: '+fmt(STG[S.st].upgCost);
   document.getElementById('su').classList.add('show');
 }
-window.DU=function(){
+window.doUpgrade=function(){
   S.money-=STG[S.st].upgCost;S.st++;
   camCtl.yaw=0;camCtl.zoom=1; // fresh camera reveal for the new office
   buildRoom(S.st);
   const mx=STG[S.st].maxPts,old=S.sl.design+S.sl.code+S.sl.sound||1,r=mx/(old);
   S.sl.design=Math.floor(S.sl.design*r*.9);S.sl.code=Math.floor(S.sl.code*r*.9);
   S.sl.sound=Math.max(0,mx-S.sl.design-S.sl.code);
-  document.getElementById('su').classList.remove('show');openPanel();sn('ok');UU();CA();saveGame();
+  document.getElementById('su').classList.remove('show');openPanel();sn('ok');updateUI();checkAchievements();saveGame();
 };
-window.CU=function(){document.getElementById('su').classList.remove('show');openPanel();UU();};
+window.cancelUpgrade=function(){document.getElementById('su').classList.remove('show');openPanel();updateUI();};
 
 // ============ GAME OVER + PRESTIGE ============
-function GO(){
+function gameOver(){
   document.getElementById('g1').textContent=S.gc;document.getElementById('g2').textContent=fmt(S.pm);
   document.getElementById('g3').textContent=S.bs;
   // Prestige gain calc
@@ -2105,29 +2105,29 @@ window.DoPrestige=function(){
   const gain=S._pendingPrestige||0;
   const newLevel=(S.prestige?.level||0)+gain;
   document.getElementById('sg2').classList.remove('show');
-  IS(S.difficulty);
+  initState(S.difficulty);
   S.prestige.level=newLevel;
   S.prestige.bonus=newLevel*0.1;
-  buildRoom(0);BS2();SS2();BPlatforms();openPanel();UU();saveGame();
+  buildRoom(0);buildSelectors();bindSliders();BPlatforms();openPanel();updateUI();saveGame();
   showToast('⭐ Prestige Level '+newLevel+'!');
 };
-window.RG=function(){
+window.restartGame=function(){
   document.getElementById('sg2').classList.remove('show');
   const prevDiff=S.difficulty;const prevPrestige=S.prestige;
-  IS(prevDiff);
+  initState(prevDiff);
   S.prestige=prevPrestige; // keep prestige
-  buildRoom(0);BS2();SS2();BPlatforms();openPanel();UU();saveGame();
+  buildRoom(0);buildSelectors();bindSliders();BPlatforms();openPanel();updateUI();saveGame();
 };
 
 // ============ ACHIEVEMENTS ============
-function CA(){
+function checkAchievements(){
   ACHS.forEach(a=>{if(!S.ach.includes(a.id)&&a.ch(S)){S.ach.push(a.id);
     showToast('🏆 '+a.n);
   }});
 }
 
 // ============ HISTORY ============
-window.TH=function(){
+window.toggleHistory=function(){
   const p=document.getElementById('hp');
   if(p.style.display==='block'){p.style.display='none';return}
   p.innerHTML='';
@@ -2187,7 +2187,7 @@ function RenderResearch(){
         S.money-=next.cost;S.research.points-=next.res;
         S.engineVersion=next.v;
         sn('ok');showToast('⚙️ ترقية المحرك إلى v'+next.v+'!');
-        RenderResearch();UU();saveGame();CA();
+        RenderResearch();updateUI();saveGame();checkAchievements();
       };
       div.appendChild(btn);
     }
@@ -2207,7 +2207,7 @@ function RenderResearch(){
         S.research.unlocked.push(r.id);
         if(r.id==='engine')S.engineVersion=Math.max(S.engineVersion||0,1);
         sn('ok');showToast('🔬 بحث جديد: '+r.n);
-        RenderResearch();UU();BS2();saveGame();CA();
+        RenderResearch();updateUI();buildSelectors();saveGame();checkAchievements();
       };
       div.appendChild(btn);
     }
@@ -2254,7 +2254,7 @@ function RenderEmps(){
       S.money-=partyCost;S.partyUsed=true;
       S.morale=Math.min(100,(S.morale??75)+15);
       sn('ok');showToast('🎉 حفلة رائعة! المعنويات +15');
-      RenderEmps();UU();saveGame();
+      RenderEmps();updateUI();saveGame();
     };
     c.appendChild(pb);
     const bonusCost=getTotalSalary()*2;
@@ -2266,7 +2266,7 @@ function RenderEmps(){
       S.money-=bonusCost;
       S.morale=Math.min(100,(S.morale??75)+25);
       sn('ok');showToast('💰 وزّعت مكافآت! المعنويات +25');
-      RenderEmps();UU();saveGame();
+      RenderEmps();updateUI();saveGame();
     };
     c.appendChild(bb);
     if(!(S.employees||[]).length){
@@ -2284,7 +2284,7 @@ function RenderEmps(){
       const lvl=EMP_LEVELS[e.level||0];
       const div=document.createElement('div');div.className='empcard';
       div.innerHTML=`<div class="info"><span style="font-size:18px">${role.icon}</span><div><div style="font-weight:900">${e.name}</div><div style="font-size:9px;color:var(--tx3)">${role.n} <span class="lv">${lvl.n}</span> • Exp: ${e.exp||0}</div></div></div><div style="text-align:left"><div class="sal">💼 ${fmt(e.salary)}/شهر</div></div>`;
-      const fb=document.createElement('button');fb.textContent='فصل';fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);buildRoom(S.st);RenderEmps();UU();saveGame();}};
+      const fb=document.createElement('button');fb.textContent='فصل';fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);buildRoom(S.st);RenderEmps();updateUI();saveGame();}};
       div.appendChild(fb);
       c.appendChild(div);
     });
@@ -2318,13 +2318,13 @@ function RenderEmps(){
         S.employees.push({...cand});
         S._candidates.splice(idx,1);
         sn('ok');showToast('✅ تم توظيف '+cand.name);
-        buildRoom(S.st);UU();saveGame();RenderEmps();CA();
+        buildRoom(S.st);updateUI();saveGame();RenderEmps();checkAchievements();
       };
       div.appendChild(hb);
       c.appendChild(div);
     });
     const ref=document.createElement('button');ref.className='bg';ref.style.display='block';ref.style.margin='10px auto 0';ref.textContent='🔄 مرشحون جدد (1,000 💰)';
-    ref.onclick=()=>{if(S.money>=1000){S.money-=1000;S._candidates=null;RenderEmps();UU();saveGame();}};
+    ref.onclick=()=>{if(S.money>=1000){S.money-=1000;S._candidates=null;RenderEmps();updateUI();saveGame();}};
     c.appendChild(ref);
     const cap=document.createElement('div');cap.style.cssText='text-align:center;margin-top:6px;font-size:10px;color:var(--tx3)';
     cap.textContent='السعة: '+(S.employees?.length||0)+'/'+HIRE_CAPS[S.st];
@@ -2367,7 +2367,7 @@ function StartSequel(ip){
   showToast('🔄 سيتم تطوير "'+ip.name+' '+(ip.sequels+2)+'" بنصف التكلفة!');
   // Override cost to half
   S._sequelMode=true;
-  BS2();UU();openPanel();
+  buildSelectors();updateUI();openPanel();
 }
 const DLC_MAX=3; // DLCs per IP before it's exhausted (mirrors the sequel-fatigue design)
 function StartDLC(ip){
@@ -2390,7 +2390,7 @@ function StartDLC(ip){
   sn('ok');
   showToast('📦 DLC مُنطلق! +'+fmt(rev)+' 💰 و +'+fans+' معجب');
   RenderIPs();
-  UU();saveGame();
+  updateUI();saveGame();
 }
 
 // Sequel cost logic is integrated directly inside getDevCost via S._sequelMode flag.
@@ -2405,7 +2405,7 @@ window.OpenLoan=function(rescue){
 };
 window.CloseLoan=function(){
   document.getElementById('loanModal').classList.remove('show');
-  if(loanRescue){loanRescue=false;openPanel();UU();} // rescue declined: panel back (freelance still possible)
+  if(loanRescue){loanRescue=false;openPanel();updateUI();} // rescue declined: panel back (freelance still possible)
 };
 function RenderLoan(){
   const desc=document.getElementById('loanDesc');
@@ -2424,7 +2424,7 @@ function RenderLoan(){
       S.money-=S.loan.remaining;S.loan=null;
       S.loansRepaid=(S.loansRepaid||0)+1;
       sn('ok');showToast('🏦 سدّدت القرض بالكامل! 🎉');
-      RenderLoan();UU();saveGame();CA();
+      RenderLoan();updateUI();saveGame();checkAchievements();
     };
     body.appendChild(payAll);
   }else{
@@ -2441,7 +2441,7 @@ function RenderLoan(){
     if(loanRescue){
       const giveUp=document.createElement('button');giveUp.className='bg dg';giveUp.style.cssText='display:block;width:100%;margin-top:8px';
       giveUp.textContent='💸 تجاهل وأعلن الإفلاس';
-      giveUp.onclick=()=>{loanRescue=false;CloseLoan();GO();};
+      giveUp.onclick=()=>{loanRescue=false;CloseLoan();gameOver();};
       body.appendChild(giveUp);
     }
   }
@@ -2457,7 +2457,7 @@ window.TakeLoan=function(frac){
   const wasRescue=loanRescue;
   CloseLoan();
   sn('ok');showToast('🏦 حصلت على قرض '+fmt(principal)+' 💰');
-  UU();saveGame();
+  updateUI();saveGame();
   if(wasRescue)openPanel();
 };
 
@@ -2496,13 +2496,13 @@ window.AcceptContract=function(){
   S.genre=S.contract.genre;S.topic=null;
   document.getElementById('contractModal').classList.remove('show');
   sn('ok');showToast('📜 وقّعت العقد مع '+S.contract.icon+' '+S.contract.publisher);
-  BS2();openPanel();UU();saveGame();
+  buildSelectors();openPanel();updateUI();saveGame();
 };
 window.DeclineContract=function(){
   S._contractOffer=null;
   S.contractCooldown=2;
   document.getElementById('contractModal').classList.remove('show');
-  openPanel();UU();saveGame();
+  openPanel();updateUI();saveGame();
 };
 
 // ============ RIVAL STUDIOS PANEL ============
@@ -2562,11 +2562,11 @@ function bindDifficulty(){
 // ============ START ============
 function startGame(fresh){
   document.getElementById('ss').style.display='none';
-  if(fresh||!loadGame())IS(window._selectedDiff||'normal');
+  if(fresh||!loadGame())initState(window._selectedDiff||'normal');
   applyTheme();
-  buildRoom(S.st);BS2();SS2();BPlatforms();
+  buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();
   document.getElementById('nm').style.display='block';
-  openPanel();UU();sn('ok');CA();saveGame();
+  openPanel();updateUI();sn('ok');checkAchievements();saveGame();
 }
 let _hasSave=false;
 try{_hasSave=!!localStorage.getItem('gd_save')}catch(e){}
@@ -2584,7 +2584,7 @@ document.getElementById('bnew').onclick=()=>{
 bindDifficulty();
 bindSettings();
 initThree();
-IS('normal');
+initState('normal');
 
 window.addEventListener('beforeunload',()=>{try{saveGame()}catch(e){}});
 

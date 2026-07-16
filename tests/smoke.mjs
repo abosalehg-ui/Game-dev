@@ -1,0 +1,120 @@
+/**
+ * Headless smoke test for "من الغرفة للقمة".
+ *
+ * Serves the repo over a local HTTP server and drives the game in Chromium:
+ * boot → start → develop one full game (marketing → QA → review) and assert
+ * the core loop works, plus a few regression guards:
+ *   - no JS runtime errors on the happy path,
+ *   - a malicious game name renders as text (no XSS execution),
+ *   - the save never persists the mid-development flag or any session-only
+ *     (underscore-prefixed) field, and is written at the current schema version.
+ *
+ * Run: `npm test`  (requires playwright + a Chromium install).
+ * Set CHROME_PATH to override the browser binary; otherwise Playwright's
+ * bundled Chromium is used.
+ */
+import { chromium } from 'playwright';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const MIME = { '.html':'text/html', '.js':'text/javascript', '.mjs':'text/javascript', '.json':'application/json', '.webmanifest':'application/manifest+json', '.png':'image/png' };
+
+const server = http.createServer((req, res) => {
+  let p = decodeURIComponent(req.url.split('?')[0]);
+  if (p === '/') p = '/index.html';
+  const fp = path.join(ROOT, p);
+  if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) { res.writeHead(404); res.end('not found'); return; }
+  res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream' });
+  res.end(fs.readFileSync(fp));
+});
+await new Promise(r => server.listen(0, r));
+const port = server.address().port;
+
+const errors = [];
+// A blocked external resource (e.g. Google Fonts on a sandboxed network) logs a
+// generic "Failed to load resource" console error — that's environmental, not a
+// game bug. Real JS logic errors surface as pageerror or a substantive console.error.
+const launchOpts = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
+const browser = await chromium.launch(launchOpts);
+const page = await browser.newPage();
+page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/i.test(m.text())) errors.push('console.error: ' + m.text()); });
+page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+
+const results = {};
+try {
+  await page.goto(`http://localhost:${port}/index.html`, { waitUntil: 'load', timeout: 30000 });
+  await page.evaluate(() => localStorage.removeItem('gd_save'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(2000);
+
+  results.startBtn = await page.locator('#bst').isVisible();
+  await page.click('#bst');
+  await page.waitForTimeout(800);
+
+  results.genreCount = await page.locator('#gr .sb2').count();
+  results.topicCount = await page.locator('#tr .sb2').count();
+  results.platformCount = await page.locator('#plr .sb2').count();
+
+  // Malicious game name exercises the name-render paths (history, IPs, rivals).
+  await page.fill('#gni', '<img src=x onerror=window.__xss=1>');
+  await page.locator('#gr .sb2').first().click();
+  await page.locator('#tr .sb2').first().click();
+  await page.waitForTimeout(200);
+  results.devEnabled = await page.locator('#bdev').isEnabled();
+
+  await page.click('#bdev');
+  await page.waitForTimeout(400);
+  results.mktModalOpen = (await page.locator('#mktModal.show').count()) > 0;
+  await page.evaluate(() => window.ChooseMkt('none'));
+  await page.waitForTimeout(300);
+  results.qaModalOpen = (await page.locator('#qaModal.show').count()) > 0;
+  await page.evaluate(() => window.ChooseQA('normal'));
+
+  try { await page.waitForSelector('#sr2.show', { timeout: 15000 }); results.reviewShown = true; }
+  catch { results.reviewShown = false; }
+  results.reviewHasScore = /\d/.test((await page.locator('#rva').textContent()) || '');
+
+  await page.evaluate(() => window.toggleHistory());
+  await page.evaluate(() => window.OpenRivals());
+  await page.waitForTimeout(200);
+  results.xssBlocked = await page.evaluate(() => window.__xss === undefined);
+
+  results.save = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('gd_save') || '{}');
+    return { savedDev: 'dev' in s ? s.dev : null, hasUnderscore: Object.keys(s).some(k => k[0] === '_'), saveVersion: s.saveVersion, gc: s.gc };
+  });
+} finally {
+  await browser.close();
+  server.close();
+}
+
+const s = results.save || {};
+const checks = {
+  'start screen visible': results.startBtn === true,
+  'genres rendered (>=8)': results.genreCount >= 8,
+  'topics rendered (>=10)': results.topicCount >= 10,
+  'platforms rendered (>=1)': results.platformCount >= 1,
+  'develop button enabled': results.devEnabled === true,
+  'marketing modal opens': results.mktModalOpen === true,
+  'QA modal opens': results.qaModalOpen === true,
+  'review appears': results.reviewShown === true,
+  'review shows a score': results.reviewHasScore === true,
+  'game name XSS blocked': results.xssBlocked === true,
+  'save never persists dev flag': s.savedDev === false,
+  'save has no session-only fields': s.hasUnderscore === false,
+  'save at current schema version': s.saveVersion === 4,
+  'a game was recorded': s.gc >= 1,
+  'no JS runtime errors': errors.length === 0,
+};
+
+let ok = true;
+for (const [name, pass] of Object.entries(checks)) {
+  console.log(`${pass ? '✓' : '✗'} ${name}`);
+  if (!pass) ok = false;
+}
+if (errors.length) console.log('\nJS errors:\n' + errors.join('\n'));
+console.log('\n' + (ok ? 'SMOKE PASS' : 'SMOKE FAIL'));
+process.exit(ok ? 0 : 1);

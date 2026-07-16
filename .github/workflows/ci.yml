@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 1) Fast syntax gate — parses the inline game script and the service worker.
+      - name: Syntax check
+        run: npm run check
+
+      # 2) Browser smoke test — boots the game and drives one full develop loop.
+      - name: Install Playwright + Chromium
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npm test
+
+      # 3) Guard: the service worker VERSION must be bumped whenever index.html
+      #    changes, or returning players stay stuck on a stale cached build.
+      - name: Service worker version bump check
+        if: github.event_name == 'pull_request'
+        run: node tools/check-sw-version.mjs origin/${{ github.base_ref }}
