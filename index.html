@@ -1020,12 +1020,16 @@ const PLATFORMS=[
   {id:'web',name:'ويب',icon:'🌐',costMult:0.4,audMult:0.7},
 ];
 
+// Upgrade costs follow a smooth ~×2.4–×6.7 curve. The old curve had a ×40 jump
+// at the small office (100K → 4M) that stranded players there for ~16 games while
+// neighbouring stages took ~2; these values (validated in tools/balance-sim.mjs)
+// keep every stage in a comparable, gently rising range.
 const STG=[
   {name:'🛏️ غرفة النوم',devCost:5000,maxPts:10,upgCost:50000,emp:1},
-  {name:'🔧 الكراج',devCost:10000,maxPts:12,upgCost:100000,emp:1},
-  {name:'🏢 مكتب صغير',devCost:20000,maxPts:14,upgCost:4000000,emp:2},
-  {name:'🎬 استوديو',devCost:300000,maxPts:17,upgCost:20000000,emp:4},
-  {name:'🏬 شركة',devCost:800000,maxPts:20,upgCost:100000000,emp:8},
+  {name:'🔧 الكراج',devCost:10000,maxPts:12,upgCost:120000,emp:1},
+  {name:'🏢 مكتب صغير',devCost:20000,maxPts:14,upgCost:800000,emp:2},
+  {name:'🎬 استوديو',devCost:300000,maxPts:17,upgCost:3500000,emp:4},
+  {name:'🏬 شركة',devCost:800000,maxPts:20,upgCost:18000000,emp:8},
   {name:'🏙️ ناطحة سحاب',devCost:2000000,maxPts:24,upgCost:Infinity,emp:13},
 ];
 
@@ -1881,16 +1885,25 @@ function finishDevelopment(){
 
 // Rival simulation tick: each release, rivals may ship a game, fans/quality drift
 function TickRivals(){
-  const share=getShares().player;
-  (S.rivals||[]).forEach(r=>{
+  const shares=getShares();
+  const share=shares.player;
+  const playerW=shares.playerW;
+  const rivalList=S.rivals||[];
+  const avgRival=rivalList.length?rivalList.reduce((a,x)=>a+x.fans,0)/rivalList.length:1;
+  // A genuinely dominant studio (far more fans than the average rival) slows the
+  // rivals' fan accumulation, so consistent quality lets the player's market share
+  // climb instead of eroding over a long game. A trailing player gets no free help.
+  const dom=playerW/(playerW+Math.max(1,avgRival));
+  const domDamp=dom>0.5?Math.max(0.3,1-(dom-0.5)*1.6):1;
+  rivalList.forEach(r=>{
     if(Math.random()<0.65){
       const score=Math.max(1,Math.min(10,Math.round((r.quality+(Math.random()+Math.random()+Math.random()-1.5)*0.8)*10)/10));
       const name=NA[Math.random()*NA.length|0]+' '+NB[Math.random()*NB.length|0];
       r.games++;r.lastGame={name,score,year:S.year};
       if(score>r.bestThisYear){r.bestThisYear=score;r.bestName=name;}
-      if(score>=7)r.fans+=Math.floor(score*120);
+      if(score>=7)r.fans+=Math.floor(score*120*domDamp);
       else if(score<5)r.fans=Math.max(500,r.fans-Math.floor(r.fans*0.05));
-      else r.fans+=Math.floor(score*40);
+      else r.fans+=Math.floor(score*40*domDamp);
     }
     // Quality converges toward an industry baseline that rises with the years,
     // with rubber-banding: rivals fight back when the player dominates
