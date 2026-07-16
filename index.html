@@ -1927,13 +1927,14 @@ function CheckGOTY(){
   const rScore=rivalBest?rivalBest.bestThisYear:0;
   if(pScore>=8.5&&pScore>=rScore){
     S.awards.push({year:S.year-1,game:playerBest.name,score:pScore});
-    S.money+=Math.floor(100000*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
+    const reward=Math.floor(100000*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
+    S.money+=reward;
     S.fn+=2000;
     if(rScore>0)S.gotyWins=(S.gotyWins||0)+1;
     document.getElementById('evi').textContent='🏆';
     const te=document.getElementById('evt2');te.textContent='جائزة لعبة العام!';te.className='et gd2';
     const beat=rScore>0?' متفوقاً على المنافسين ('+rScore+')':'';
-    document.getElementById('evd').textContent='لعبة "'+playerBest.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+beat+'! +100K مكافأة + 2K معجب';
+    document.getElementById('evd').textContent='لعبة "'+playerBest.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+beat+'! +'+fmt(reward)+' مكافأة + 2K معجب';
     document.getElementById('se').classList.add('show');sn('egg');
     spawnConfetti(500,true);celebrateUntil=Date.now()+4000;
     buildRoom(S.st); // refresh to add trophy
