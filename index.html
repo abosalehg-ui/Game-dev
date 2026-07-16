@@ -213,7 +213,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="st" id="prBox" style="display:none">⭐ <span class="v" id="dpr" style="color:var(--g)">0</span></div>
   </div>
   <div id="topbar2">
-    <button class="topbtn" onclick="TH()">📜</button>
+    <button class="topbtn" onclick="toggleHistory()">📜</button>
     <button class="topbtn" onclick="OpenResearch()" id="resBtn" style="display:none">🔬</button>
     <button class="topbtn" onclick="OpenEmps()" id="empBtn" style="display:none">👥</button>
     <button class="topbtn" onclick="OpenIPs()" id="ipBtn" style="display:none">📦</button>
@@ -226,7 +226,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   <div id="hp"></div>
 </div>
 
-<div id="pt" onclick="TP()"><span class="ar" id="pa">▲</span></div>
+<div id="pt" onclick="togglePanel()"><span class="ar" id="pa">▲</span></div>
 
 <div id="mp">
   <div id="df2">
@@ -239,9 +239,9 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code"><div class="stb"><div class="stf cd" id="fc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
     <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound"><div class="stb"><div class="stf sn2" id="fs"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
     <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#ccc;font-family:'Cairo';font-size:11px;outline:none"></div>
-    <button class="bd" id="bdev" onclick="SD()">🚀 طوّر اللعبة</button>
+    <button class="bd" id="bdev" onclick="startDevelop()">🚀 طوّر اللعبة</button>
     <div class="dc" id="dcc">تكلفة: 2,000</div>
-    <button class="bd" id="bfree" onclick="FL()" style="display:none;background:linear-gradient(135deg,#ffb347,#ff6b6b);margin-top:6px">💼 عمل حر (بدون تكلفة)</button>
+    <button class="bd" id="bfree" onclick="freelance()" style="display:none;background:linear-gradient(135deg,#ffb347,#ff6b6b);margin-top:6px">💼 عمل حر (بدون تكلفة)</button>
     <div class="dc" id="freeDesc" style="display:none;color:#ffb347">أرباح قليلة بدون تقييم أو معجبين</div>
   </div>
 </div>
@@ -267,7 +267,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ri" id="rvp"></div>
     <div class="ri" id="rvl"></div>
     <div class="ri" id="rvk"></div>
-    <button class="bg" onclick="NG()">▶ التالي</button>
+    <button class="bg" onclick="nextGame()">▶ التالي</button>
   </div>
 </div>
 
@@ -276,7 +276,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ei" id="evi"></div>
     <div class="et" id="evt2"></div>
     <div class="ed" id="evd"></div>
-    <button class="bg" onclick="CE()">حسناً</button>
+    <button class="bg" onclick="closeEvent()">حسناً</button>
   </div>
 </div>
 
@@ -287,8 +287,8 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="ud" id="upd"></div>
     <div class="uc" id="upc"></div>
     <div class="ub" style="justify-content:center">
-      <button class="bg" onclick="DU()">✅ ترقية</button>
-      <button class="bg dg" onclick="CU()">❌ لاحقاً</button>
+      <button class="bg" onclick="doUpgrade()">✅ ترقية</button>
+      <button class="bg dg" onclick="cancelUpgrade()">❌ لاحقاً</button>
     </div>
   </div>
 </div>
@@ -304,7 +304,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
       <div style="font-size:10px;color:var(--tx2);margin-bottom:6px">ابدأ من جديد مع <span id="prGain" style="color:var(--g)">0</span> نقطة Prestige (+10% أرباح لكل نقطة)</div>
       <button class="bg gl" onclick="DoPrestige()">⭐ Prestige</button>
     </div>
-    <button class="bg dg" onclick="RG()" style="margin-top:16px;font-size:14px;padding:10px 28px">🔄 حاول مرة أخرى</button>
+    <button class="bg dg" onclick="restartGame()" style="margin-top:16px;font-size:14px;padding:10px 28px">🔄 حاول مرة أخرى</button>
   </div>
 </div>
 
@@ -442,7 +442,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 </div>
 
 <script type="module">
-import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+import * as THREE from './vendor/three.module.js';
 
 // ============ THREE.JS ============
 let scene,camera,renderer,employees=[],typingActive=false,trophies=[];
@@ -857,10 +857,17 @@ function buildSkyscraper(){
   mkPlant(-17,-17);mkPlant(17,-17);mkPlant(-17,17);mkPlant(17,17);
 }
 
+let _lastFrame=0;
 function animate(){
   requestAnimationFrame(animate);
-  const t=Date.now()*.001;
-  const celebrating=Date.now()<celebrateUntil;
+  const now=Date.now();
+  const t=now*.001;
+  // Frame-rate independence: f is 1.0 at 60fps and scales up on slower frames,
+  // so per-frame movement (walking, confetti, lighting) looks the same on a
+  // 60Hz and a 144Hz display. Clamped so a backgrounded tab can't teleport things.
+  const f=_lastFrame?Math.min(3,(now-_lastFrame)/16.6667):1;
+  _lastFrame=now;
+  const celebrating=now<celebrateUntil;
   employees.forEach((e,i)=>{
     const u=e.userData||{};
     if(celebrating){
@@ -894,7 +901,7 @@ function animate(){
         if(e.children[3])e.children[3].rotation.x=0;
         if(u.baseX!==undefined){e.position.x=u.baseX;e.position.z=u.baseZ;}
         const cc=COFFEE_SPOTS[curStage];
-        if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008){
+        if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008*f){
           u.anim='walk';
           u.tx=cc.x+(Math.random()-.5)*1.5;u.tz=cc.z+(Math.random()-.5)*1.5;
           walkers++;
@@ -907,7 +914,7 @@ function animate(){
           if(u.anim==='walk'){u.anim='pause';u.pauseUntil=Date.now()+2000+Math.random()*2000;}
           else{u.anim='idle';walkers=Math.max(0,walkers-1);}
         }else{
-          const sp=0.045;
+          const sp=0.045*f;
           e.position.x+=dx/dist*sp;e.position.z+=dz/dist*sp;
           e.rotation.y=Math.atan2(dx,dz);
           e.position.y=Math.abs(Math.sin(t*10+i))*.12;
@@ -923,7 +930,7 @@ function animate(){
   });
   // Day/night lighting: smooth lerp toward current phase targets
   if(amb&&dayTarget){
-    const k=0.02;
+    const k=Math.min(1,0.02*f);
     amb.color.lerp(_dc1.set(dayTarget.amb),k);amb.intensity+=(dayTarget.ambI-amb.intensity)*k;
     dl.color.lerp(_dc2.set(dayTarget.dl),k);dl.intensity+=(dayTarget.dlI-dl.intensity)*k;
     if(scene.background&&scene.background.isColor)scene.background.lerp(_dc3.set(dayTarget.bg),k);
@@ -939,8 +946,8 @@ function animate(){
     const age=(Date.now()-cb.born)/1000;
     const arr=cb.pts.geometry.attributes.position.array;
     cb.vel.forEach((v,i)=>{
-      v.y-=0.012;
-      arr[i*3]+=v.x;arr[i*3+1]+=v.y;arr[i*3+2]+=v.z;
+      v.y-=0.012*f;
+      arr[i*3]+=v.x*f;arr[i*3+1]+=v.y*f;arr[i*3+2]+=v.z*f;
       if(arr[i*3+1]<0){arr[i*3+1]=0;v.y=0;v.x*=0.9;v.z*=0.9;}
     });
     cb.pts.geometry.attributes.position.needsUpdate=true;
@@ -954,7 +961,7 @@ function animate(){
     const arr=particleSystem.points.geometry.attributes.position.array;
     const v=particleSystem.vel;const mY=particleSystem.maxY;
     for(let i=0;i<v.length;i++){
-      arr[i*3+1]+=v[i];
+      arr[i*3+1]+=v[i]*f;
       if(arr[i*3+1]>mY)arr[i*3+1]=1;
     }
     particleSystem.points.geometry.attributes.position.needsUpdate=true;
@@ -1013,12 +1020,16 @@ const PLATFORMS=[
   {id:'web',name:'ويب',icon:'🌐',costMult:0.4,audMult:0.7},
 ];
 
+// Upgrade costs follow a smooth ~×2.4–×6.7 curve. The old curve had a ×40 jump
+// at the small office (100K → 4M) that stranded players there for ~16 games while
+// neighbouring stages took ~2; these values (validated in tools/balance-sim.mjs)
+// keep every stage in a comparable, gently rising range.
 const STG=[
   {name:'🛏️ غرفة النوم',devCost:5000,maxPts:10,upgCost:50000,emp:1},
-  {name:'🔧 الكراج',devCost:10000,maxPts:12,upgCost:100000,emp:1},
-  {name:'🏢 مكتب صغير',devCost:20000,maxPts:14,upgCost:4000000,emp:2},
-  {name:'🎬 استوديو',devCost:300000,maxPts:17,upgCost:20000000,emp:4},
-  {name:'🏬 شركة',devCost:800000,maxPts:20,upgCost:100000000,emp:8},
+  {name:'🔧 الكراج',devCost:10000,maxPts:12,upgCost:120000,emp:1},
+  {name:'🏢 مكتب صغير',devCost:20000,maxPts:14,upgCost:800000,emp:2},
+  {name:'🎬 استوديو',devCost:300000,maxPts:17,upgCost:3500000,emp:4},
+  {name:'🏬 شركة',devCost:800000,maxPts:20,upgCost:18000000,emp:8},
   {name:'🏙️ ناطحة سحاب',devCost:2000000,maxPts:24,upgCost:Infinity,emp:13},
 ];
 
@@ -1183,9 +1194,9 @@ const CONVENTIONS=[
 
 // ============ STATE ============
 let S={};
-const SAVE_VERSION=3;
+const SAVE_VERSION=4;
 
-function IS(diff){
+function initState(diff){
   const d=diff||'normal';
   S={
     saveVersion:SAVE_VERSION,
@@ -1216,6 +1227,7 @@ function IS(diff){
     loansRepaid:0,
     gotyWins:0,
     partyUsed:false,
+    pendingDevCost:0,
   };
 }
 
@@ -1250,16 +1262,52 @@ function migrateSave(p){
     if(!p.gotyWins)p.gotyWins=0;
     if(p.partyUsed===undefined)p.partyUsed=false;
   }
+  if(p.saveVersion<4){
+    p.saveVersion=4;
+    if(p.pendingDevCost===undefined)p.pendingDevCost=0;
+  }
+  // Defensive coercion: guarantee critical numeric fields are finite and clamp
+  // free-text so a hand-edited or shared save can't inject NaN into the economy
+  // or oversized strings into the UI.
+  const num=(v,d)=>Number.isFinite(+v)?+v:d;
+  p.money=num(p.money,0);p.fn=Math.max(0,num(p.fn,0));p.gc=num(p.gc,0)|0;
+  p.st=Math.max(0,Math.min(5,num(p.st,0)|0));
+  p.bs=num(p.bs,0);p.pm=num(p.pm,p.money);p.hs=num(p.hs,5);
+  p.morale=Math.max(0,Math.min(100,num(p.morale,75)));
+  p.year=Math.max(1,num(p.year,1)|0);
+  if(p.research)p.research.points=num(p.research.points,0);
+  const clampName=s=>(typeof s==='string'?s:String(s??'')).slice(0,60);
+  if(Array.isArray(p.hist))p.hist.forEach(h=>{if(h)h.name=clampName(h.name);});
+  if(Array.isArray(p.ips))p.ips.forEach(i=>{if(i)i.name=clampName(i.name);});
   return p;
 }
 
-function saveGame(){try{localStorage.setItem('gd_save',JSON.stringify(S))}catch(e){}}
+// Persistence rule: fields whose name starts with '_' are session-only and are
+// never written to disk. The mid-development flag is likewise never persisted,
+// so closing the tab during a progress bar can't soft-lock the save.
+function saveGame(){
+  try{
+    const clean={};
+    for(const k in S){
+      if(k[0]==='_')continue;
+      clean[k]=S[k];
+    }
+    clean.dev=false;
+    localStorage.setItem('gd_save',JSON.stringify(clean));
+  }catch(e){}
+}
 function loadGame(){
   try{
     const d=localStorage.getItem('gd_save');
     if(d){
       const p=migrateSave(JSON.parse(d));
       Object.assign(S,p);
+      // Recover from a mid-development reload: refund any in-flight spend
+      // (marketing + QA + dev cost) and clear the transient flow state.
+      if(S.pendingDevCost>0){S.money+=S.pendingDevCost;S.pendingDevCost=0;}
+      S.dev=false;
+      S.marketing={hype:0,campaign:null,cost:0,bonus:0};
+      S.qaMode=null;
       return true;
     }
   }catch(e){console.error('Load failed:',e);}
@@ -1270,8 +1318,10 @@ window.exportSave=function(){
     const json=JSON.stringify(S);
     const compressed=btoa(unescape(encodeURIComponent(json)));
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([compressed],{type:'text/plain'}));
+    const url=URL.createObjectURL(new Blob([compressed],{type:'text/plain'}));
+    a.href=url;
     a.download='game_save_v'+SAVE_VERSION+'.txt';a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000); // release the blob to avoid a memory leak
     showToast('✅ تم تصدير الحفظ');
   }catch(e){alert('فشل التصدير')}
 };
@@ -1288,7 +1338,7 @@ window.importSave=function(){
         d=migrateSave(d);
         Object.assign(S,d);
         applyTheme();
-        buildRoom(S.st);BS2();SS2();BPlatforms();UU();saveGame();
+        buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();updateUI();saveGame();
         showToast('✅ تم تحميل الحفظ!');
       }catch(e){alert('ملف غير صالح')}
     };
@@ -1340,7 +1390,7 @@ function getShares(){
 
 function loanCap(){return Math.floor(STG[S.st].devCost*5*DIFFICULTY[S.difficulty].costMult);}
 
-function UU(){
+function updateUI(){
   document.getElementById('dm').textContent=fmt(S.money);
   document.getElementById('df').textContent=fmt(S.fn);
   document.getElementById('ds').textContent=STG[S.st].name;
@@ -1393,14 +1443,14 @@ function clearSequelSetup(){
   document.getElementById('gni').value='';
   showToast('🔄 أُلغي وضع الجزء الثاني');
 }
-function BS2(){
+function buildSelectors(){
   const gr=document.getElementById('gr'),tr=document.getElementById('tr');
   gr.innerHTML='';tr.innerHTML='';
   GENRES.forEach(g=>{
     const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
     if(g.research&&!isResearched(g.research)){b.classList.add('lock');b.disabled=true;b.title='يحتاج بحثاً';}
     else if(S.contract&&S.contract.active&&g.id!==S.contract.genre){b.classList.add('lock');b.disabled=true;b.title='ملتزم بعقد نشر';}
-    else b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
+    else b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
     if(S.genre===g.id)b.classList.add('a');
     gr.appendChild(b);
   });
@@ -1408,7 +1458,7 @@ function BS2(){
     const b=document.createElement('button');b.className='sb2';
     // Highlight the trending topic so the ×2 sales opportunity is visible
     b.textContent=t.icon+' '+t.name+(S.em==='trend'&&S.tt===t.id?' 🔥':'');
-    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');UU();};
+    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
     if(S.topic===t.id)b.classList.add('a');
     tr.appendChild(b);
   });
@@ -1424,13 +1474,13 @@ function BPlatforms(){
         if(S.platforms.length>1)S.platforms=S.platforms.filter(x=>x!==p.id);
         else return; // need at least one
       }else S.platforms.push(p.id);
-      BPlatforms();UU();
+      BPlatforms();updateUI();
     };
     pr.appendChild(b);
   });
 }
 
-function SS2(){
+function bindSliders(){
   document.querySelectorAll('.stw').forEach(w=>{
     if(w.dataset.bound)return;w.dataset.bound='1';
     const k=w.dataset.s;let dr=false;
@@ -1438,7 +1488,7 @@ function SS2(){
       const r=w.getBoundingClientRect();const cx=e.clientX??e.touches?.[0]?.clientX??0;
       const p=Math.max(0,Math.min(1,(cx-r.left)/r.width));const mx=STG[S.st].maxPts;
       const nv=Math.round(p*mx);const ot=Object.keys(S.sl).filter(x=>x!==k);
-      const os=ot.reduce((s,x)=>s+S.sl[x],0);S.sl[k]=Math.max(0,Math.min(nv,mx-os));UU();
+      const os=ot.reduce((s,x)=>s+S.sl[x],0);S.sl[k]=Math.max(0,Math.min(nv,mx-os));updateUI();
     }
     w.addEventListener('mousedown',e=>{dr=true;calc(e)});
     w.addEventListener('touchstart',e=>{dr=true;calc(e);e.preventDefault()},{passive:false});
@@ -1450,7 +1500,7 @@ function SS2(){
 }
 
 let po=false;
-window.TP=function(){po=!po;document.getElementById('mp').classList.toggle('open',po);document.getElementById('pt').classList.toggle('open',po);document.getElementById('pa').textContent=po?'▼':'▲';};
+window.togglePanel=function(){po=!po;document.getElementById('mp').classList.toggle('open',po);document.getElementById('pt').classList.toggle('open',po);document.getElementById('pa').textContent=po?'▼':'▲';};
 
 // ============ AUDIO (single context, volume control) ============
 let ac;
@@ -1481,7 +1531,7 @@ function applyTheme(){
 // ============ DEVELOP ============
 let pendingGameData=null; // holds game state during QA/marketing flow
 
-window.FL=function(){
+window.freelance=function(){
   if(S.dev)return;S.dev=true;sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
   document.getElementById('sp').classList.add('show');typingActive=true;
@@ -1493,16 +1543,19 @@ window.FL=function(){
     if(step>=total){
       clearInterval(iv);typingActive=false;
       document.getElementById('sp').classList.remove('show');
-      const earn=Math.floor(STG[S.st].devCost*0.4*DIFFICULTY[S.difficulty].rewardMult+Math.random()*STG[S.st].devCost*0.2);
+      // Survival income only: capped so freelancing can never out-earn shipping real games
+      const raw=STG[S.st].devCost*0.4*DIFFICULTY[S.difficulty].rewardMult+Math.random()*STG[S.st].devCost*0.2;
+      const cap=15000+S.st*12000;
+      const earn=Math.floor(Math.min(raw,cap));
       S.money+=earn;S.dev=false;S.gse++;
       document.getElementById('pt').style.display='flex';
-      openPanel();UU();
+      openPanel();updateUI();
       showToast('💼 عمل حر: +'+fmt(earn));
     }
   },50);
 };
 
-window.SD=function(){
+window.startDevelop=function(){
   if(!S.genre||!S.topic||S.dev||S.platforms.length===0)return;
   if(S.money<getDevCost())return;
   // Open marketing modal first
@@ -1533,6 +1586,7 @@ window.ChooseMkt=function(tier){
   S.marketing.hype=t.hype*analyticsBonus;
   S.marketing.bonus=t.bonus*analyticsBonus;
   S.money-=t.cost;
+  S.pendingDevCost=(S.pendingDevCost||0)+t.cost; // track in-flight spend for reload refund
   // Now open QA modal
   OpenQA();
 };
@@ -1543,14 +1597,15 @@ function OpenQA(){
 
 window.CancelMkt=function(){
   document.getElementById('mktModal').classList.remove('show');
-  openPanel();UU();
+  openPanel();updateUI();
 };
 
 window.CancelQA=function(){
   document.getElementById('qaModal').classList.remove('show');
   // Refund marketing cost
   if(S.marketing.cost){S.money+=S.marketing.cost;S.marketing={hype:0,campaign:null,cost:0,bonus:0};}
-  openPanel();UU();
+  S.pendingDevCost=0; // flow cancelled: nothing left in-flight
+  openPanel();updateUI();
 };
 
 window.ChooseQA=function(mode){
@@ -1560,6 +1615,7 @@ window.ChooseQA=function(mode){
   const qaCost={quick:0,normal:cost*0.1,full:cost*0.25}[mode];
   if(S.money<cost+qaCost){showToast('❌ مال غير كافٍ');OpenQA();return}
   S.money-=Math.floor(qaCost);
+  S.pendingDevCost=(S.pendingDevCost||0)+Math.floor(qaCost); // track in-flight spend for reload refund
   // Start actual development
   StartDevelopment();
 };
@@ -1567,8 +1623,9 @@ window.ChooseQA=function(mode){
 function StartDevelopment(){
   const cost=getDevCost();
   S.money-=cost;S.dev=true;
+  S.pendingDevCost=(S.pendingDevCost||0)+cost; // track in-flight spend for reload refund
   if(S.em==='strike')S.em=null; // double cost paid, consume the event
-  UU();sn('c');
+  updateUI();sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
   document.getElementById('sp').classList.add('show');
   typingActive=true;
@@ -1578,14 +1635,14 @@ function StartDevelopment(){
     step++;document.getElementById('pf').style.width=(step/total*100)+'%';
     document.getElementById('ppx').textContent=ph[Math.min(Math.floor(step/total*ph.length),ph.length-1)];
     if(step%7===0)sn('t');
-    if(step>=total){clearInterval(iv);FD();}
+    if(step>=total){clearInterval(iv);finishDevelopment();}
   },50);
 }
 
-function FD(){
+function finishDevelopment(){
   typingActive=false;document.getElementById('sp').classList.remove('show');
   const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
-  const custName=document.getElementById('gni').value.trim();
+  const custName=document.getElementById('gni').value.trim().slice(0,60);
   const gameName=custName||NA[Math.random()*NA.length|0]+' '+NB[Math.random()*NB.length|0];
 
   let eggBonus=1;
@@ -1674,8 +1731,12 @@ function FD(){
   if(S.em==='piracy'){mult=.7;S.em=null}
   sales*=mult;
 
-  // Marketing bonus
-  if(S.marketing.bonus)sales*=(1+S.marketing.bonus);
+  // Marketing: a paid campaign multiplies sales; marketer employees amplify
+  // that campaign AND add a small baseline word-of-mouth boost on their own,
+  // so hiring a marketer is never dead weight (was previously computed then ignored).
+  const mktSkill=skillBonus.marketing;
+  if(S.marketing.bonus)sales*=(1+S.marketing.bonus*(1+mktSkill*0.12));
+  if(mktSkill>0)sales*=(1+mktSkill*0.05);
 
   // Platform multipliers
   const platAud=S.platforms.reduce((a,p)=>a+PLATFORMS.find(x=>x.id===p).audMult,0);
@@ -1698,8 +1759,8 @@ function FD(){
   let fd=0;
   if(avg>=9)fd=200+(Math.random()*300|0);else if(avg>=7)fd=50+(Math.random()*100|0);
   else if(avg>=5)fd=-10+(Math.random()*30|0);else fd=-(50+(Math.random()*100|0));
-  // Hype gives initial fan boost
-  if(S.marketing.hype)fd+=Math.floor(S.marketing.hype*2);
+  // Hype gives initial fan boost (marketer employees amplify it too)
+  if(S.marketing.hype)fd+=Math.floor(S.marketing.hype*2*(1+mktSkill*0.12));
   // Community management research
   if(isResearched('community')&&fd>0)fd=Math.floor(fd*1.5);
   // Modding research for RPG/Sim
@@ -1809,29 +1870,40 @@ function FD(){
   if(S.contractCooldown>0)S.contractCooldown--;
 
   S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:relYear,sequel:!!sequelInfo,contract:!!contractResult});
+  if(S.hist.length>100)S.hist.length=100; // bound save size in the long game (UI shows 30, GOTY needs last year)
 
   setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,syn,bal),eggKey?2600:100);
   // Rebuild scene to reflect new IPs (posters), awards (trophies), and any visual updates
   buildRoom(S.st);
-  CA();UU();saveGame();
+  checkAchievements();updateUI();saveGame();
   pendingGameData=null;
   S._sequelMode=false;
   S.marketing={hype:0,campaign:null,cost:0,bonus:0};
   S.qaMode=null;
+  S.pendingDevCost=0; // development completed: nothing in-flight
 }
 
 // Rival simulation tick: each release, rivals may ship a game, fans/quality drift
 function TickRivals(){
-  const share=getShares().player;
-  (S.rivals||[]).forEach(r=>{
+  const shares=getShares();
+  const share=shares.player;
+  const playerW=shares.playerW;
+  const rivalList=S.rivals||[];
+  const avgRival=rivalList.length?rivalList.reduce((a,x)=>a+x.fans,0)/rivalList.length:1;
+  // A genuinely dominant studio (far more fans than the average rival) slows the
+  // rivals' fan accumulation, so consistent quality lets the player's market share
+  // climb instead of eroding over a long game. A trailing player gets no free help.
+  const dom=playerW/(playerW+Math.max(1,avgRival));
+  const domDamp=dom>0.5?Math.max(0.3,1-(dom-0.5)*1.6):1;
+  rivalList.forEach(r=>{
     if(Math.random()<0.65){
       const score=Math.max(1,Math.min(10,Math.round((r.quality+(Math.random()+Math.random()+Math.random()-1.5)*0.8)*10)/10));
       const name=NA[Math.random()*NA.length|0]+' '+NB[Math.random()*NB.length|0];
       r.games++;r.lastGame={name,score,year:S.year};
       if(score>r.bestThisYear){r.bestThisYear=score;r.bestName=name;}
-      if(score>=7)r.fans+=Math.floor(score*120);
+      if(score>=7)r.fans+=Math.floor(score*120*domDamp);
       else if(score<5)r.fans=Math.max(500,r.fans-Math.floor(r.fans*0.05));
-      else r.fans+=Math.floor(score*40);
+      else r.fans+=Math.floor(score*40*domDamp);
     }
     // Quality converges toward an industry baseline that rises with the years,
     // with rubber-banding: rivals fight back when the player dominates
@@ -1855,13 +1927,14 @@ function CheckGOTY(){
   const rScore=rivalBest?rivalBest.bestThisYear:0;
   if(pScore>=8.5&&pScore>=rScore){
     S.awards.push({year:S.year-1,game:playerBest.name,score:pScore});
-    S.money+=Math.floor(100000*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
+    const reward=Math.floor(100000*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
+    S.money+=reward;
     S.fn+=2000;
     if(rScore>0)S.gotyWins=(S.gotyWins||0)+1;
     document.getElementById('evi').textContent='🏆';
     const te=document.getElementById('evt2');te.textContent='جائزة لعبة العام!';te.className='et gd2';
     const beat=rScore>0?' متفوقاً على المنافسين ('+rScore+')':'';
-    document.getElementById('evd').textContent='لعبة "'+playerBest.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+beat+'! +100K مكافأة + 2K معجب';
+    document.getElementById('evd').textContent='لعبة "'+playerBest.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+beat+'! +'+fmt(reward)+' مكافأة + 2K معجب';
     document.getElementById('se').classList.add('show');sn('egg');
     spawnConfetti(500,true);celebrateUntil=Date.now()+4000;
     buildRoom(S.st); // refresh to add trophy
@@ -1876,7 +1949,7 @@ function CheckGOTY(){
     shown=true;
   }
   (S.rivals||[]).forEach(r=>{r.bestThisYear=0;r.bestName=null;});
-  UU();saveGame();CA();
+  updateUI();saveGame();checkAchievements();
   return shown;
 }
 
@@ -1906,32 +1979,38 @@ function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,s
   });
 }
 
-window.NG=function(){
+window.nextGame=function(){
   document.getElementById('sr2').classList.remove('show');
   document.getElementById('pt').style.display='flex';
-  S.genre=null;S.topic=null;BS2();
+  S.genre=null;S.topic=null;buildSelectors();
   document.getElementById('gni').value='';S.dev=false;
   // Year rolled over with this release: run the GOTY ceremony first (award money may even save a broke studio)
   if(S._pendingGOTY){S._pendingGOTY=false;if(CheckGOTY())return;}
   if(S.money<getDevCost()&&S.money<500){
     // Last chance: bank loan rescue before bankruptcy (from garage stage onward)
     if(!S.loan&&S.st>=1&&loanCap()>0){OpenLoan(true);return}
-    GO();return
+    gameOver();return
   }
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
   // Publisher contract offer chance
   if(S.gc>=4&&!S.contract&&(S.contractCooldown||0)<=0&&Math.random()<.22){ShowContractOffer();return}
   // Convention chance
-  if(S.gc>=3&&S.conventionCooldown<=0&&Math.random()<.25){S.gse=0;TC();return}
-  if(S.gse>=3&&Math.random()<.45){S.gse=0;TE();return}
-  openPanel();UU();
+  if(S.gc>=3&&S.conventionCooldown<=0&&Math.random()<.25){S.gse=0;triggerConvention();return}
+  if(S.gse>=3&&Math.random()<.45){S.gse=0;triggerEvent();return}
+  openPanel();updateUI();
 };
 
 function openPanel(){po=true;document.getElementById('mp').classList.add('open');document.getElementById('pt').classList.add('open');document.getElementById('pa').textContent='▼';document.getElementById('pt').style.display='flex';}
 
 // ============ EVENTS ============
-function TE(){
-  const ev=EVENTS[Math.random()*EVENTS.length|0];let desc=ev.desc;
+function triggerEvent(){
+  // Filter out events that don't fit the current state (e.g. an employee
+  // can't resign when the studio is still a one-person operation).
+  const pool=EVENTS.filter(e=>{
+    if(e.type==='quit'&&!(S.employees||[]).length)return false;
+    return true;
+  });
+  const ev=pool[Math.random()*pool.length|0];let desc=ev.desc;
   if(ev.type==='trend'){const rt=TOPICS[Math.random()*TOPICS.length|0];S.tt=rt.id;desc=desc.replace('{topic}',rt.icon+' '+rt.name);S.em='trend';}
   else if(ev.type==='recession')S.em='recession';
   else if(ev.type==='festival')S.em='festival';
@@ -1963,17 +2042,17 @@ function TE(){
   document.getElementById('evi').textContent=ev.icon;
   const te=document.getElementById('evt2');te.textContent=ev.title;te.className='et '+(ev.good?'gd2':'bd3');
   document.getElementById('evd').textContent=desc;
-  document.getElementById('se').classList.add('show');sn('ev');UU();
+  document.getElementById('se').classList.add('show');sn('ev');updateUI();
 }
-window.CE=function(){
+window.closeEvent=function(){
   document.getElementById('se').classList.remove('show');
-  BS2(); // refresh genre/topic buttons (trend marker, employee changes)
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
-  openPanel();UU();
+  buildSelectors(); // refresh genre/topic buttons (trend marker, employee changes)
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
+  openPanel();updateUI();
 };
 
 // ============ CONVENTIONS ============
-function TC(){
+function triggerConvention(){
   const conv=CONVENTIONS[Math.random()*CONVENTIONS.length|0];
   document.getElementById('convTitle').textContent=conv.n;
   document.getElementById('convDesc').textContent=conv.desc;
@@ -1997,34 +2076,34 @@ function JoinConv(opt){
   if(opt.research)S.research.points+=opt.research;
   document.getElementById('conventionModal').classList.remove('show');
   showToast('🎪 شاركت في المعرض! +'+fmt(opt.fans)+' معجب');
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
-  openPanel();UU();saveGame();
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
+  openPanel();updateUI();saveGame();
 }
 window.SkipConv=function(){
   document.getElementById('conventionModal').classList.remove('show');
-  if(S.st<5&&S.money>=STG[S.st].upgCost){SU();return}
-  openPanel();UU();
+  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
+  openPanel();updateUI();
 };
 
 // ============ UPGRADE ============
-function SU(){
+function showUpgrade(){
   const nx=STG[S.st+1];document.getElementById('upd').textContent='الانتقال إلى: '+nx.name;
   document.getElementById('upc').textContent='التكلفة: '+fmt(STG[S.st].upgCost);
   document.getElementById('su').classList.add('show');
 }
-window.DU=function(){
+window.doUpgrade=function(){
   S.money-=STG[S.st].upgCost;S.st++;
   camCtl.yaw=0;camCtl.zoom=1; // fresh camera reveal for the new office
   buildRoom(S.st);
   const mx=STG[S.st].maxPts,old=S.sl.design+S.sl.code+S.sl.sound||1,r=mx/(old);
   S.sl.design=Math.floor(S.sl.design*r*.9);S.sl.code=Math.floor(S.sl.code*r*.9);
   S.sl.sound=Math.max(0,mx-S.sl.design-S.sl.code);
-  document.getElementById('su').classList.remove('show');openPanel();sn('ok');UU();CA();saveGame();
+  document.getElementById('su').classList.remove('show');openPanel();sn('ok');updateUI();checkAchievements();saveGame();
 };
-window.CU=function(){document.getElementById('su').classList.remove('show');openPanel();UU();};
+window.cancelUpgrade=function(){document.getElementById('su').classList.remove('show');openPanel();updateUI();};
 
 // ============ GAME OVER + PRESTIGE ============
-function GO(){
+function gameOver(){
   document.getElementById('g1').textContent=S.gc;document.getElementById('g2').textContent=fmt(S.pm);
   document.getElementById('g3').textContent=S.bs;
   // Prestige gain calc
@@ -2040,29 +2119,29 @@ window.DoPrestige=function(){
   const gain=S._pendingPrestige||0;
   const newLevel=(S.prestige?.level||0)+gain;
   document.getElementById('sg2').classList.remove('show');
-  IS(S.difficulty);
+  initState(S.difficulty);
   S.prestige.level=newLevel;
   S.prestige.bonus=newLevel*0.1;
-  buildRoom(0);BS2();SS2();BPlatforms();openPanel();UU();saveGame();
+  buildRoom(0);buildSelectors();bindSliders();BPlatforms();openPanel();updateUI();saveGame();
   showToast('⭐ Prestige Level '+newLevel+'!');
 };
-window.RG=function(){
+window.restartGame=function(){
   document.getElementById('sg2').classList.remove('show');
   const prevDiff=S.difficulty;const prevPrestige=S.prestige;
-  IS(prevDiff);
+  initState(prevDiff);
   S.prestige=prevPrestige; // keep prestige
-  buildRoom(0);BS2();SS2();BPlatforms();openPanel();UU();
+  buildRoom(0);buildSelectors();bindSliders();BPlatforms();openPanel();updateUI();saveGame();
 };
 
 // ============ ACHIEVEMENTS ============
-function CA(){
+function checkAchievements(){
   ACHS.forEach(a=>{if(!S.ach.includes(a.id)&&a.ch(S)){S.ach.push(a.id);
     showToast('🏆 '+a.n);
   }});
 }
 
 // ============ HISTORY ============
-window.TH=function(){
+window.toggleHistory=function(){
   const p=document.getElementById('hp');
   if(p.style.display==='block'){p.style.display='none';return}
   p.innerHTML='';
@@ -2071,7 +2150,9 @@ window.TH=function(){
     const d=document.createElement('div');d.className='hr';
     const col=h.score>=8?'var(--p)':h.score>=5?'var(--g)':'var(--d)';
     const seq=h.sequel?' 🔄':'';
-    d.innerHTML=`<span class="hn">${h.name}${seq}</span><span class="hs" style="color:${col}">${h.score}</span>`;p.appendChild(d);
+    const nm=document.createElement('span');nm.className='hn';nm.textContent=(h.name||'')+seq;
+    const sc=document.createElement('span');sc.className='hs';sc.style.color=col;sc.textContent=h.score;
+    d.appendChild(nm);d.appendChild(sc);p.appendChild(d);
   });
   p.style.display='block';
 };
@@ -2120,7 +2201,7 @@ function RenderResearch(){
         S.money-=next.cost;S.research.points-=next.res;
         S.engineVersion=next.v;
         sn('ok');showToast('⚙️ ترقية المحرك إلى v'+next.v+'!');
-        RenderResearch();UU();saveGame();CA();
+        RenderResearch();updateUI();saveGame();checkAchievements();
       };
       div.appendChild(btn);
     }
@@ -2140,7 +2221,7 @@ function RenderResearch(){
         S.research.unlocked.push(r.id);
         if(r.id==='engine')S.engineVersion=Math.max(S.engineVersion||0,1);
         sn('ok');showToast('🔬 بحث جديد: '+r.n);
-        RenderResearch();UU();BS2();saveGame();CA();
+        RenderResearch();updateUI();buildSelectors();saveGame();checkAchievements();
       };
       div.appendChild(btn);
     }
@@ -2187,7 +2268,7 @@ function RenderEmps(){
       S.money-=partyCost;S.partyUsed=true;
       S.morale=Math.min(100,(S.morale??75)+15);
       sn('ok');showToast('🎉 حفلة رائعة! المعنويات +15');
-      RenderEmps();UU();saveGame();
+      RenderEmps();updateUI();saveGame();
     };
     c.appendChild(pb);
     const bonusCost=getTotalSalary()*2;
@@ -2199,7 +2280,7 @@ function RenderEmps(){
       S.money-=bonusCost;
       S.morale=Math.min(100,(S.morale??75)+25);
       sn('ok');showToast('💰 وزّعت مكافآت! المعنويات +25');
-      RenderEmps();UU();saveGame();
+      RenderEmps();updateUI();saveGame();
     };
     c.appendChild(bb);
     if(!(S.employees||[]).length){
@@ -2217,7 +2298,7 @@ function RenderEmps(){
       const lvl=EMP_LEVELS[e.level||0];
       const div=document.createElement('div');div.className='empcard';
       div.innerHTML=`<div class="info"><span style="font-size:18px">${role.icon}</span><div><div style="font-weight:900">${e.name}</div><div style="font-size:9px;color:var(--tx3)">${role.n} <span class="lv">${lvl.n}</span> • Exp: ${e.exp||0}</div></div></div><div style="text-align:left"><div class="sal">💼 ${fmt(e.salary)}/شهر</div></div>`;
-      const fb=document.createElement('button');fb.textContent='فصل';fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);buildRoom(S.st);RenderEmps();UU();saveGame();}};
+      const fb=document.createElement('button');fb.textContent='فصل';fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);buildRoom(S.st);RenderEmps();updateUI();saveGame();}};
       div.appendChild(fb);
       c.appendChild(div);
     });
@@ -2251,13 +2332,13 @@ function RenderEmps(){
         S.employees.push({...cand});
         S._candidates.splice(idx,1);
         sn('ok');showToast('✅ تم توظيف '+cand.name);
-        buildRoom(S.st);UU();saveGame();RenderEmps();CA();
+        buildRoom(S.st);updateUI();saveGame();RenderEmps();checkAchievements();
       };
       div.appendChild(hb);
       c.appendChild(div);
     });
     const ref=document.createElement('button');ref.className='bg';ref.style.display='block';ref.style.margin='10px auto 0';ref.textContent='🔄 مرشحون جدد (1,000 💰)';
-    ref.onclick=()=>{if(S.money>=1000){S.money-=1000;S._candidates=null;RenderEmps();UU();saveGame();}};
+    ref.onclick=()=>{if(S.money>=1000){S.money-=1000;S._candidates=null;RenderEmps();updateUI();saveGame();}};
     c.appendChild(ref);
     const cap=document.createElement('div');cap.style.cssText='text-align:center;margin-top:6px;font-size:10px;color:var(--tx3)';
     cap.textContent='السعة: '+(S.employees?.length||0)+'/'+HIRE_CAPS[S.st];
@@ -2274,11 +2355,18 @@ function RenderIPs(){
   S.ips.slice().reverse().forEach(ip=>{
     const genre=GENRES.find(g=>g.id===ip.genre),topic=TOPICS.find(t=>t.id===ip.topic);
     const div=document.createElement('div');div.className='ipcard';
-    div.innerHTML=`<div class="ipn">${ip.name}</div><div class="ipd">${genre?.icon||''}${genre?.name||''} • ${topic?.icon||''}${topic?.name||''} • أعلى تقييم: ${ip.bestScore} • أجزاء: ${ip.sequels}</div>`;
+    const dlcsMade=ip.dlcs||0;
+    const nameDiv=document.createElement('div');nameDiv.className='ipn';nameDiv.textContent=ip.name;
+    const metaDiv=document.createElement('div');metaDiv.className='ipd';
+    metaDiv.textContent=`${genre?.icon||''}${genre?.name||''} • ${topic?.icon||''}${topic?.name||''} • أعلى تقييم: ${ip.bestScore} • أجزاء: ${ip.sequels} • DLC: ${dlcsMade}/${DLC_MAX}`;
+    div.appendChild(nameDiv);div.appendChild(metaDiv);
     const row=document.createElement('div');row.style.cssText='display:flex;gap:5px;margin-top:6px';
     const sq=document.createElement('button');sq.className='bg';sq.style.fontSize='10px';sq.style.padding='4px 10px';sq.style.margin='0';sq.textContent='🔄 جزء ثانٍ (50%)';
     sq.onclick=()=>StartSequel(ip);
-    const dlc=document.createElement('button');dlc.className='bg gl';dlc.style.fontSize='10px';dlc.style.padding='4px 10px';dlc.style.margin='0';dlc.textContent='📦 DLC (20%)';
+    const dlc=document.createElement('button');dlc.className='bg gl';dlc.style.fontSize='10px';dlc.style.padding='4px 10px';dlc.style.margin='0';
+    const dlcLeft=DLC_MAX-dlcsMade;
+    dlc.textContent=dlcLeft>0?'📦 DLC (20%)':'📦 مُستنفد';
+    dlc.disabled=dlcLeft<=0;if(dlcLeft<=0)dlc.style.opacity='0.4';
     dlc.onclick=()=>StartDLC(ip);
     row.appendChild(sq);row.appendChild(dlc);
     div.appendChild(row);
@@ -2293,22 +2381,30 @@ function StartSequel(ip){
   showToast('🔄 سيتم تطوير "'+ip.name+' '+(ip.sequels+2)+'" بنصف التكلفة!');
   // Override cost to half
   S._sequelMode=true;
-  BS2();UU();openPanel();
+  buildSelectors();updateUI();openPanel();
 }
+const DLC_MAX=3; // DLCs per IP before it's exhausted (mirrors the sequel-fatigue design)
 function StartDLC(ip){
-  const cost=Math.floor(getDevCost()*0.2);
+  const made=ip.dlcs||0;
+  if(made>=DLC_MAX){showToast('📦 استُنفد هذا الـ IP — لا مزيد من الـ DLC');return;}
+  // DLC cost is anchored to the stage's base dev cost (not the *next* game's platform selection)
+  const cost=Math.floor(STG[S.st].devCost*DIFFICULTY[S.difficulty].costMult*0.2);
   if(S.money<cost){showToast('❌ مال غير كافٍ ('+fmt(cost)+')');return;}
   S.money-=cost;
-  const rev=Math.floor(Math.pow(ip.bestScore,2.3)*60*(1+S.fn*.001)*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
+  // Fatigue: each additional DLC on the same IP earns ~40% less
+  const fatigue=Math.pow(0.6,made);
+  const rev=Math.floor(Math.pow(ip.bestScore,2.3)*60*(1+S.fn*.001)*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5)*fatigue);
   S.money+=rev;
-  const fans=Math.floor(50+ip.bestScore*30);
+  const fans=Math.floor((50+ip.bestScore*30)*fatigue);
   S.fn+=fans;
   S.gc++;
-  S.hist.unshift({name:ip.name+' DLC',genre:GENRES.find(g=>g.id===ip.genre).name,topic:TOPICS.find(t=>t.id===ip.topic).name,score:ip.bestScore,revenue:rev,year:S.year,dlc:true});
+  ip.dlcs=made+1;
+  S.hist.unshift({name:ip.name+' DLC'+(made>0?' '+(made+1):''),genre:GENRES.find(g=>g.id===ip.genre).name,topic:TOPICS.find(t=>t.id===ip.topic).name,score:ip.bestScore,revenue:rev,year:S.year,dlc:true});
+  if(S.hist.length>100)S.hist.length=100;
   sn('ok');
   showToast('📦 DLC مُنطلق! +'+fmt(rev)+' 💰 و +'+fans+' معجب');
-  document.getElementById('ipModal').classList.remove('show');
-  UU();saveGame();
+  RenderIPs();
+  updateUI();saveGame();
 }
 
 // Sequel cost logic is integrated directly inside getDevCost via S._sequelMode flag.
@@ -2323,7 +2419,7 @@ window.OpenLoan=function(rescue){
 };
 window.CloseLoan=function(){
   document.getElementById('loanModal').classList.remove('show');
-  if(loanRescue){loanRescue=false;openPanel();UU();} // rescue declined: panel back (freelance still possible)
+  if(loanRescue){loanRescue=false;openPanel();updateUI();} // rescue declined: panel back (freelance still possible)
 };
 function RenderLoan(){
   const desc=document.getElementById('loanDesc');
@@ -2342,7 +2438,7 @@ function RenderLoan(){
       S.money-=S.loan.remaining;S.loan=null;
       S.loansRepaid=(S.loansRepaid||0)+1;
       sn('ok');showToast('🏦 سدّدت القرض بالكامل! 🎉');
-      RenderLoan();UU();saveGame();CA();
+      RenderLoan();updateUI();saveGame();checkAchievements();
     };
     body.appendChild(payAll);
   }else{
@@ -2359,7 +2455,7 @@ function RenderLoan(){
     if(loanRescue){
       const giveUp=document.createElement('button');giveUp.className='bg dg';giveUp.style.cssText='display:block;width:100%;margin-top:8px';
       giveUp.textContent='💸 تجاهل وأعلن الإفلاس';
-      giveUp.onclick=()=>{loanRescue=false;CloseLoan();GO();};
+      giveUp.onclick=()=>{loanRescue=false;CloseLoan();gameOver();};
       body.appendChild(giveUp);
     }
   }
@@ -2375,7 +2471,7 @@ window.TakeLoan=function(frac){
   const wasRescue=loanRescue;
   CloseLoan();
   sn('ok');showToast('🏦 حصلت على قرض '+fmt(principal)+' 💰');
-  UU();saveGame();
+  updateUI();saveGame();
   if(wasRescue)openPanel();
 };
 
@@ -2414,13 +2510,13 @@ window.AcceptContract=function(){
   S.genre=S.contract.genre;S.topic=null;
   document.getElementById('contractModal').classList.remove('show');
   sn('ok');showToast('📜 وقّعت العقد مع '+S.contract.icon+' '+S.contract.publisher);
-  BS2();openPanel();UU();saveGame();
+  buildSelectors();openPanel();updateUI();saveGame();
 };
 window.DeclineContract=function(){
   S._contractOffer=null;
   S.contractCooldown=2;
   document.getElementById('contractModal').classList.remove('show');
-  openPanel();UU();saveGame();
+  openPanel();updateUI();saveGame();
 };
 
 // ============ RIVAL STUDIOS PANEL ============
@@ -2439,9 +2535,13 @@ function RenderRivals(){
     const pct=sh.total>0?Math.round(row.w/sh.total*100):0;
     const div=document.createElement('div');
     div.className='rivalcard'+(row.me?' me':'');
-    div.innerHTML='<span class="share">'+pct+'%</span><div class="rn2">'+row.icon+' '+row.name+(row.me?' (أنت)':'')+'</div>'+
-      '<div class="hype"><div style="width:'+pct+'%"></div></div>'+
-      '<div class="rl">👥 '+fmt(row.fans)+' معجب'+(row.last?' • آخر لعبة: "'+row.last.name+'" ('+row.last.score+')':' • لم يصدر شيئاً بعد')+'</div>';
+    const share=document.createElement('span');share.className='share';share.textContent=pct+'%';
+    const title=document.createElement('div');title.className='rn2';title.textContent=row.icon+' '+row.name+(row.me?' (أنت)':'');
+    const hype=document.createElement('div');hype.className='hype';hype.innerHTML='<div style="width:'+pct+'%"></div>';
+    const rl=document.createElement('div');rl.className='rl';
+    // Game names are user-controlled, so render them as text (never HTML)
+    rl.textContent=row.last?('👥 '+fmt(row.fans)+' معجب • آخر لعبة: "'+row.last.name+'" ('+row.last.score+')'):('👥 '+fmt(row.fans)+' معجب • لم يصدر شيئاً بعد');
+    div.appendChild(share);div.appendChild(title);div.appendChild(hype);div.appendChild(rl);
     list.appendChild(div);
   });
 }
@@ -2476,11 +2576,11 @@ function bindDifficulty(){
 // ============ START ============
 function startGame(fresh){
   document.getElementById('ss').style.display='none';
-  if(fresh||!loadGame())IS(window._selectedDiff||'normal');
+  if(fresh||!loadGame())initState(window._selectedDiff||'normal');
   applyTheme();
-  buildRoom(S.st);BS2();SS2();BPlatforms();
+  buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();
   document.getElementById('nm').style.display='block';
-  openPanel();UU();sn('ok');CA();saveGame();
+  openPanel();updateUI();sn('ok');checkAchievements();saveGame();
 }
 let _hasSave=false;
 try{_hasSave=!!localStorage.getItem('gd_save')}catch(e){}
@@ -2498,7 +2598,7 @@ document.getElementById('bnew').onclick=()=>{
 bindDifficulty();
 bindSettings();
 initThree();
-IS('normal');
+initState('normal');
 
 window.addEventListener('beforeunload',()=>{try{saveGame()}catch(e){}});
 
