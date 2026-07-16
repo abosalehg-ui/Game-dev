@@ -1517,7 +1517,10 @@ window.FL=function(){
     if(step>=total){
       clearInterval(iv);typingActive=false;
       document.getElementById('sp').classList.remove('show');
-      const earn=Math.floor(STG[S.st].devCost*0.4*DIFFICULTY[S.difficulty].rewardMult+Math.random()*STG[S.st].devCost*0.2);
+      // Survival income only: capped so freelancing can never out-earn shipping real games
+      const raw=STG[S.st].devCost*0.4*DIFFICULTY[S.difficulty].rewardMult+Math.random()*STG[S.st].devCost*0.2;
+      const cap=15000+S.st*12000;
+      const earn=Math.floor(Math.min(raw,cap));
       S.money+=earn;S.dev=false;S.gse++;
       document.getElementById('pt').style.display='flex';
       openPanel();UU();
@@ -1702,8 +1705,12 @@ function FD(){
   if(S.em==='piracy'){mult=.7;S.em=null}
   sales*=mult;
 
-  // Marketing bonus
-  if(S.marketing.bonus)sales*=(1+S.marketing.bonus);
+  // Marketing: a paid campaign multiplies sales; marketer employees amplify
+  // that campaign AND add a small baseline word-of-mouth boost on their own,
+  // so hiring a marketer is never dead weight (was previously computed then ignored).
+  const mktSkill=skillBonus.marketing;
+  if(S.marketing.bonus)sales*=(1+S.marketing.bonus*(1+mktSkill*0.12));
+  if(mktSkill>0)sales*=(1+mktSkill*0.05);
 
   // Platform multipliers
   const platAud=S.platforms.reduce((a,p)=>a+PLATFORMS.find(x=>x.id===p).audMult,0);
@@ -1726,8 +1733,8 @@ function FD(){
   let fd=0;
   if(avg>=9)fd=200+(Math.random()*300|0);else if(avg>=7)fd=50+(Math.random()*100|0);
   else if(avg>=5)fd=-10+(Math.random()*30|0);else fd=-(50+(Math.random()*100|0));
-  // Hype gives initial fan boost
-  if(S.marketing.hype)fd+=Math.floor(S.marketing.hype*2);
+  // Hype gives initial fan boost (marketer employees amplify it too)
+  if(S.marketing.hype)fd+=Math.floor(S.marketing.hype*2*(1+mktSkill*0.12));
   // Community management research
   if(isResearched('community')&&fd>0)fd=Math.floor(fd*1.5);
   // Modding research for RPG/Sim
@@ -1960,7 +1967,13 @@ function openPanel(){po=true;document.getElementById('mp').classList.add('open')
 
 // ============ EVENTS ============
 function TE(){
-  const ev=EVENTS[Math.random()*EVENTS.length|0];let desc=ev.desc;
+  // Filter out events that don't fit the current state (e.g. an employee
+  // can't resign when the studio is still a one-person operation).
+  const pool=EVENTS.filter(e=>{
+    if(e.type==='quit'&&!(S.employees||[]).length)return false;
+    return true;
+  });
+  const ev=pool[Math.random()*pool.length|0];let desc=ev.desc;
   if(ev.type==='trend'){const rt=TOPICS[Math.random()*TOPICS.length|0];S.tt=rt.id;desc=desc.replace('{topic}',rt.icon+' '+rt.name);S.em='trend';}
   else if(ev.type==='recession')S.em='recession';
   else if(ev.type==='festival')S.em='festival';
@@ -2303,11 +2316,15 @@ function RenderIPs(){
   S.ips.slice().reverse().forEach(ip=>{
     const genre=GENRES.find(g=>g.id===ip.genre),topic=TOPICS.find(t=>t.id===ip.topic);
     const div=document.createElement('div');div.className='ipcard';
-    div.innerHTML=`<div class="ipn">${ip.name}</div><div class="ipd">${genre?.icon||''}${genre?.name||''} • ${topic?.icon||''}${topic?.name||''} • أعلى تقييم: ${ip.bestScore} • أجزاء: ${ip.sequels}</div>`;
+    const dlcsMade=ip.dlcs||0;
+    div.innerHTML=`<div class="ipn">${ip.name}</div><div class="ipd">${genre?.icon||''}${genre?.name||''} • ${topic?.icon||''}${topic?.name||''} • أعلى تقييم: ${ip.bestScore} • أجزاء: ${ip.sequels} • DLC: ${dlcsMade}/${DLC_MAX}</div>`;
     const row=document.createElement('div');row.style.cssText='display:flex;gap:5px;margin-top:6px';
     const sq=document.createElement('button');sq.className='bg';sq.style.fontSize='10px';sq.style.padding='4px 10px';sq.style.margin='0';sq.textContent='🔄 جزء ثانٍ (50%)';
     sq.onclick=()=>StartSequel(ip);
-    const dlc=document.createElement('button');dlc.className='bg gl';dlc.style.fontSize='10px';dlc.style.padding='4px 10px';dlc.style.margin='0';dlc.textContent='📦 DLC (20%)';
+    const dlc=document.createElement('button');dlc.className='bg gl';dlc.style.fontSize='10px';dlc.style.padding='4px 10px';dlc.style.margin='0';
+    const dlcLeft=DLC_MAX-dlcsMade;
+    dlc.textContent=dlcLeft>0?'📦 DLC (20%)':'📦 مُستنفد';
+    dlc.disabled=dlcLeft<=0;if(dlcLeft<=0)dlc.style.opacity='0.4';
     dlc.onclick=()=>StartDLC(ip);
     row.appendChild(sq);row.appendChild(dlc);
     div.appendChild(row);
@@ -2324,19 +2341,26 @@ function StartSequel(ip){
   S._sequelMode=true;
   BS2();UU();openPanel();
 }
+const DLC_MAX=3; // DLCs per IP before it's exhausted (mirrors the sequel-fatigue design)
 function StartDLC(ip){
-  const cost=Math.floor(getDevCost()*0.2);
+  const made=ip.dlcs||0;
+  if(made>=DLC_MAX){showToast('📦 استُنفد هذا الـ IP — لا مزيد من الـ DLC');return;}
+  // DLC cost is anchored to the stage's base dev cost (not the *next* game's platform selection)
+  const cost=Math.floor(STG[S.st].devCost*DIFFICULTY[S.difficulty].costMult*0.2);
   if(S.money<cost){showToast('❌ مال غير كافٍ ('+fmt(cost)+')');return;}
   S.money-=cost;
-  const rev=Math.floor(Math.pow(ip.bestScore,2.3)*60*(1+S.fn*.001)*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
+  // Fatigue: each additional DLC on the same IP earns ~40% less
+  const fatigue=Math.pow(0.6,made);
+  const rev=Math.floor(Math.pow(ip.bestScore,2.3)*60*(1+S.fn*.001)*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5)*fatigue);
   S.money+=rev;
-  const fans=Math.floor(50+ip.bestScore*30);
+  const fans=Math.floor((50+ip.bestScore*30)*fatigue);
   S.fn+=fans;
   S.gc++;
-  S.hist.unshift({name:ip.name+' DLC',genre:GENRES.find(g=>g.id===ip.genre).name,topic:TOPICS.find(t=>t.id===ip.topic).name,score:ip.bestScore,revenue:rev,year:S.year,dlc:true});
+  ip.dlcs=made+1;
+  S.hist.unshift({name:ip.name+' DLC'+(made>0?' '+(made+1):''),genre:GENRES.find(g=>g.id===ip.genre).name,topic:TOPICS.find(t=>t.id===ip.topic).name,score:ip.bestScore,revenue:rev,year:S.year,dlc:true});
   sn('ok');
   showToast('📦 DLC مُنطلق! +'+fmt(rev)+' 💰 و +'+fans+' معجب');
-  document.getElementById('ipModal').classList.remove('show');
+  RenderIPs();
   UU();saveGame();
 }
 
