@@ -1183,7 +1183,7 @@ const CONVENTIONS=[
 
 // ============ STATE ============
 let S={};
-const SAVE_VERSION=3;
+const SAVE_VERSION=4;
 
 function IS(diff){
   const d=diff||'normal';
@@ -1216,6 +1216,7 @@ function IS(diff){
     loansRepaid:0,
     gotyWins:0,
     partyUsed:false,
+    pendingDevCost:0,
   };
 }
 
@@ -1250,16 +1251,39 @@ function migrateSave(p){
     if(!p.gotyWins)p.gotyWins=0;
     if(p.partyUsed===undefined)p.partyUsed=false;
   }
+  if(p.saveVersion<4){
+    p.saveVersion=4;
+    if(p.pendingDevCost===undefined)p.pendingDevCost=0;
+  }
   return p;
 }
 
-function saveGame(){try{localStorage.setItem('gd_save',JSON.stringify(S))}catch(e){}}
+// Persistence rule: fields whose name starts with '_' are session-only and are
+// never written to disk. The mid-development flag is likewise never persisted,
+// so closing the tab during a progress bar can't soft-lock the save.
+function saveGame(){
+  try{
+    const clean={};
+    for(const k in S){
+      if(k[0]==='_')continue;
+      clean[k]=S[k];
+    }
+    clean.dev=false;
+    localStorage.setItem('gd_save',JSON.stringify(clean));
+  }catch(e){}
+}
 function loadGame(){
   try{
     const d=localStorage.getItem('gd_save');
     if(d){
       const p=migrateSave(JSON.parse(d));
       Object.assign(S,p);
+      // Recover from a mid-development reload: refund any in-flight spend
+      // (marketing + QA + dev cost) and clear the transient flow state.
+      if(S.pendingDevCost>0){S.money+=S.pendingDevCost;S.pendingDevCost=0;}
+      S.dev=false;
+      S.marketing={hype:0,campaign:null,cost:0,bonus:0};
+      S.qaMode=null;
       return true;
     }
   }catch(e){console.error('Load failed:',e);}
@@ -1533,6 +1557,7 @@ window.ChooseMkt=function(tier){
   S.marketing.hype=t.hype*analyticsBonus;
   S.marketing.bonus=t.bonus*analyticsBonus;
   S.money-=t.cost;
+  S.pendingDevCost=(S.pendingDevCost||0)+t.cost; // track in-flight spend for reload refund
   // Now open QA modal
   OpenQA();
 };
@@ -1550,6 +1575,7 @@ window.CancelQA=function(){
   document.getElementById('qaModal').classList.remove('show');
   // Refund marketing cost
   if(S.marketing.cost){S.money+=S.marketing.cost;S.marketing={hype:0,campaign:null,cost:0,bonus:0};}
+  S.pendingDevCost=0; // flow cancelled: nothing left in-flight
   openPanel();UU();
 };
 
@@ -1560,6 +1586,7 @@ window.ChooseQA=function(mode){
   const qaCost={quick:0,normal:cost*0.1,full:cost*0.25}[mode];
   if(S.money<cost+qaCost){showToast('❌ مال غير كافٍ');OpenQA();return}
   S.money-=Math.floor(qaCost);
+  S.pendingDevCost=(S.pendingDevCost||0)+Math.floor(qaCost); // track in-flight spend for reload refund
   // Start actual development
   StartDevelopment();
 };
@@ -1567,6 +1594,7 @@ window.ChooseQA=function(mode){
 function StartDevelopment(){
   const cost=getDevCost();
   S.money-=cost;S.dev=true;
+  S.pendingDevCost=(S.pendingDevCost||0)+cost; // track in-flight spend for reload refund
   if(S.em==='strike')S.em=null; // double cost paid, consume the event
   UU();sn('c');
   po=false;document.getElementById('mp').classList.remove('open');document.getElementById('pt').style.display='none';
@@ -1818,6 +1846,7 @@ function FD(){
   S._sequelMode=false;
   S.marketing={hype:0,campaign:null,cost:0,bonus:0};
   S.qaMode=null;
+  S.pendingDevCost=0; // development completed: nothing in-flight
 }
 
 // Rival simulation tick: each release, rivals may ship a game, fans/quality drift
