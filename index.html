@@ -857,10 +857,17 @@ function buildSkyscraper(){
   mkPlant(-17,-17);mkPlant(17,-17);mkPlant(-17,17);mkPlant(17,17);
 }
 
+let _lastFrame=0;
 function animate(){
   requestAnimationFrame(animate);
-  const t=Date.now()*.001;
-  const celebrating=Date.now()<celebrateUntil;
+  const now=Date.now();
+  const t=now*.001;
+  // Frame-rate independence: f is 1.0 at 60fps and scales up on slower frames,
+  // so per-frame movement (walking, confetti, lighting) looks the same on a
+  // 60Hz and a 144Hz display. Clamped so a backgrounded tab can't teleport things.
+  const f=_lastFrame?Math.min(3,(now-_lastFrame)/16.6667):1;
+  _lastFrame=now;
+  const celebrating=now<celebrateUntil;
   employees.forEach((e,i)=>{
     const u=e.userData||{};
     if(celebrating){
@@ -894,7 +901,7 @@ function animate(){
         if(e.children[3])e.children[3].rotation.x=0;
         if(u.baseX!==undefined){e.position.x=u.baseX;e.position.z=u.baseZ;}
         const cc=COFFEE_SPOTS[curStage];
-        if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008){
+        if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008*f){
           u.anim='walk';
           u.tx=cc.x+(Math.random()-.5)*1.5;u.tz=cc.z+(Math.random()-.5)*1.5;
           walkers++;
@@ -907,7 +914,7 @@ function animate(){
           if(u.anim==='walk'){u.anim='pause';u.pauseUntil=Date.now()+2000+Math.random()*2000;}
           else{u.anim='idle';walkers=Math.max(0,walkers-1);}
         }else{
-          const sp=0.045;
+          const sp=0.045*f;
           e.position.x+=dx/dist*sp;e.position.z+=dz/dist*sp;
           e.rotation.y=Math.atan2(dx,dz);
           e.position.y=Math.abs(Math.sin(t*10+i))*.12;
@@ -923,7 +930,7 @@ function animate(){
   });
   // Day/night lighting: smooth lerp toward current phase targets
   if(amb&&dayTarget){
-    const k=0.02;
+    const k=Math.min(1,0.02*f);
     amb.color.lerp(_dc1.set(dayTarget.amb),k);amb.intensity+=(dayTarget.ambI-amb.intensity)*k;
     dl.color.lerp(_dc2.set(dayTarget.dl),k);dl.intensity+=(dayTarget.dlI-dl.intensity)*k;
     if(scene.background&&scene.background.isColor)scene.background.lerp(_dc3.set(dayTarget.bg),k);
@@ -939,8 +946,8 @@ function animate(){
     const age=(Date.now()-cb.born)/1000;
     const arr=cb.pts.geometry.attributes.position.array;
     cb.vel.forEach((v,i)=>{
-      v.y-=0.012;
-      arr[i*3]+=v.x;arr[i*3+1]+=v.y;arr[i*3+2]+=v.z;
+      v.y-=0.012*f;
+      arr[i*3]+=v.x*f;arr[i*3+1]+=v.y*f;arr[i*3+2]+=v.z*f;
       if(arr[i*3+1]<0){arr[i*3+1]=0;v.y=0;v.x*=0.9;v.z*=0.9;}
     });
     cb.pts.geometry.attributes.position.needsUpdate=true;
@@ -954,7 +961,7 @@ function animate(){
     const arr=particleSystem.points.geometry.attributes.position.array;
     const v=particleSystem.vel;const mY=particleSystem.maxY;
     for(let i=0;i<v.length;i++){
-      arr[i*3+1]+=v[i];
+      arr[i*3+1]+=v[i]*f;
       if(arr[i*3+1]>mY)arr[i*3+1]=1;
     }
     particleSystem.points.geometry.attributes.position.needsUpdate=true;
@@ -1255,6 +1262,19 @@ function migrateSave(p){
     p.saveVersion=4;
     if(p.pendingDevCost===undefined)p.pendingDevCost=0;
   }
+  // Defensive coercion: guarantee critical numeric fields are finite and clamp
+  // free-text so a hand-edited or shared save can't inject NaN into the economy
+  // or oversized strings into the UI.
+  const num=(v,d)=>Number.isFinite(+v)?+v:d;
+  p.money=num(p.money,0);p.fn=Math.max(0,num(p.fn,0));p.gc=num(p.gc,0)|0;
+  p.st=Math.max(0,Math.min(5,num(p.st,0)|0));
+  p.bs=num(p.bs,0);p.pm=num(p.pm,p.money);p.hs=num(p.hs,5);
+  p.morale=Math.max(0,Math.min(100,num(p.morale,75)));
+  p.year=Math.max(1,num(p.year,1)|0);
+  if(p.research)p.research.points=num(p.research.points,0);
+  const clampName=s=>(typeof s==='string'?s:String(s??'')).slice(0,60);
+  if(Array.isArray(p.hist))p.hist.forEach(h=>{if(h)h.name=clampName(h.name);});
+  if(Array.isArray(p.ips))p.ips.forEach(i=>{if(i)i.name=clampName(i.name);});
   return p;
 }
 
@@ -1294,8 +1314,10 @@ window.exportSave=function(){
     const json=JSON.stringify(S);
     const compressed=btoa(unescape(encodeURIComponent(json)));
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([compressed],{type:'text/plain'}));
+    const url=URL.createObjectURL(new Blob([compressed],{type:'text/plain'}));
+    a.href=url;
     a.download='game_save_v'+SAVE_VERSION+'.txt';a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000); // release the blob to avoid a memory leak
     showToast('✅ تم تصدير الحفظ');
   }catch(e){alert('فشل التصدير')}
 };
@@ -1616,7 +1638,7 @@ function StartDevelopment(){
 function FD(){
   typingActive=false;document.getElementById('sp').classList.remove('show');
   const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
-  const custName=document.getElementById('gni').value.trim();
+  const custName=document.getElementById('gni').value.trim().slice(0,60);
   const gameName=custName||NA[Math.random()*NA.length|0]+' '+NB[Math.random()*NB.length|0];
 
   let eggBonus=1;
@@ -1844,6 +1866,7 @@ function FD(){
   if(S.contractCooldown>0)S.contractCooldown--;
 
   S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:relYear,sequel:!!sequelInfo,contract:!!contractResult});
+  if(S.hist.length>100)S.hist.length=100; // bound save size in the long game (UI shows 30, GOTY needs last year)
 
   setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,syn,bal),eggKey?2600:100);
   // Rebuild scene to reflect new IPs (posters), awards (trophies), and any visual updates
@@ -2093,7 +2116,7 @@ window.RG=function(){
   const prevDiff=S.difficulty;const prevPrestige=S.prestige;
   IS(prevDiff);
   S.prestige=prevPrestige; // keep prestige
-  buildRoom(0);BS2();SS2();BPlatforms();openPanel();UU();
+  buildRoom(0);BS2();SS2();BPlatforms();openPanel();UU();saveGame();
 };
 
 // ============ ACHIEVEMENTS ============
@@ -2113,7 +2136,9 @@ window.TH=function(){
     const d=document.createElement('div');d.className='hr';
     const col=h.score>=8?'var(--p)':h.score>=5?'var(--g)':'var(--d)';
     const seq=h.sequel?' 🔄':'';
-    d.innerHTML=`<span class="hn">${h.name}${seq}</span><span class="hs" style="color:${col}">${h.score}</span>`;p.appendChild(d);
+    const nm=document.createElement('span');nm.className='hn';nm.textContent=(h.name||'')+seq;
+    const sc=document.createElement('span');sc.className='hs';sc.style.color=col;sc.textContent=h.score;
+    d.appendChild(nm);d.appendChild(sc);p.appendChild(d);
   });
   p.style.display='block';
 };
@@ -2317,7 +2342,10 @@ function RenderIPs(){
     const genre=GENRES.find(g=>g.id===ip.genre),topic=TOPICS.find(t=>t.id===ip.topic);
     const div=document.createElement('div');div.className='ipcard';
     const dlcsMade=ip.dlcs||0;
-    div.innerHTML=`<div class="ipn">${ip.name}</div><div class="ipd">${genre?.icon||''}${genre?.name||''} • ${topic?.icon||''}${topic?.name||''} • أعلى تقييم: ${ip.bestScore} • أجزاء: ${ip.sequels} • DLC: ${dlcsMade}/${DLC_MAX}</div>`;
+    const nameDiv=document.createElement('div');nameDiv.className='ipn';nameDiv.textContent=ip.name;
+    const metaDiv=document.createElement('div');metaDiv.className='ipd';
+    metaDiv.textContent=`${genre?.icon||''}${genre?.name||''} • ${topic?.icon||''}${topic?.name||''} • أعلى تقييم: ${ip.bestScore} • أجزاء: ${ip.sequels} • DLC: ${dlcsMade}/${DLC_MAX}`;
+    div.appendChild(nameDiv);div.appendChild(metaDiv);
     const row=document.createElement('div');row.style.cssText='display:flex;gap:5px;margin-top:6px';
     const sq=document.createElement('button');sq.className='bg';sq.style.fontSize='10px';sq.style.padding='4px 10px';sq.style.margin='0';sq.textContent='🔄 جزء ثانٍ (50%)';
     sq.onclick=()=>StartSequel(ip);
@@ -2358,6 +2386,7 @@ function StartDLC(ip){
   S.gc++;
   ip.dlcs=made+1;
   S.hist.unshift({name:ip.name+' DLC'+(made>0?' '+(made+1):''),genre:GENRES.find(g=>g.id===ip.genre).name,topic:TOPICS.find(t=>t.id===ip.topic).name,score:ip.bestScore,revenue:rev,year:S.year,dlc:true});
+  if(S.hist.length>100)S.hist.length=100;
   sn('ok');
   showToast('📦 DLC مُنطلق! +'+fmt(rev)+' 💰 و +'+fans+' معجب');
   RenderIPs();
@@ -2492,9 +2521,13 @@ function RenderRivals(){
     const pct=sh.total>0?Math.round(row.w/sh.total*100):0;
     const div=document.createElement('div');
     div.className='rivalcard'+(row.me?' me':'');
-    div.innerHTML='<span class="share">'+pct+'%</span><div class="rn2">'+row.icon+' '+row.name+(row.me?' (أنت)':'')+'</div>'+
-      '<div class="hype"><div style="width:'+pct+'%"></div></div>'+
-      '<div class="rl">👥 '+fmt(row.fans)+' معجب'+(row.last?' • آخر لعبة: "'+row.last.name+'" ('+row.last.score+')':' • لم يصدر شيئاً بعد')+'</div>';
+    const share=document.createElement('span');share.className='share';share.textContent=pct+'%';
+    const title=document.createElement('div');title.className='rn2';title.textContent=row.icon+' '+row.name+(row.me?' (أنت)':'');
+    const hype=document.createElement('div');hype.className='hype';hype.innerHTML='<div style="width:'+pct+'%"></div>';
+    const rl=document.createElement('div');rl.className='rl';
+    // Game names are user-controlled, so render them as text (never HTML)
+    rl.textContent=row.last?('👥 '+fmt(row.fans)+' معجب • آخر لعبة: "'+row.last.name+'" ('+row.last.score+')'):('👥 '+fmt(row.fans)+' معجب • لم يصدر شيئاً بعد');
+    div.appendChild(share);div.appendChild(title);div.appendChild(hype);div.appendChild(rl);
     list.appendChild(div);
   });
 }
