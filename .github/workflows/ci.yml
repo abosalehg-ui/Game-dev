@@ -28,6 +28,12 @@ jobs:
       - name: Smoke test (boots the game, drives a full develop loop)
         run: npm run test:smoke
 
+      # The topic is derived from the game's name now, so the derivation is game
+      # logic: this pins the Arabic matching rules and the manual-override /
+      # sequel-lock flows built on top of them.
+      - name: Topic derivation suite
+        run: npm run test:topic
+
       # Pins the save/import regressions: the start-screen reload that used to wipe
       # progress, the reset that used to resurrect it, and the hostile save files
       # that used to execute script or freeze the panel.

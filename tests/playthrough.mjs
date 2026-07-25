@@ -78,13 +78,20 @@ for(let g=1;g<=GAMES;g++){
   if(!await settle(30000)){stopped='settle timeout before game '+g;break;}
   const ready=await pg.evaluate(()=>{
     const gb=[...document.querySelectorAll('#gr .sb2')].filter(x=>!x.disabled);
-    const tb=[...document.querySelectorAll('#tr .sb2')].filter(x=>!x.disabled);
-    if(!gb.length||!tb.length)return false;
+    if(!gb.length)return false;
     gb[Math.floor(Math.random()*Math.min(3,gb.length))].click();
-    tb[Math.floor(Math.random()*tb.length)].click();
+    // The topic is no longer a chip — it comes from the name. Type a real topic
+    // word so each game in the run still lands on a varied, genuine topic.
+    const ids=Object.keys(window.TOPIC_WORDS);
+    const ws=window.TOPIC_WORDS[ids[Math.floor(Math.random()*ids.length)]];
+    const el=document.getElementById('gni');
+    el.value=ws[Math.floor(Math.random()*ws.length)]+' الأبطال';
+    el.dispatchEvent(new Event('input',{bubbles:true}));
     return true;
   });
-  if(!ready){stopped='no selectable genre/topic at game '+g;break;}
+  if(!ready){stopped='no selectable genre at game '+g;break;}
+  // The name input is debounced, so give the derivation a beat to land.
+  await pg.waitForTimeout(200);
   await pg.waitForTimeout(150);
   if(!await pg.locator('#bdev').isEnabled()){
     // Over budget for this scope but not broke: the game must offer a way down.
