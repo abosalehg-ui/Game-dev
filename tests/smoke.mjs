@@ -56,14 +56,29 @@ try {
   await page.waitForTimeout(800);
 
   results.genreCount = await page.locator('#gr .sb2').count();
-  results.topicCount = await page.locator('#tr .sb2').count();
   results.platformCount = await page.locator('#plr .sb2').count();
+  // The 15-chip topic row is gone: the name field carries the topic now.
+  results.topicRowGone = (await page.locator('#tr').count()) === 0;
+
+  await page.locator('#gr .sb2').first().click();
+  // Writing a topic word must move the topic, and the echo must name the word it
+  // matched — that read-back is the only thing making the derivation trustworthy.
+  await page.fill('#gni', 'ملحمة الصحراء');
+  await page.waitForTimeout(300);
+  results.echoText = (await page.locator('#topicEcho').textContent()) || '';
+
+  // The manual escape hatch: one tap on the echo opens a full-size picker.
+  await page.locator('#topicEcho .tmain').click();
+  await page.waitForTimeout(200);
+  results.pickerOpen = (await page.locator('#topicPicker.show').count()) > 0;
+  results.pickerCount = await page.locator('#tpGrid .tpc').count();
+  await page.evaluate(() => window.CloseTopicPicker());
 
   // Malicious game name exercises the name-render paths (history, IPs, rivals).
+  // It carries no topic word, so it must also fall back to عام rather than break.
   await page.fill('#gni', '<img src=x onerror=window.__xss=1>');
-  await page.locator('#gr .sb2').first().click();
-  await page.locator('#tr .sb2').first().click();
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(300);
+  results.fallbackGeneral = /عام/.test((await page.locator('#topicEcho').textContent()) || '');
   results.devEnabled = await page.locator('#bdev').isEnabled();
 
   await page.click('#bdev');
@@ -135,8 +150,13 @@ const s = results.save || {};
 const checks = {
   'start screen visible': results.startBtn === true,
   'genres rendered (>=8)': results.genreCount >= 8,
-  'topics rendered (>=10)': results.topicCount >= 10,
   'platforms rendered (>=1)': results.platformCount >= 1,
+  'topic chip row removed': results.topicRowGone === true,
+  'name derives the topic': /صحراء/.test(results.echoText || ''),
+  'echo names the matched word': /من «/.test(results.echoText || ''),
+  'topic picker opens': results.pickerOpen === true,
+  'picker lists every topic (>=16)': results.pickerCount >= 16,
+  'unmatched name falls back to عام': results.fallbackGeneral === true,
   'develop button enabled': results.devEnabled === true,
   'marketing modal opens': results.mktModalOpen === true,
   'QA modal opens': results.qaModalOpen === true,

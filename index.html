@@ -61,15 +61,49 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .sg{margin-bottom:8px}
 .sl{font-size:11px;color:var(--tx3);margin-bottom:4px;font-weight:700;letter-spacing:.5px}
 /* Genre (11) and topic (15) used to wrap into 4-5 rows each, ~280px of the panel,
-   which pushed the develop button and the live quality preview off-screen. The grid
-   shape is kept for discoverability but bounded with its own scroll. */
-.sr{display:flex;flex-wrap:wrap;gap:4px;max-height:84px;overflow-y:auto;overscroll-behavior:contain}
+   which pushed the develop button and the live quality preview off-screen — and the
+   84px cap that fixed it left most topics behind a nested scroll, the worst thing to
+   put inside an already-scrolling sheet. The topic row is gone entirely now (the
+   game's name carries the topic), so the genre row is the only chip grid left and
+   can finally show all 11 at once without an inner scrollbar. */
+.sr{display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow-y:auto;overscroll-behavior:contain}
 .sr::-webkit-scrollbar{width:3px}.sr::-webkit-scrollbar-thumb{background:rgba(0,204,255,.35);border-radius:2px}
 .sb2{padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);color:var(--tx2);font-size:11px;font-weight:700;font-family:'Cairo';cursor:pointer;transition:all .15s}
 .sb2:hover{background:rgba(0,204,255,.06);border-color:rgba(0,204,255,.15)}
 .sb2.a{background:rgba(0,204,255,.1);border-color:var(--s);color:var(--s)}
 .sb2.lock{opacity:.35;cursor:not-allowed}
 .sb2.lock:after{content:' 🔒'}
+
+/* Name row — the topic picker, in disguise. */
+.namerow{display:flex;gap:6px;align-items:stretch}
+#gni{flex:1;min-width:0;padding:7px 9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;color:var(--tx);font-family:'Cairo';font-size:13px;font-weight:700;outline:none}
+#gni:focus{border-color:var(--s);background:rgba(0,204,255,.05)}
+#gnrand{width:36px;flex:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;font-size:15px;cursor:pointer;transition:all .15s}
+#gnrand:hover{background:rgba(0,204,255,.08);border-color:rgba(0,204,255,.25)}
+/* The detected topic, echoed straight back with the word that produced it, so the
+   derivation is never a black box. Doubles as the button that opens the picker. */
+.techo{margin-top:5px;padding:5px 6px;min-height:32px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;border:1px dashed rgba(0,204,255,.22);border-radius:6px;background:rgba(0,204,255,.03);transition:all .15s}
+.techo:has(.tmain:hover),.techo:has(.tmain:focus-visible){border-color:var(--s);background:rgba(0,204,255,.07)}
+.techo .tmain{flex:1;min-width:0;text-align:right;padding:2px 3px;background:none;border:none;color:var(--tx2);font-family:'Cairo';font-size:11.5px;font-weight:700;line-height:1.5;cursor:pointer}
+.techo .tw{color:var(--tx3);font-weight:400}
+.techo .tv{color:var(--s);font-weight:900}
+.techo .talt{padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);color:var(--tx2);font-family:'Cairo';font-size:10.5px;font-weight:700;cursor:pointer}
+.techo .talt:hover{border-color:var(--s);color:var(--s)}
+
+/* Topic picker — the escape hatch. Full modal, real tap targets, and it shows the
+   synergy against the chosen genre so the choice is informed rather than blind. */
+.tpgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;margin:8px 0}
+.tpc{padding:8px 4px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:var(--tx2);font-family:'Cairo';font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.tpc:hover{background:rgba(0,204,255,.06);border-color:rgba(0,204,255,.2)}
+.tpc.a{background:rgba(0,204,255,.1);border-color:var(--s);color:var(--s)}
+.tpc .tpi{font-size:20px;line-height:1.1}
+.tpc .tps{font-size:10px;font-weight:900}
+/* Same green/gold/red the quality preview uses two rows below, so "good" reads the
+   same in both places rather than gold meaning two different things. */
+.tpc .tps.good{color:var(--p)}.tpc .tps.mid{color:var(--g)}.tpc .tps.bad{color:var(--d)}
+.tpwords{margin-top:8px;font-size:11px;color:var(--tx3);text-align:right;line-height:1.7}
+.tpwords summary{cursor:pointer;color:var(--s);font-weight:700;font-size:12px;margin-bottom:6px}
+.tpwords b{color:var(--tx2)}
 
 .slt{font-size:10px;color:var(--tx3);margin:8px 0 5px;font-weight:700;display:flex;justify-content:space-between}
 .slt .pl{color:var(--g)}
@@ -83,7 +117,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .stf.ds{background:linear-gradient(90deg,#ff6b6b,#ee5a24)}.stf.cd{background:linear-gradient(90deg,#4ecdc4,#00b894)}.stf.sn2{background:linear-gradient(90deg,#a29bfe,#6c5ce7)}
 .sth{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#ddd);border:2.5px solid var(--s);position:absolute;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px rgba(0,204,255,.3),0 2px 6px rgba(0,0,0,.5);z-index:2;pointer-events:none}
 .sth.ds{border-color:#ff6b6b}.sth.cd{border-color:#00b894}.sth.sn2{border-color:#6c5ce7}
-@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.sb2{padding:5px 10px;font-size:12px}.sr{max-height:96px}}
+@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.sb2{padding:5px 10px;font-size:12px}.sr{max-height:132px}.techo{font-size:12px;min-height:36px}.tpc{min-height:70px}}
 
 .bd{width:100%;padding:9px;margin-top:8px;background:linear-gradient(135deg,var(--s),#2d00f7);border:none;border-radius:8px;color:#fff;font-family:'Cairo';font-size:14px;font-weight:900;cursor:pointer;transition:all .2s;box-shadow:0 0 12px rgba(0,204,255,.15)}
 .bd:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,204,255,.25)}
@@ -302,13 +336,19 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div id="tasteBar"></div>
     <div id="hintPanel"></div>
     <div class="sg"><div class="sl">📂 النوع</div><div class="sr" id="gr" role="group" aria-label="نوع اللعبة"></div></div>
-    <div class="sg"><div class="sl">🏷️ الموضوع</div><div class="sr" id="tr" role="group" aria-label="موضوع اللعبة"></div></div>
+    <div class="sg">
+      <div class="sl">🏷️ اسم اللعبة — <b style="color:var(--s)">الاسم يحدد الموضوع</b></div>
+      <div class="namerow">
+        <input id="gni" type="text" maxlength="60" placeholder="مثال: ملحمة الصحراء" aria-label="اسم اللعبة، ويحدد موضوعها">
+        <button id="gnrand" type="button" onclick="rollGameName()" aria-label="اسم عشوائي">🎲</button>
+      </div>
+      <div id="topicEcho" class="techo" aria-live="polite"></div>
+    </div>
     <div class="sg"><div class="sl">📱 المنصات (اختر واحدة أو أكثر — 🔥 مناسبة للنوع، 🔻 غير مناسبة)</div><div class="platrow" id="plr" role="group" aria-label="منصات النشر"></div></div>
     <div class="slt"><span>⚙️ توزيع نقاط التطوير</span><span class="pl">المتبقي: <span id="dpl">0</span> / <span id="dpm">10</span></span></div>
     <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
     <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
     <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
-    <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:var(--tx);font-family:'Cairo';font-size:12px;outline:none"></div>
     <!-- Pinned: the live quality read-out and the primary action must stay on screen
          no matter how far the player has scrolled the genre/topic grids. -->
     <div id="devFooter">
@@ -487,6 +527,16 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <p id="convDesc"></p>
     <div id="convOpts"></div>
     <div class="row"><button class="bg" onclick="SkipConv()">تخطي</button></div>
+  </div>
+</div>
+
+<div class="os dim" id="topicPicker" role="dialog" aria-modal="true" aria-label="اختيار الموضوع يدوياً">
+  <div class="modal">
+    <h2>🏷️ اختر الموضوع</h2>
+    <p>عادةً يُشتق الموضوع من اسم لعبتك. اختر من هنا لتثبيته يدوياً — وأي تعديل على الاسم بعدها يعيد الاشتقاق. الرقم على كل خانة هو التوافق مع نوعك الحالي.</p>
+    <div class="tpgrid" id="tpGrid"></div>
+    <details class="tpwords"><summary>📖 الكلمات الدالة — اكتب أياً منها في الاسم</summary><div id="tpWords"></div></details>
+    <div class="row"><button class="bg" onclick="CloseTopicPicker()">إغلاق</button></div>
   </div>
 </div>
 
@@ -1462,7 +1512,36 @@ const TOPICS=[
   {id:'heritage',name:'تراث',icon:'🕌'},{id:'desert',name:'صحراء',icon:'🐪'},
   {id:'folklore',name:'فلكلور',icon:'🪕'},{id:'islamic',name:'تاريخ إسلامي',icon:'☪️'},
   {id:'bedouin',name:'بدو',icon:'⛺'},
+  // Neutral fallback for names that carry no topic word ("رحلة الأمل"). Deliberately
+  // last, and deliberately absent from SYN: synergyFor's `||0` makes it a flat 0
+  // against every genre, so an unrecognised name is never punished — only unrewarded.
+  {id:'general',name:'عام',icon:'🎲'},
 ];
+// Everything the market can pick at random — 'general' must never be a trending or
+// hot topic, or the neutral fallback would become the strongest possible choice.
+const REAL_TOPICS=TOPICS.filter(t=>t.id!=='general');
+
+// The words that put a topic into a game's name. This is the whole topic-selection
+// UI now: writing "ملحمة الصحراء" *is* picking 🐪 صحراء. Matching is done on the
+// normalised form (see normAr), so diacritics, hamza spellings and the ال prefix
+// all resolve to the same entry — write these in their plain dictionary form.
+const TOPIC_WORDS={
+  space:['فضاء','فضائي','كوكب','كواكب','مجرة','مجرات','نجوم','نجم','صاروخ','مدار','نيزك','سديم','مسبار','قمر','رائد','فلك'],
+  war:['حرب','حروب','معركة','معارك','جيش','جيوش','جندي','جنود','قتال','سلاح','مدفع','حصار','غزو','جبهة','دبابة','كتيبة'],
+  fantasy:['خيال','سحر','ساحر','تنين','تنانين','أسطورة','أساطير','جني','طلسم','نبوءة','ملحمة','عوالم','مردة','عفريت'],
+  sports:['رياضة','كرة','هدف','ملعب','بطولة','دوري','مباراة','كأس','لاعب','ركض','سباحة','مضمار'],
+  zombies:['زومبي','موتى','وباء','عدوى','جثة','جثث','مسخ','مسوخ','طاعون','فيروس','قبر'],
+  pirates:['قراصنة','قرصان','سفينة','سفن','كنز','شراع','مرساة','أمواج','ميناء','بحار','بحر','جزيرة'],
+  robots:['روبوت','روبوتات','آلي','آلة','سايبر','أندرويد','معدن','رقائق','ذكاء','خوارزمية','مصنع'],
+  medieval:['فرسان','فارس','قلعة','قلاع','سيف','سيوف','درع','ملوك','ملك','عرش','تاج','رمح','إقطاع','برج'],
+  city:['مدينة','مدن','شارع','ناطحة','حي','مترو','بلدية','عمارة','زحام','ميدان','رصيف'],
+  animals:['حيوان','حيوانات','أسد','ذئب','نمر','طيور','نسر','غابة','مخالب','وحوش','وحش','صقر','ظبي'],
+  heritage:['تراث','أجداد','عراقة','حصن','سوق','نخيل','قهوة','مجلس','طين','قرية','دار','زمان'],
+  desert:['صحراء','صحراوي','رمال','كثبان','سراب','واحة','جمل','بادية','ظمأ','نخلة','هجير'],
+  folklore:['فلكلور','حكاية','حكايات','أهزوجة','عرضة','سامري','ربابة','مثل','جدة','طقوس','ناي'],
+  islamic:['إسلام','إسلامي','خلافة','أندلس','قدس','صحابة','فتوحات','مسجد','هجرة','خليفة','دولة','راية'],
+  bedouin:['بدو','بدوي','خيمة','خيام','إبل','ناقة','ترحال','قافلة','شيخ','مضارب','عزبة','مرعى'],
+};
 const SYN={
   action:{space:1,war:2,fantasy:1,sports:0,zombies:2,pirates:1,robots:2,medieval:1,city:0,animals:-1,heritage:0,desert:1,folklore:0,islamic:1,bedouin:1},
   rpg:{space:0,war:0,fantasy:2,sports:-2,zombies:1,pirates:1,robots:0,medieval:2,city:-1,animals:1,heritage:2,desert:1,folklore:2,islamic:2,bedouin:2},
@@ -1540,27 +1619,30 @@ const EVENTS=[
   {icon:'🎂',title:'عيد ميلاد في المكتب!',desc:'كيكة وقهوة للجميع! المعنويات +10',good:true,type:'moraleUp'},
 ];
 
+// `topic` outranks TOPIC_WORDS in detectTopic: an egg name is a deliberate homage,
+// so it should land on the topic the original game is actually about rather than on
+// whatever loose word happens to sit next to it.
 const EGGS={
-  'ماريو':{emoji:'🍄',desc:'It\'s-a me!',bonus:2},
-  'زيلدا':{emoji:'🗡️',desc:'It\'s dangerous to go alone!',bonus:2},
-  'ماينكرافت':{emoji:'⛏️',desc:'Creeper? Aww man...',bonus:2},
-  'صب واي':{emoji:'🏃',desc:'Subway Surfers vibes!',bonus:1.5},
-  'فورتنايت':{emoji:'🔫',desc:'Where we droppin?',bonus:1.5},
-  'جي تي أي':{emoji:'🚗',desc:'Wasted!',bonus:2},
-  'فيفا':{emoji:'⚽',desc:'GOOOAL!',bonus:1.5},
-  'كول أوف ديوتي':{emoji:'🎯',desc:'Mission accomplished!',bonus:2},
-  'بوكيمون':{emoji:'🐱',desc:'Gotta catch \'em all!',bonus:2},
-  'سونيك':{emoji:'💨',desc:'Gotta go fast!',bonus:1.5},
-  'باك مان':{emoji:'🟡',desc:'Waka waka waka!',bonus:1.5},
-  'تيتريس':{emoji:'🟦',desc:'Line clear!',bonus:1.5},
-  'أمونج أس':{emoji:'🔴',desc:'That\'s kinda sus...',bonus:1.5},
-  'كلاش':{emoji:'⚔️',desc:'Clash Royale/Clans!',bonus:1.5},
+  'ماريو':{emoji:'🍄',desc:'It\'s-a me!',bonus:2,topic:'fantasy'},
+  'زيلدا':{emoji:'🗡️',desc:'It\'s dangerous to go alone!',bonus:2,topic:'fantasy'},
+  'ماينكرافت':{emoji:'⛏️',desc:'Creeper? Aww man...',bonus:2,topic:'fantasy'},
+  'صب واي':{emoji:'🏃',desc:'Subway Surfers vibes!',bonus:1.5,topic:'city'},
+  'فورتنايت':{emoji:'🔫',desc:'Where we droppin?',bonus:1.5,topic:'war'},
+  'جي تي أي':{emoji:'🚗',desc:'Wasted!',bonus:2,topic:'city'},
+  'فيفا':{emoji:'⚽',desc:'GOOOAL!',bonus:1.5,topic:'sports'},
+  'كول أوف ديوتي':{emoji:'🎯',desc:'Mission accomplished!',bonus:2,topic:'war'},
+  'بوكيمون':{emoji:'🐱',desc:'Gotta catch \'em all!',bonus:2,topic:'animals'},
+  'سونيك':{emoji:'💨',desc:'Gotta go fast!',bonus:1.5,topic:'animals'},
+  'باك مان':{emoji:'🟡',desc:'Waka waka waka!',bonus:1.5,topic:'city'},
+  'تيتريس':{emoji:'🟦',desc:'Line clear!',bonus:1.5,topic:'general'},
+  'أمونج أس':{emoji:'🔴',desc:'That\'s kinda sus...',bonus:1.5,topic:'space'},
+  'كلاش':{emoji:'⚔️',desc:'Clash Royale/Clans!',bonus:1.5,topic:'medieval'},
   // Arabic easter eggs
-  'فطحل':{emoji:'🧠',desc:'لعبة المعلومات العربية!',bonus:2},
-  'صراع العروش':{emoji:'👑',desc:'وعد قطعته!',bonus:2},
-  'أنرذد':{emoji:'🏺',desc:'لعبة عربية أصيلة!',bonus:2},
-  'دحديح':{emoji:'😎',desc:'كل سنة ودحديح طيب!',bonus:1.5},
-  'الفهد':{emoji:'🐆',desc:'انطلاقة عربية!',bonus:1.5},
+  'فطحل':{emoji:'🧠',desc:'لعبة المعلومات العربية!',bonus:2,topic:'general'},
+  'صراع العروش':{emoji:'👑',desc:'وعد قطعته!',bonus:2,topic:'medieval'},
+  'أنرذد':{emoji:'🏺',desc:'لعبة عربية أصيلة!',bonus:2,topic:'heritage'},
+  'دحديح':{emoji:'😎',desc:'كل سنة ودحديح طيب!',bonus:1.5,topic:'folklore'},
+  'الفهد':{emoji:'🐆',desc:'انطلاقة عربية!',bonus:1.5,topic:'animals'},
 };
 
 const ACHS=[
@@ -1586,6 +1668,87 @@ const ACHS=[
 
 const NA=['حرب','مغامرة','أبطال','عالم','ملحمة','أساطير','سقوط','صعود','ظلال','نجوم','فجر','غروب','حصار','ملوك','سيوف','رحلة','بوابة','لهيب','أرض','درب','وحوش','أمواج','رعد','جبال','صحراء','نسر','سحاب','بحر','صدى','تاج','عرش','رمح'];
 const NB=['الظلام','النور','الأبطال','المجهول','الخلود','الدمار','الأحلام','المستقبل','النسيان','الحرية','القدر','الانتقام','الشجاعة','العظمة','البقاء','الأمل','الفجر','الأعماق','السماء','النار','الغضب','الرحيل','الصمت','الصحراء','الواحة','الجوهرة','الزمن','السراب','الندى'];
+
+// ---- Topic detection ------------------------------------------------------
+// The topic used to be a row of 15 chips crammed into an 84px nested scroll box —
+// on a phone most of it was invisible. It is now carried by the game's own name:
+// "ملحمة الصحراء" is a 🐪 صحراء game, and the player picks a topic by naming
+// something, not by hunting a chip. Everything below is what makes that legible.
+
+// Arabic is written many ways for the same word. Fold the variation away before
+// matching: diacritics, tatweel, the four alef forms, ة/ه, ى/ي, ؤ/ئ, and the bare
+// hamza (so صحراء → صحرا, which the nisba صحراوي then extends).
+function normAr(s){
+  return String(s||'')
+    .replace(/[ً-ْـٰ]/g,'')
+    .replace(/[أإآٱ]/g,'ا').replace(/ؤ/g,'و').replace(/ئ/g,'ي')
+    .replace(/ء/g,'').replace(/ى/g,'ي').replace(/ة/g,'ه')
+    .replace(/[^ء-يa-zA-Z0-9]+/g,' ')
+    .trim().toLowerCase();
+}
+
+// Definite article and the single-letter conjunctions/prepositions that fuse onto
+// the following word. Longest first — only one is ever stripped.
+const AR_PREFIXES=['وال','بال','كال','فال','لل','ال','و','ب','ل','ف','ك'];
+// A keyword must be this long before it is allowed to match as a prefix, so short
+// words like حرب can only ever match exactly and never swallow an unrelated word.
+const MIN_PREFIX_MATCH=4;
+// Pre-normalised keyword table, built once. `raw` is kept so the UI can tell the
+// player which dictionary word their name landed on.
+const TOPIC_WORDS_N=Object.fromEntries(
+  Object.entries(TOPIC_WORDS).map(([id,ws])=>[id,ws.map(w=>({n:normAr(w),raw:w}))])
+);
+
+// Each token yields the token itself plus, where one applies, its prefix-stripped
+// form. Both are tried, so بحر keeps its ب while بالحرب also resolves to حرب.
+function arTokens(name){
+  return normAr(name).split(' ').filter(Boolean).map(w=>{
+    for(const p of AR_PREFIXES){
+      if(w.length>p.length+2&&w.startsWith(p))return [w,w.slice(p.length)];
+    }
+    return [w];
+  });
+}
+
+// Returns {id, word, alts}: the winning topic, the dictionary word that won it (for
+// the badge), and any other topics the name also touched (offered as one-tap swaps).
+function detectTopic(name){
+  const raw=String(name||'').trim();
+  if(!raw)return {id:'general',word:null,alts:[]};
+  // An easter-egg name is a deliberate homage, so it outranks the dictionary.
+  const eggKey=Object.keys(EGGS).find(k=>raw.includes(k));
+  if(eggKey&&EGGS[eggKey].topic)return {id:EGGS[eggKey].topic,word:eggKey,alts:[]};
+  const best={};
+  arTokens(raw).forEach((forms,pos)=>{
+    for(const id in TOPIC_WORDS_N){
+      for(const w of TOPIC_WORDS_N[id]){
+        const sc=forms.includes(w.n)?3
+          :(w.n.length>=MIN_PREFIX_MATCH&&forms.some(f=>f.length>w.n.length&&f.startsWith(w.n)))?2:0;
+        // Keep the strongest match per topic; on a tie the LATER word wins. Arabic
+        // titles are usually إضافة constructions where the second noun is the
+        // subject and the first is only narrative shape — «ملحمة الصحراء» is a
+        // desert game, not a fantasy one, and «حصار المجرة» is about space.
+        if(sc&&(!best[id]||sc>=best[id].score))best[id]={score:sc,pos,word:w.raw};
+      }
+    }
+  });
+  const ranked=Object.entries(best).sort((a,b)=>b[1].score-a[1].score||b[1].pos-a[1].pos);
+  if(!ranked.length)return {id:'general',word:null,alts:[]};
+  return {id:ranked[0][0],word:ranked[0][1].word,alts:ranked.slice(1).map(r=>r[0])};
+}
+
+// Random names are now generated topic-first, so a name the player never touched
+// still resolves to a real topic instead of falling through to عام.
+function randomGameName(){
+  const t=REAL_TOPICS[Math.random()*REAL_TOPICS.length|0];
+  const w=TOPIC_WORDS[t.id];
+  return w[Math.random()*w.length|0]+' '+NB[Math.random()*NB.length|0];
+}
+
+// Test surface: tests/topic-detect.mjs drives detectTopic directly, and the
+// playthrough needs a real topic word to type into the name field.
+window.detectTopic=detectTopic;
+window.TOPIC_WORDS=TOPIC_WORDS;
 
 const RESEARCH=[
   {id:'mmo',n:'فتح MMO',cost:5,desc:'يفتح نوع MMO'},
@@ -1688,7 +1851,7 @@ const TASTE_HOT_COUNT=3;  // topics that get a synergy bump this year
 const TASTE_HOT_BONUS=1;  // how much synergy a hot topic gains
 
 function rollMarketTaste(year){
-  const pool=TOPICS.map(t=>t.id);
+  const pool=REAL_TOPICS.map(t=>t.id);
   const hot=[];
   for(let i=0;i<TASTE_HOT_COUNT&&pool.length;i++)hot.push(pool.splice(Math.random()*pool.length|0,1)[0]);
   const r=()=>Math.round((Math.random()*2-1)*TASTE_SHIFT);
@@ -1696,7 +1859,7 @@ function rollMarketTaste(year){
 }
 function sanitizeTaste(t,year){
   if(!t||typeof t!=='object')return rollMarketTaste(year||1);
-  const valid=new Set(TOPICS.map(x=>x.id));
+  const valid=new Set(REAL_TOPICS.map(x=>x.id));
   const cl=v=>Math.max(-TASTE_SHIFT,Math.min(TASTE_SHIFT,Number.isFinite(+v)?Math.round(+v):0));
   return {
     year:Math.max(1,(+t.year||year||1)|0),
@@ -1822,7 +1985,8 @@ function sanitizeSave(p){
   const validGenre=new Set(GENRES.map(g=>g.id)),validTopic=new Set(TOPICS.map(t=>t.id));
   if(!validGenre.has(p.genre))p.genre=null;
   if(!validTopic.has(p.topic))p.topic=null;
-  if(!validTopic.has(p.tt))p.tt=null;
+  // 'general' is never a trend: it exists only as the no-keyword fallback.
+  if(!validTopic.has(p.tt)||p.tt==='general')p.tt=null;
 
   // Whitelist employee roles and clamp names — both feed the DOM and the
   // salary/promotion path in finishDevelopment().
@@ -2066,7 +2230,7 @@ function nextToast(){
 // platforms and 3 sliders with no indication of what any of them did, and the
 // only teaching signal arrived AFTER paying for a release. These fire once each.
 const TIP_TEXT={
-  panel:'👋 اختر <b>النوع</b> و<b>الموضوع</b> (بعض التوليفات تتفق وبعضها لا)، ثم وزّع النقاط على المحاور الثلاثة. العلامة الذهبية ⬦ على كل شريط = النسبة المثالية، والسطر الأزرق يقيّم اختيارك <b>قبل</b> أن تدفع.',
+  panel:'👋 اختر <b>النوع</b>، ثم <b>اكتب اسم لعبتك — الاسم هو ما يحدد موضوعها</b>: «ملحمة الصحراء» لعبة صحراء، و«حصار المجرة» لعبة فضاء. السطر تحت الحقل يخبرك بالموضوع الذي فهمه وبالكلمة التي دلّت عليه، وبنقرة عليه تختار يدوياً. ثم وزّع النقاط على المحاور الثلاثة — العلامة الذهبية ⬦ = النسبة المثالية، والسطر الأزرق يقيّم اختيارك <b>قبل</b> أن تدفع.',
   review:'💡 سطر «التوليفة والتوزيع» في نافذة التقييم يشرح سبب درجتك. نفس المؤشر ظاهر الآن في اللوحة قبل التطوير — استخدمه لتجرّب قبل أن تصرف مالك.',
   upgrade:'🏗️ الترقية تفتح مكتباً أكبر: نقاط تطوير أكثر، سعة توظيف أعلى، وأرباح أكبر لكل لعبة — لكن تكلفة التطوير ترتفع أيضاً. لا تُرقِّ وأنت بلا سيولة احتياطية.',
 };
@@ -2250,7 +2414,7 @@ function renderQualityPreview(){
   const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
   if(!genre||!topic){
     box.style.display='block';
-    box.innerHTML='<span class="qk">اختر النوع والموضوع لرؤية تقييم مبدئي لاختيارك قبل الدفع.</span>';
+    box.innerHTML='<span class="qk">اختر النوع لرؤية تقييم مبدئي لاختيارك قبل الدفع.</span>';
     return;
   }
   box.style.display='block';
@@ -2280,6 +2444,116 @@ function renderIdealMarkers(){
   });
 }
 
+// ---- Topic echo -----------------------------------------------------------
+// The single line that replaced 15 chips. It resolves S.topic from whatever is in
+// the name field and shows its reasoning, so the player can trust it or override it.
+// Priority: a locked sequel topic > an explicit manual pick > the name itself.
+function currentTopicSource(){
+  const name=(document.getElementById('gni')||{}).value||'';
+  if(S._topicLock)return {id:S._topicLock,how:'lock',word:null,alts:[]};
+  if(S._topicPick)return {id:S._topicPick,how:'pick',word:null,alts:[]};
+  const d=detectTopic(name);
+  return {id:d.id,how:d.id==='general'?'none':'auto',word:d.word,alts:d.alts};
+}
+
+function renderTopicEcho(){
+  const box=document.getElementById('topicEcho');
+  if(!box)return;
+  const src=currentTopicSource();
+  S.topic=src.id;
+  const t=TOPICS.find(x=>x.id===src.id)||TOPICS[TOPICS.length-1];
+  const hot=((S.marketTaste&&S.marketTaste.hot)||[]).includes(t.id);
+  const trend=S.em==='trend'&&S.tt===t.id;
+  box.innerHTML='';
+  // A real button, not a clickable div: the swap chips below are buttons too, and
+  // nesting them inside one big hit area made the centre of the badge ambiguous.
+  const line=document.createElement('button');
+  line.type='button';line.className='tmain';
+  line.setAttribute('aria-label','الموضوع الحالي — انقر لاختياره يدوياً');
+  line.onclick=()=>window.OpenTopicPicker();
+  if(src.how==='lock'){
+    line.innerHTML='🔒 <span class="tw">موضوع السلسلة:</span> <span class="tv">'+t.icon+' '+t.name+'</span>';
+  }else if(src.how==='none'){
+    line.innerHTML='🎲 <span class="tv">عام</span> <span class="tw">— لا كلمة دالة في الاسم (توافق 0) · انقر للاختيار يدوياً</span>';
+  }else{
+    // Same two signals the chips used to carry: 🔥 trending event (×2 sales),
+    // ⭐ hot this year (+1 synergy).
+    line.innerHTML='🏷️ <span class="tw">الموضوع:</span> <span class="tv">'+t.icon+' '+t.name+'</span>'
+      +(trend?' 🔥':'')+(hot?' ⭐':'')
+      +(src.how==='pick'?' <span class="tw">(اختيار يدوي)</span>'
+        :' <span class="tw">من «'+src.word+'»</span>');
+  }
+  box.appendChild(line);
+  // Names often touch more than one topic ("ملحمة الصحراء" is both). Offer the
+  // runners-up as one-tap swaps instead of making the player rewrite the name.
+  src.alts.slice(0,2).forEach(id=>{
+    const a=TOPICS.find(x=>x.id===id);if(!a)return;
+    const b=document.createElement('button');b.type='button';b.className='talt';
+    b.textContent='↔ '+a.icon+' '+a.name;
+    b.title='بدّل إلى هذا الموضوع';
+    b.onclick=e=>{e.stopPropagation();pickTopic(id);};
+    box.appendChild(b);
+  });
+  box.title=hot?'موضوع رائج هذه السنة (+'+TASTE_HOT_BONUS+' توافق)':'انقر لاختيار الموضوع يدوياً';
+}
+
+// A manual pick outranks the name until the player edits the name again. Session-only
+// (underscore-prefixed, so it never reaches the save): it is paired with whatever is
+// in the name field, and the field itself is not persisted either.
+function pickTopic(id){
+  // Deliberately choosing a topic other than the series' own is how a player walks
+  // away from a staged sequel — the same thing clicking a different topic chip used
+  // to mean. Renaming is not: a sequel is free to be called anything.
+  if(S._sequelMode&&S._topicLock&&S._topicLock!==id)clearSequelSetup();
+  S._topicPick=id;
+  updateUI();saveGame();
+}
+
+window.rollGameName=function(){
+  const el=document.getElementById('gni');
+  el.value=randomGameName();
+  onGameNameChanged();
+};
+
+// Editing the name is the player taking the wheel back from a manual pick. It does
+// NOT cancel a staged sequel: the series topic is pinned precisely so a sequel can be
+// retitled freely without drifting out of its own world.
+function onGameNameChanged(){
+  S._topicPick=null;
+  updateUI();
+}
+
+window.OpenTopicPicker=function(){
+  RenderTopicPicker();
+  document.getElementById('topicPicker').classList.add('show');
+};
+window.CloseTopicPicker=function(){
+  document.getElementById('topicPicker').classList.remove('show');
+};
+
+function RenderTopicPicker(){
+  const grid=document.getElementById('tpGrid');grid.innerHTML='';
+  const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
+  const cur=currentTopicSource().id;
+  TOPICS.forEach(t=>{
+    const b=document.createElement('button');b.type='button';b.className='tpc';
+    if(t.id===cur)b.classList.add('a');
+    const syn=S.genre?synergyFor(S.genre,t.id):null;
+    const mark=(S.em==='trend'&&S.tt===t.id?' 🔥':'')+(hot.has(t.id)?' ⭐':'');
+    const synTxt=syn===null?'—':(syn>0?'+'+syn:''+syn);
+    const synCls=syn===null?'mid':syn>0?'good':syn<0?'bad':'mid';
+    b.innerHTML='<span class="tpi">'+t.icon+'</span><span>'+t.name+mark+'</span>'
+      +'<span class="tps '+synCls+'">'+(S.genre?'توافق '+synTxt:'اختر النوع')+'</span>';
+    b.setAttribute('aria-pressed',t.id===cur?'true':'false');
+    b.onclick=()=>{pickTopic(t.id);RenderTopicPicker();};
+    grid.appendChild(b);
+  });
+  const w=document.getElementById('tpWords');
+  w.innerHTML=REAL_TOPICS.map(t=>
+    '<div><b>'+t.icon+' '+t.name+':</b> '+TOPIC_WORDS[t.id].join(' · ')+'</div>'
+  ).join('');
+}
+
 function updateUI(){
   document.getElementById('dm').textContent=fmt(S.money);
   document.getElementById('df').textContent=fmt(S.fn);
@@ -2304,9 +2578,13 @@ function updateUI(){
     if(w){w.setAttribute('aria-valuenow',S.sl[k]);w.setAttribute('aria-valuemax',mx);}
   });
   renderIdealMarkers();
+  // Must run before the quality preview: it is what resolves S.topic from the name.
+  renderTopicEcho();
   renderQualityPreview();
   renderTasteBar();
-  document.getElementById('bdev').disabled=!(S.genre&&S.topic&&S.money>=cost&&!S.dev&&S.platforms.length>0);
+  // S.topic is no longer a gate: it always resolves (to عام at worst), so the genre
+  // and the platforms are the only two things the player still has to choose.
+  document.getElementById('bdev').disabled=!(S.genre&&S.money>=cost&&!S.dev&&S.platforms.length>0);
   // Freelance is the survival valve: offer it whenever even the cheapest
   // possible build is out of reach, not just the currently-configured one.
   const broke=S.money<minDevCost();
@@ -2315,7 +2593,7 @@ function updateUI(){
   // The gap in between: this build is too expensive but a smaller one is affordable.
   // Without this the develop button just sat disabled with no explanation and no
   // freelance fallback — a dead end the player had to reverse-engineer.
-  const overBudget=!broke&&S.genre&&S.topic&&S.money<cost;
+  const overBudget=!broke&&S.genre&&S.money<cost;
   const sb=document.getElementById('scopeBlock');
   sb.style.display=overBudget?'block':'none';
   if(overBudget){
@@ -2353,13 +2631,15 @@ function updateUI(){
 // Manually switching genre/topic cancels a pending sequel setup (half cost + IP bonus)
 function clearSequelSetup(){
   if(!S._sequelMode)return;
-  S._sequelMode=false;pendingGameData=null;
-  document.getElementById('gni').value='';
+  S._sequelMode=false;pendingGameData=null;S._topicLock=null;
+  // The name field is deliberately left alone. It used to be wiped, but it now
+  // carries the topic, and blanking what the player is looking at — or overwriting
+  // a title they typed — is worse than leaving a name that still works.
   showToast('🔄 أُلغي وضع الجزء الثاني');
 }
 function buildSelectors(){
-  const gr=document.getElementById('gr'),tr=document.getElementById('tr');
-  gr.innerHTML='';tr.innerHTML='';
+  const gr=document.getElementById('gr');
+  gr.innerHTML='';
   const contractGenre=(S.contract&&S.contract.active)?S.contract.genre:null;
   GENRES.forEach(g=>{
     const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
@@ -2376,20 +2656,6 @@ function buildSelectors(){
     if(S.genre===g.id)b.classList.add('a');
     b.setAttribute('aria-pressed',S.genre===g.id?'true':'false');
     gr.appendChild(b);
-  });
-  const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
-  TOPICS.forEach(t=>{
-    const b=document.createElement('button');b.className='sb2';
-    // Two separate signals: 🔥 = trending event (×2 sales), ⭐ = hot this year (+1 synergy)
-    let mark='';
-    if(S.em==='trend'&&S.tt===t.id)mark+=' 🔥';
-    if(hot.has(t.id))mark+=' ⭐';
-    b.textContent=t.icon+' '+t.name+mark;
-    if(hot.has(t.id))b.title='موضوع رائج هذه السنة (+'+TASTE_HOT_BONUS+' توافق)';
-    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
-    if(S.topic===t.id)b.classList.add('a');
-    b.setAttribute('aria-pressed',S.topic===t.id?'true':'false');
-    tr.appendChild(b);
   });
 }
 
@@ -2413,6 +2679,23 @@ function BPlatforms(){
       BPlatforms();updateUI();
     };
     pr.appendChild(b);
+  });
+}
+
+// Wires the name field to the topic it produces. Bound once, at startup.
+let _nameTimer=null;
+function bindGameName(){
+  const el=document.getElementById('gni');
+  // Debounced: detection is cheap, but re-rendering the whole panel on every
+  // keystroke of a 60-character name is not.
+  el.addEventListener('input',()=>{
+    clearTimeout(_nameTimer);
+    _nameTimer=setTimeout(onGameNameChanged,120);
+  });
+  // The panel is pinned to the bottom of the viewport, so on a phone the software
+  // keyboard opens straight over it. Pull the field back into view.
+  el.addEventListener('focus',()=>{
+    setTimeout(()=>{try{el.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}},250);
   });
 }
 
@@ -2523,7 +2806,7 @@ window.freelance=function(){
 };
 
 window.startDevelop=function(){
-  if(!S.genre||!S.topic||S.dev||S.platforms.length===0)return;
+  if(!S.genre||S.dev||S.platforms.length===0)return;
   if(S.money<getDevCost())return;
   // Open marketing modal first
   OpenMkt();
@@ -2733,9 +3016,14 @@ const BALANCE={
 
 // Resolve the game's identity: name, easter egg, sequel parent.
 function resolveRelease(){
-  const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
+  const genre=GENRES.find(g=>g.id===S.genre);
   const custName=document.getElementById('gni').value.trim().slice(0,60);
-  const gameName=custName||NA[Math.random()*NA.length|0]+' '+NB[Math.random()*NB.length|0];
+  const gameName=custName||randomGameName();
+  // Resolve the topic from the name that actually ships, not from whatever was in
+  // the field when the panel last rendered — an empty field falls back to a
+  // generated name, and the record has to describe the game that was released.
+  const topicId=S._topicLock||S._topicPick||detectTopic(gameName).id;
+  const topic=TOPICS.find(t=>t.id===topicId)||TOPICS.find(t=>t.id==='general');
   const eggKey=Object.keys(EGGS).find(k=>gameName.includes(k));
   const parentIP=(pendingGameData&&pendingGameData.parentIP)?S.ips.find(i=>i.id===pendingGameData.parentIP):null;
   return {genre,topic,gameName,eggKey,egg:eggKey?EGGS[eggKey]:null,parentIP};
@@ -3167,8 +3455,10 @@ function openPanel(){
 window.nextGame=function(){
   document.getElementById('sr2').classList.remove('show');
   document.getElementById('pt').style.display='flex';
-  S.genre=null;S.topic=null;buildSelectors();BPlatforms();
-  document.getElementById('gni').value='';S.dev=false;
+  S.genre=null;S.topic=null;S._topicPick=null;S._topicLock=null;buildSelectors();BPlatforms();
+  // Seed the next game with a fresh random name rather than an empty field, so the
+  // topic echo is always showing something true and the player has a starting point.
+  document.getElementById('gni').value=randomGameName();S.dev=false;
   if(showTip('review'))openPanel();
   advance(0);
 };
@@ -3182,7 +3472,7 @@ function triggerEvent(){
     return true;
   });
   const ev=pool[Math.random()*pool.length|0];let desc=ev.desc;
-  if(ev.type==='trend'){const rt=TOPICS[Math.random()*TOPICS.length|0];S.tt=rt.id;desc=desc.replace('{topic}',rt.icon+' '+rt.name);S.em='trend';}
+  if(ev.type==='trend'){const rt=REAL_TOPICS[Math.random()*REAL_TOPICS.length|0];S.tt=rt.id;desc=desc.replace('{topic}',rt.icon+' '+rt.name);S.em='trend';}
   else if(ev.type==='recession')S.em='recession';
   else if(ev.type==='festival')S.em='festival';
   else if(ev.type==='competitor'){
@@ -3586,7 +3876,9 @@ function StartSequel(ip){
   // than a lock, so the sequel is allowed — but the player is told what it costs.
   if(S.contract&&S.contract.active&&ip.genre!==S.contract.genre)
     showToast('⚠️ هذا الجزء خارج نطاق عقدك — سيستهلك من المهلة بلا دفعة');
-  S.genre=ip.genre;S.topic=ip.topic;
+  // The series topic is pinned: a sequel stays in its predecessor's world even if
+  // the player renames it, so the IP keeps meaning something across entries.
+  S.genre=ip.genre;S.topic=ip.topic;S._topicLock=ip.topic;S._topicPick=null;
   pendingGameData={parentIP:ip.id};
   document.getElementById('gni').value=ip.name+' '+(ip.sequels+2);
   showToast('🔄 سيتم تطوير "'+ip.name+' '+(ip.sequels+2)+'" بنصف التكلفة!');
@@ -3724,7 +4016,9 @@ window.AcceptContract=function(){
   S.contract={...S._contractOffer,active:true};
   S._contractOffer=null;
   S.contractCooldown=5;
-  S.genre=S.contract.genre;S.topic=null;
+  // Contracts pin the genre only — the topic is the player's to name.
+  S.genre=S.contract.genre;S._topicPick=null;S._topicLock=null;
+  document.getElementById('gni').value=randomGameName();
   document.getElementById('contractModal').classList.remove('show');
   sn('ok');showToast('📜 وقّعت العقد مع '+S.contract.icon+' '+S.contract.publisher);
   buildSelectors();BPlatforms();saveGame();
@@ -3775,6 +4069,7 @@ const ESCAPABLE={
   researchModal:()=>window.CloseResearch(),
   empModal:()=>window.CloseEmps(),
   ipModal:()=>window.CloseIPs(),
+  topicPicker:()=>window.CloseTopicPicker(),
   rivalsModal:()=>window.CloseRivals(),
   loanModal:()=>window.CloseLoan(),
 };
@@ -3858,8 +4153,11 @@ function startGame(fresh){
   // for the unload handlers to persist it.
   _started=true;
   applyTheme();
-  buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();
-  document.getElementById('nm').style.display='block';
+  buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();bindGameName();
+  // A save from before topics moved into the name has none stored, so start from a
+  // generated one; a mid-session reload keeps whatever the player was writing.
+  const gni=document.getElementById('gni');
+  if(!gni.value.trim())gni.value=randomGameName();
   openPanel();updateUI();sn('ok');checkAchievements();showTip('panel');saveGame();
 }
 let _hasSave=false;
