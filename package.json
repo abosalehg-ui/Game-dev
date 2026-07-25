@@ -14,6 +14,7 @@
     "icons": "python3 scripts/make_icons.py",
     "test:play": "node tests/playthrough.mjs",
     "shots": "node tools/shot-stages.mjs",
+    "shots:readme": "node tools/shot-readme.mjs",
     "three": "node tools/build-three.mjs",
     "test:path": "node tests/pathfinding.mjs"
   },
