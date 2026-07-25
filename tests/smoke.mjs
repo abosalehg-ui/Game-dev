@@ -34,9 +34,10 @@ await new Promise(r => server.listen(0, r));
 const port = server.address().port;
 
 const errors = [];
-// A blocked external resource (e.g. Google Fonts on a sandboxed network) logs a
-// generic "Failed to load resource" console error — that's environmental, not a
-// game bug. Real JS logic errors surface as pageerror or a substantive console.error.
+// All assets are same-origin now (the font is vendored), so a "Failed to load
+// resource" console error should not appear at all — it is still filtered because a
+// sandboxed CI network can block the service-worker registration. Real JS logic
+// errors surface as pageerror or a substantive console.error.
 const launchOpts = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
 const browser = await chromium.launch(launchOpts);
 const page = await browser.newPage();
@@ -73,6 +74,13 @@ try {
   results.qaModalOpen = (await page.locator('#qaModal.show').count()) > 0;
   await page.evaluate(() => window.ChooseQA('normal'));
 
+  // Development now pauses halfway for a mid-production decision.
+  try {
+    await page.waitForSelector('#prodModal.show', { timeout: 10000 });
+    results.prodModalOpen = true;
+    await page.locator('#prodOpts button:not([disabled])').first().click();
+  } catch { results.prodModalOpen = false; }
+
   try { await page.waitForSelector('#sr2.show', { timeout: 15000 }); results.reviewShown = true; }
   catch { results.reviewShown = false; }
   results.reviewHasScore = /\d/.test((await page.locator('#rva').textContent()) || '');
@@ -81,6 +89,38 @@ try {
   await page.evaluate(() => window.OpenRivals());
   await page.waitForTimeout(200);
   results.xssBlocked = await page.evaluate(() => window.__xss === undefined);
+  await page.evaluate(() => window.CloseRivals());
+
+  // Live pre-release feedback must be populated before any money is spent.
+  results.previewLive = await page.evaluate(() => {
+    const el = document.getElementById('qualityPreview');
+    return !!el && el.style.display !== 'none' && /التوليفة/.test(el.textContent);
+  });
+  // Golden ideal-split markers should be positioned once a genre is picked.
+  results.idealMarkers = await page.evaluate(() => {
+    const m = document.getElementById('mkd');
+    return !!m && m.style.display !== 'none' && /%$/.test(m.style.left);
+  });
+  // Escape must close an informational panel.
+  await page.evaluate(() => window.OpenSettings());
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  results.escapeClosesPanel = (await page.locator('#settingsModal.show').count()) === 0;
+  // Sliders must be operable from the keyboard. Test decrement first: with the full
+  // point budget already allocated, an increment is legitimately clamped to a no-op,
+  // so only the freed-up direction proves the handler is wired.
+  results.sliderKeyboard = await page.evaluate(() => {
+    const w = document.querySelector('.stw[data-s="design"]');
+    const val = () => +document.getElementById('vd').textContent;
+    w.focus();
+    const start = val();
+    w.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    const down = val();
+    w.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    const back = val();
+    return down === start - 1 && back === start;
+  });
 
   results.save = await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('gd_save') || '{}');
@@ -103,9 +143,14 @@ const checks = {
   'review appears': results.reviewShown === true,
   'review shows a score': results.reviewHasScore === true,
   'game name XSS blocked': results.xssBlocked === true,
+  'mid-production decision appears': results.prodModalOpen === true,
+  'live quality preview populated': results.previewLive === true,
+  'ideal-split markers positioned': results.idealMarkers === true,
+  'Escape closes an info panel': results.escapeClosesPanel === true,
+  'sliders respond to keyboard': results.sliderKeyboard === true,
   'save never persists dev flag': s.savedDev === false,
   'save has no session-only fields': s.hasUnderscore === false,
-  'save at current schema version': s.saveVersion === 4,
+  'save at current schema version': s.saveVersion === 5,
   'a game was recorded': s.gc >= 1,
   'no JS runtime errors': errors.length === 0,
 };

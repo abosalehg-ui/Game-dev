@@ -2,7 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- Pinch-zoom is deliberately left enabled: user-scalable=no blocks the primary
+     zoom affordance for low-vision players. Accidental double-tap zoom is instead
+     suppressed per-element with touch-action, which does not remove the ability
+     to zoom on purpose. --><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>من الغرفة للقمة</title>
 <meta name="description" content="محاكي تطوير ألعاب فيديو ثلاثي الأبعاد — ابدأ من غرفة نومك وابنِ إمبراطورية ألعاب.">
 <meta name="theme-color" content="#0a0e1a">
@@ -15,10 +18,26 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="من الغرفة للقمة">
 <meta name="mobile-web-app-capable" content="yes">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-:root{--p:#00ff88;--s:#00ccff;--d:#ff0055;--g:#ffd700;--pb:rgba(12,18,38,0.82);--pbr:rgba(0,204,255,0.12);--bg1:#0a0e1a;--bg2:#020204;--tx:#fff;--tx2:#999;--tx3:#666}
-body.light{--p:#00aa55;--s:#0088cc;--d:#cc0044;--g:#aa8800;--pb:rgba(245,247,255,0.92);--pbr:rgba(0,136,204,0.2);--bg1:#f0f3fa;--bg2:#dde3f0;--tx:#222;--tx2:#555;--tx3:#888}
+/* Cairo is vendored locally (vendor/fonts/) and pre-cached by the service worker.
+   It used to be fetched from fonts.googleapis.com, which (a) made first paint wait
+   on a third-party render-blocking stylesheet, (b) broke the "works fully offline
+   from the first visit" promise because the font was never pre-cached, and (c) sent
+   every player's IP/User-Agent to Google. One variable font covers 400-900. */
+@font-face{font-family:'Cairo';font-style:normal;font-weight:400 900;font-display:swap;
+  src:url('./vendor/fonts/cairo-arabic.woff2') format('woff2');
+  unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:400 900;font-display:swap;
+  src:url('./vendor/fonts/cairo-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Cairo';font-style:normal;font-weight:400 900;font-display:swap;
+  src:url('./vendor/fonts/cairo-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+/* --tx3 was #666 on #0a0e1a (~3.4:1) and #888 on #f0f3fa (~3.2:1) — both below the
+   WCAG AA 4.5:1 floor for the small secondary labels it is used on. */
+:root{--p:#00ff88;--s:#00ccff;--d:#ff0055;--g:#ffd700;--pb:rgba(12,18,38,0.82);--pbr:rgba(0,204,255,0.12);--bg1:#0a0e1a;--bg2:#020204;--tx:#fff;--tx2:#b3b9c9;--tx3:#8b93a7}
+body.light{--p:#00aa55;--s:#0088cc;--d:#cc0044;--g:#8a6d00;--pb:rgba(245,247,255,0.92);--pbr:rgba(0,136,204,0.2);--bg1:#f0f3fa;--bg2:#dde3f0;--tx:#222;--tx2:#4a505e;--tx3:#5d6472}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 #gC{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
@@ -31,17 +50,21 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .sb{background:rgba(255,204,0,.1);border:1px solid rgba(255,204,0,.2);padding:2px 10px;border-radius:14px;font-size:10px;font-weight:700;color:var(--g)}
 
 #pt{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:20;width:100px;height:26px;background:var(--pb);border:1px solid var(--pbr);border-bottom:none;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(10px)}
-#pt .ar{font-size:12px;color:rgba(255,255,255,.35)}
+#pt .ar{font-size:13px;color:var(--tx2)}
 
-#mp{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:min(440px,96vw);max-height:62vh;background:var(--pb);border:1px solid var(--pbr);border-bottom:none;border-radius:14px 14px 0 0;padding:12px 14px 22px;backdrop-filter:blur(16px);z-index:15;transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;overflow-x:hidden}
+#mp{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:min(440px,96vw);max-height:min(84vh,660px);background:var(--pb);border:1px solid var(--pbr);border-bottom:none;border-radius:14px 14px 0 0;padding:12px 14px 22px;backdrop-filter:blur(16px);z-index:15;transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;overflow-x:hidden}
 #mp.open{transform:translateX(-50%) translateY(0)}
 #mp::-webkit-scrollbar{width:2px}
 #mp::-webkit-scrollbar-thumb{background:rgba(0,204,255,.3);border-radius:2px}
 .ph{text-align:center;font-size:14px;font-weight:900;color:var(--s);margin-bottom:10px}
 
 .sg{margin-bottom:8px}
-.sl{font-size:9px;color:var(--tx3);margin-bottom:3px;font-weight:700;letter-spacing:.5px}
-.sr{display:flex;flex-wrap:wrap;gap:4px}
+.sl{font-size:11px;color:var(--tx3);margin-bottom:4px;font-weight:700;letter-spacing:.5px}
+/* Genre (11) and topic (15) used to wrap into 4-5 rows each, ~280px of the panel,
+   which pushed the develop button and the live quality preview off-screen. The grid
+   shape is kept for discoverability but bounded with its own scroll. */
+.sr{display:flex;flex-wrap:wrap;gap:4px;max-height:84px;overflow-y:auto;overscroll-behavior:contain}
+.sr::-webkit-scrollbar{width:3px}.sr::-webkit-scrollbar-thumb{background:rgba(0,204,255,.35);border-radius:2px}
 .sb2{padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);color:var(--tx2);font-size:11px;font-weight:700;font-family:'Cairo';cursor:pointer;transition:all .15s}
 .sb2:hover{background:rgba(0,204,255,.06);border-color:rgba(0,204,255,.15)}
 .sb2.a{background:rgba(0,204,255,.1);border-color:var(--s);color:var(--s)}
@@ -50,22 +73,22 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 
 .slt{font-size:10px;color:var(--tx3);margin:8px 0 5px;font-weight:700;display:flex;justify-content:space-between}
 .slt .pl{color:var(--g)}
-.srow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.srow{display:flex;align-items:center;gap:6px;margin-bottom:2px}
 .srow .si{font-size:13px;width:18px;text-align:center}
-.srow .sn{font-size:10px;color:#888;width:38px;font-weight:700}
+.srow .sn{font-size:11px;color:var(--tx2);width:40px;font-weight:700}
 .srow .sv{font-size:12px;font-weight:900;width:22px;text-align:center;color:var(--s)}
-.stw{flex:1;height:34px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:none;direction:ltr}
+.stw{flex:1;height:30px;display:flex;align-items:center;position:relative;cursor:pointer;touch-action:none;direction:ltr}
 .stb{width:100%;height:5px;border-radius:3px;background:rgba(255,255,255,.06);position:absolute;overflow:hidden}
 .stf{height:100%;border-radius:3px;transition:width .08s}
 .stf.ds{background:linear-gradient(90deg,#ff6b6b,#ee5a24)}.stf.cd{background:linear-gradient(90deg,#4ecdc4,#00b894)}.stf.sn2{background:linear-gradient(90deg,#a29bfe,#6c5ce7)}
 .sth{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#ddd);border:2.5px solid var(--s);position:absolute;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px rgba(0,204,255,.3),0 2px 6px rgba(0,0,0,.5);z-index:2;pointer-events:none}
 .sth.ds{border-color:#ff6b6b}.sth.cd{border-color:#00b894}.sth.sn2{border-color:#6c5ce7}
-@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:40px}.sb2{padding:5px 10px;font-size:12px}}
+@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.sb2{padding:5px 10px;font-size:12px}.sr{max-height:96px}}
 
 .bd{width:100%;padding:9px;margin-top:8px;background:linear-gradient(135deg,var(--s),#2d00f7);border:none;border-radius:8px;color:#fff;font-family:'Cairo';font-size:14px;font-weight:900;cursor:pointer;transition:all .2s;box-shadow:0 0 12px rgba(0,204,255,.15)}
 .bd:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,204,255,.25)}
 .bd:disabled{background:#2a2a3a;color:#444;cursor:not-allowed;transform:none;box-shadow:none}
-.dc{text-align:center;font-size:9px;color:#444;margin-top:4px}
+.dc{text-align:center;font-size:11px;color:var(--tx3);margin-top:4px}
 
 .os{position:fixed;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50;text-align:center;padding:12px}
 .os.show{display:flex}
@@ -88,20 +111,20 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .scs{display:flex;gap:8px;margin-bottom:12px}
 .sc{width:48px;height:56px;background:rgba(255,255,255,.03);border:2px solid rgba(255,255,255,.08);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;opacity:0;transform:scale(.3) rotateY(90deg);transition:all .45s cubic-bezier(.34,1.56,.64,1)}
 .sc.sh{opacity:1;transform:scale(1) rotateY(0)}.sc.gr{color:var(--p);border-color:rgba(0,255,136,.35)}.sc.gd{color:var(--g);border-color:rgba(255,215,0,.25)}.sc.bd2{color:var(--d);border-color:rgba(255,0,85,.25)}
-.ri{font-size:12px;color:#999;margin:2px 0}.ri span{font-weight:900}.ri .ps{color:var(--p)}.ri .ng{color:var(--d)}.ri .gl{color:var(--g)}
+.ri{font-size:12px;color:var(--tx2);margin:2px 0}.ri span{font-weight:900}.ri .ps{color:var(--p)}.ri .ng{color:var(--d)}.ri .gl{color:var(--g)}
 
 .bg{padding:7px 22px;margin-top:10px;background:rgba(0,204,255,.1);border:1px solid rgba(0,204,255,.25);border-radius:6px;color:var(--s);font-family:'Cairo';font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
 .bg:hover{background:rgba(0,204,255,.18)}.bg.dg{background:rgba(255,0,85,.1);border-color:rgba(255,0,85,.25);color:var(--d)}.bg.gl{background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.25);color:var(--g)}
 
 .ei{font-size:40px;margin-bottom:6px}
 .et{font-size:18px;font-weight:900;margin-bottom:6px}.et.gd2{color:var(--p)}.et.bd3{color:var(--d)}
-.ed{font-size:13px;color:#999;max-width:85%;line-height:1.6;margin-bottom:12px}
+.ed{font-size:13px;color:var(--tx2);max-width:85%;line-height:1.6;margin-bottom:12px}
 .ut{font-size:18px;font-weight:900;color:var(--s);margin-bottom:4px}
-.ud{font-size:13px;color:#999;margin-bottom:3px}
+.ud{font-size:13px;color:var(--tx2);margin-bottom:3px}
 .uc{font-size:13px;color:var(--g);font-weight:700;margin-bottom:12px}
 .ub{display:flex;gap:8px}
 .gt{font-size:34px;font-weight:900;color:var(--d);margin-bottom:8px}
-.gs{font-size:14px;color:#777;margin:2px 0}.gs span{color:var(--g);font-weight:900}
+.gs{font-size:14px;color:var(--tx2);margin:2px 0}.gs span{color:var(--g);font-weight:900}
 
 #ss{position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;background:radial-gradient(ellipse at center,var(--bg1),var(--bg2));display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px}
 .stit{font-size:clamp(28px,6.5vw,48px);font-weight:900;line-height:1.2;background:linear-gradient(135deg,var(--p),var(--s),var(--g));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 12px rgba(0,204,255,.3));margin-bottom:6px}
@@ -114,21 +137,24 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 
 #at{position:fixed;bottom:16px;right:16px;background:rgba(12,12,30,.94);border:1px solid rgba(255,215,0,.25);border-radius:8px;padding:8px 14px;z-index:300;text-align:center;transform:translateX(120%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);pointer-events:none;max-width:80vw}
 #at.show{transform:translateX(0)}
-.al{font-size:9px;color:var(--g);font-weight:900;letter-spacing:.8px}
+.al{font-size:10px;color:var(--g);font-weight:900;letter-spacing:.8px}
 .an{font-size:12px;color:#fff}
 
 #ee{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(0,0,0,.92);border:2px solid var(--g);border-radius:14px;padding:18px 28px;z-index:310;text-align:center;transition:transform .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
 #ee.show{transform:translate(-50%,-50%) scale(1)}
 .eet{font-size:28px;margin-bottom:4px}
 .een{font-size:16px;font-weight:900;color:var(--g)}
-.eed{font-size:11px;color:#888;margin-top:2px}
+.eed{font-size:11px;color:var(--tx2);margin-top:2px}
 
 .topbtn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:4px 9px;color:var(--tx2);font-family:'Cairo';font-size:10px;font-weight:700;cursor:pointer}
 .topbtn:hover{background:rgba(0,204,255,.1);color:var(--s)}
-#topbar2{position:fixed;top:44px;right:12px;z-index:12;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 24px)}
+/* Was position:fixed at top:44px, which collided with .tb once the stat row wrapped
+   to two lines on ~320px-wide screens. It now flows directly after .tb inside #ui,
+   so it can never overlap regardless of how many lines the stat row takes. */
+#topbar2{padding:0 12px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 
-#hp{display:none;position:fixed;top:80px;right:12px;width:min(260px,80vw);max-height:50vh;background:rgba(12,12,30,.96);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px;overflow-y:auto;z-index:40;font-size:10px}
-.hr{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)}.hn{color:#888}.hs{font-weight:900}
+#hp{display:none;position:fixed;top:96px;right:12px;width:min(260px,80vw);max-height:50vh;background:rgba(12,12,30,.96);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px;overflow-y:auto;z-index:40;font-size:11px}
+.hr{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)}.hn{color:var(--tx2)}.hs{font-weight:900}
 
 .platrow{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
 .platrow .sb2{font-size:10px}
@@ -137,36 +163,38 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 
 .empcard{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;margin-bottom:4px;font-size:11px}
 .empcard .info{display:flex;gap:6px;align-items:center}
-.empcard .lv{color:var(--g);font-weight:900;font-size:10px}
-.empcard .sal{color:var(--d);font-size:9px}
-.empcard button{padding:2px 8px;background:rgba(255,0,85,.1);border:1px solid rgba(255,0,85,.2);border-radius:4px;color:var(--d);font-family:'Cairo';font-size:9px;cursor:pointer}
+.empcard .lv{color:var(--g);font-weight:900;font-size:11px}
+.empcard .sal{color:var(--d);font-size:10px}
+.empcard button{padding:3px 9px;background:rgba(255,0,85,.1);border:1px solid rgba(255,0,85,.2);border-radius:4px;color:var(--d);font-family:'Cairo';font-size:10px;cursor:pointer}
 
 .resnode{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;margin-bottom:4px;font-size:11px}
 .resnode.locked{opacity:.5}
 .resnode.done{background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.25)}
-.resnode .cost{color:var(--g);font-size:10px;font-weight:700}
+.resnode .cost{color:var(--g);font-size:11px;font-weight:700}
 .resnode button{padding:3px 9px;background:rgba(0,204,255,.1);border:1px solid rgba(0,204,255,.25);border-radius:4px;color:var(--s);font-family:'Cairo';font-size:10px;cursor:pointer;font-weight:700}
 .resnode button:disabled{opacity:.4;cursor:not-allowed}
 
 .ipcard{padding:6px 8px;background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.15);border-radius:6px;margin-bottom:5px;font-size:11px;cursor:pointer;transition:all .15s}
 .ipcard:hover{background:rgba(255,215,0,.08)}
 .ipcard .ipn{font-weight:900;color:var(--g)}
-.ipcard .ipd{font-size:9px;color:var(--tx3);margin-top:2px}
+.ipcard .ipd{font-size:10px;color:var(--tx3);margin-top:3px}
 
-#settingsModal label{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--tx2);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+#settingsModal label{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--tx2);padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 #settingsModal input[type=range]{width:120px}
 #settingsModal input[type=checkbox]{cursor:pointer}
 
-.qa-opt{padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin:5px 0;cursor:pointer;transition:all .15s;text-align:right}
+.qa-opt{display:block;width:100%;font-family:'Cairo';padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin:5px 0;cursor:pointer;transition:all .15s;text-align:right}
+.qa-opt.dis{opacity:.4;cursor:not-allowed}
+.qa-opt .qaprice{color:var(--g);font-weight:700}
 .qa-opt:hover{border-color:var(--s);background:rgba(0,204,255,.05)}
 .qa-opt .qat{font-size:13px;font-weight:900;color:var(--s);margin-bottom:3px}
-.qa-opt .qad{font-size:10px;color:var(--tx2);line-height:1.4}
+.qa-opt .qad{font-size:11px;color:var(--tx2);line-height:1.5}
 
 .mkt-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin:5px 0;cursor:pointer;text-align:right;transition:all .15s}
 .mkt-opt:hover{border-color:var(--g);background:rgba(255,215,0,.05)}
 .mkt-opt.dis{opacity:.4;cursor:not-allowed}
 .mkt-opt .mt{font-size:12px;font-weight:900;color:var(--g)}
-.mkt-opt .md{font-size:10px;color:var(--tx2);margin-top:2px}
+.mkt-opt .md{font-size:11px;color:var(--tx2);margin-top:3px}
 
 .tab-bar{display:flex;gap:4px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}
 .tab-bar button{flex:1;padding:6px;background:none;border:none;color:var(--tx3);font-family:'Cairo';font-size:11px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent}
@@ -175,12 +203,50 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .rivalcard{padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;margin-bottom:5px;font-size:11px;text-align:right}
 .rivalcard.me{background:rgba(255,215,0,.06);border-color:rgba(255,215,0,.3)}
 .rivalcard .rn2{font-weight:900}
-.rivalcard .rl{font-size:9px;color:var(--tx3);margin-top:2px}
+.rivalcard .rl{font-size:10px;color:var(--tx3);margin-top:3px}
 .rivalcard .share{font-weight:900;color:var(--s);float:left;direction:ltr}
-#contractBanner{display:none;padding:6px 8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.25);border-radius:6px;margin-bottom:8px;font-size:10px;color:var(--g);font-weight:700;line-height:1.5}
+#contractBanner{display:none;padding:6px 8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.25);border-radius:6px;margin-bottom:8px;font-size:11px;color:var(--g);font-weight:700;line-height:1.6}
 .moralebar{height:10px;background:rgba(255,255,255,.06);border-radius:5px;margin:8px 0;overflow:hidden}
 .moralebar div{height:100%;transition:width .3s;border-radius:5px}
 .loanstat{padding:8px;background:rgba(0,204,255,.05);border:1px solid rgba(0,204,255,.15);border-radius:8px;margin:6px 0;font-size:11px;text-align:right;line-height:1.7}
+
+/* ---- Keyboard navigation: every interactive element must show where focus is ---- */
+:focus-visible{outline:2px solid var(--s);outline-offset:2px;border-radius:4px}
+.stw:focus-visible{outline-offset:4px}
+
+/* ---- Live pre-release quality preview (was only shown AFTER paying) ---- */
+#devFooter{position:sticky;bottom:0;z-index:3;padding-top:4px;margin-top:2px;background:linear-gradient(180deg,transparent,var(--pb) 22%,var(--pb))}
+#qualityPreview{display:none;font-size:11px;line-height:1.5;margin:4px 0 2px;padding:5px 8px;background:rgba(0,204,255,.04);border:1px solid rgba(0,204,255,.12);border-radius:6px}
+#qualityPreview .qk{color:var(--tx3)}
+#qualityPreview .good{color:var(--p);font-weight:700}
+#qualityPreview .mid{color:var(--g);font-weight:700}
+#qualityPreview .bad{color:var(--d);font-weight:700}
+
+/* ---- Market taste of the current in-game year ---- */
+#tasteBar{font-size:11px;line-height:1.6;margin-bottom:8px;padding:6px 8px;background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.14);border-radius:6px;color:var(--tx2)}
+#tasteBar b{color:var(--p)}
+
+/* ---- First-run hints (shown once each, then remembered in the save) ---- */
+.hintbar{display:flex;gap:8px;align-items:flex-start;font-size:11px;line-height:1.55;margin-bottom:6px;padding:7px 9px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.22);border-radius:6px;color:var(--tx2)}
+.hintbar .hx{flex:0 0 auto;background:none;border:none;color:var(--g);font-family:'Cairo';font-size:15px;font-weight:900;cursor:pointer;line-height:1;padding:0 2px}
+
+/* ---- Target marker on the point sliders, at the genre's ideal share ---- */
+.stt{position:absolute;top:50%;width:2px;height:14px;margin-top:-7px;background:var(--g);opacity:.75;border-radius:1px;pointer-events:none;z-index:1}
+
+/* ---- Mid-production decision (replaces part of the dead 2.75s wait) ---- */
+.prod-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin:6px 0;cursor:pointer;text-align:right;transition:all .15s;width:100%;font-family:'Cairo'}
+.prod-opt:hover{border-color:var(--s);background:rgba(0,204,255,.05)}
+.prod-opt .pt2{font-size:13px;font-weight:900;color:var(--s);margin-bottom:3px}
+.prod-opt .pd2{font-size:11px;color:var(--tx2);line-height:1.5}
+
+/* ---- Respect the OS "reduce motion" setting ----
+   Confetti, the 4s jump-and-spin celebration and the day/night lerp are gated in JS
+   via prefersReducedMotion(); these rules cover the CSS transitions. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  #mp{transition:none}
+  .sc{transition:none;opacity:1;transform:none}
+}
 </style>
 </head>
 <body>
@@ -199,7 +265,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   <button id="pwaInstall" style="display:none;margin-top:10px;padding:8px 22px;background:rgba(0,204,255,.08);border:1px solid rgba(0,204,255,.3);border-radius:18px;color:var(--s);font-family:'Cairo';font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:6px">📲 ثبّت التطبيق على جهازك</button>
 </div>
 
-<div id="at"><div class="al">🏆 إنجاز جديد</div><div class="an" id="atx"></div></div>
+<div id="at" role="status" aria-live="polite"><div class="al">🏆 إنجاز جديد</div><div class="an" id="atx"></div></div>
 <div id="ee"><div class="eet" id="eei"></div><div class="een" id="eet"></div><div class="eed" id="eed"></div></div>
 
 <div id="gC"></div>
@@ -212,41 +278,54 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div class="st">👥 <span class="v" id="df">0</span></div>
     <div class="st" id="prBox" style="display:none">⭐ <span class="v" id="dpr" style="color:var(--g)">0</span></div>
   </div>
+  <!-- Icon-only buttons: each needs an accessible name or a screen reader announces
+       nothing but "button". title= also gives sighted players a hover hint. -->
   <div id="topbar2">
-    <button class="topbtn" onclick="toggleHistory()">📜</button>
-    <button class="topbtn" onclick="OpenResearch()" id="resBtn" style="display:none">🔬</button>
-    <button class="topbtn" onclick="OpenEmps()" id="empBtn" style="display:none">👥</button>
-    <button class="topbtn" onclick="OpenIPs()" id="ipBtn" style="display:none">📦</button>
-    <button class="topbtn" onclick="OpenRivals()" id="rivalBtn" style="display:none">📊</button>
-    <button class="topbtn" onclick="OpenLoan()" id="loanBtn" style="display:none">🏦</button>
-    <button class="topbtn" onclick="OpenSettings()">⚙️</button>
-    <button class="topbtn" onclick="exportSave()">💾</button>
-    <button class="topbtn" onclick="importSave()">📂</button>
+    <button class="topbtn" onclick="toggleHistory()" aria-label="سجل الألعاب" title="سجل الألعاب">📜</button>
+    <button class="topbtn" onclick="OpenResearch()" id="resBtn" style="display:none" aria-label="شجرة الأبحاث" title="شجرة الأبحاث">🔬</button>
+    <button class="topbtn" onclick="OpenEmps()" id="empBtn" style="display:none" aria-label="إدارة الموظفين" title="إدارة الموظفين">👥</button>
+    <button class="topbtn" onclick="OpenIPs()" id="ipBtn" style="display:none" aria-label="السلاسل والـ DLC" title="السلاسل والـ DLC">📦</button>
+    <button class="topbtn" onclick="OpenRivals()" id="rivalBtn" style="display:none" aria-label="سوق الألعاب والمنافسون" title="سوق الألعاب والمنافسون">📊</button>
+    <button class="topbtn" onclick="OpenLoan()" id="loanBtn" style="display:none" aria-label="قرض بنكي" title="قرض بنكي">🏦</button>
+    <button class="topbtn" onclick="OpenSettings()" aria-label="الإعدادات" title="الإعدادات">⚙️</button>
+    <button class="topbtn" onclick="exportSave()" aria-label="تصدير الحفظ" title="تصدير الحفظ">💾</button>
+    <button class="topbtn" onclick="importSave()" aria-label="استيراد الحفظ" title="استيراد الحفظ">📂</button>
   </div>
-  <div id="hp"></div>
+  <div id="hp" role="region" aria-label="سجل الألعاب"></div>
 </div>
 
-<div id="pt" onclick="togglePanel()"><span class="ar" id="pa">▲</span></div>
+<div id="pt" onclick="togglePanel()" role="button" tabindex="0" aria-label="إظهار أو إخفاء لوحة التطوير" aria-expanded="false"><span class="ar" id="pa">▲</span></div>
 
 <div id="mp">
   <div id="df2">
     <div id="contractBanner"></div>
-    <div class="sg"><div class="sl">📂 النوع</div><div class="sr" id="gr"></div></div>
-    <div class="sg"><div class="sl">🏷️ الموضوع</div><div class="sr" id="tr"></div></div>
-    <div class="sg"><div class="sl">📱 المنصات (اختر واحدة أو أكثر)</div><div class="platrow" id="plr"></div></div>
+    <div id="tasteBar"></div>
+    <div id="hintPanel"></div>
+    <div class="sg"><div class="sl">📂 النوع</div><div class="sr" id="gr" role="group" aria-label="نوع اللعبة"></div></div>
+    <div class="sg"><div class="sl">🏷️ الموضوع</div><div class="sr" id="tr" role="group" aria-label="موضوع اللعبة"></div></div>
+    <div class="sg"><div class="sl">📱 المنصات (اختر واحدة أو أكثر — 🔥 مناسبة للنوع، 🔻 غير مناسبة)</div><div class="platrow" id="plr" role="group" aria-label="منصات النشر"></div></div>
     <div class="slt"><span>⚙️ توزيع نقاط التطوير</span><span class="pl">المتبقي: <span id="dpl">0</span> / <span id="dpm">10</span></span></div>
-    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design"><div class="stb"><div class="stf ds" id="fd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
-    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code"><div class="stb"><div class="stf cd" id="fc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
-    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound"><div class="stb"><div class="stf sn2" id="fs"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
-    <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#ccc;font-family:'Cairo';font-size:11px;outline:none"></div>
-    <button class="bd" id="bdev" onclick="startDevelop()">🚀 طوّر اللعبة</button>
-    <div class="dc" id="dcc">تكلفة: 2,000</div>
-    <button class="bd" id="bfree" onclick="freelance()" style="display:none;background:linear-gradient(135deg,#ffb347,#ff6b6b);margin-top:6px">💼 عمل حر (بدون تكلفة)</button>
-    <div class="dc" id="freeDesc" style="display:none;color:#ffb347">أرباح قليلة بدون تقييم أو معجبين</div>
+    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
+    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
+    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
+    <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:var(--tx);font-family:'Cairo';font-size:12px;outline:none"></div>
+    <!-- Pinned: the live quality read-out and the primary action must stay on screen
+         no matter how far the player has scrolled the genre/topic grids. -->
+    <div id="devFooter">
+      <div id="qualityPreview" aria-live="polite"></div>
+      <button class="bd" id="bdev" onclick="startDevelop()">🚀 طوّر اللعبة</button>
+      <div class="dc" id="dcc">تكلفة: 2,000</div>
+      <div id="scopeBlock" style="display:none">
+        <div class="dc" id="scopeMsg" style="color:var(--d);line-height:1.5"></div>
+        <button class="bg" id="scopeTrim" onclick="trimScope()" style="display:block;width:100%;margin-top:4px">✂️ قلّص النطاق ليناسب الميزانية</button>
+      </div>
+      <button class="bd" id="bfree" onclick="freelance()" style="display:none;background:linear-gradient(135deg,#ffb347,#ff6b6b);margin-top:6px">💼 عمل حر (بدون تكلفة)</button>
+      <div class="dc" id="freeDesc" style="display:none;color:#ffb347">أرباح قليلة بدون تقييم أو معجبين</div>
+    </div>
   </div>
 </div>
 
-<div class="os transp" id="sp">
+<div class="os transp" id="sp" role="status" aria-live="polite" aria-label="جاري التطوير">
   <div style="background:rgba(0,0,0,.55);padding:16px 24px;border-radius:12px;backdrop-filter:blur(2px)">
     <div style="font-size:16px;font-weight:900;color:var(--s)">⏳ جاري التطوير</div>
     <div class="pbw"><div class="pbb"><div class="pbf" id="pf"></div></div></div>
@@ -254,7 +333,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="sr2">
+<div class="os dim" id="sr2" role="dialog" aria-modal="true" aria-label="تقييمات المراجعين">
   <div class="modal">
     <div class="rt">📰 تقييمات المراجعين</div>
     <div class="rn" id="rvn"></div>
@@ -271,7 +350,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="se">
+<div class="os dim" id="se" role="dialog" aria-modal="true" aria-label="حدث">
   <div class="modal">
     <div class="ei" id="evi"></div>
     <div class="et" id="evt2"></div>
@@ -280,7 +359,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="su">
+<div class="os dim" id="su" role="dialog" aria-modal="true" aria-label="ترقية متاحة">
   <div class="modal">
     <div style="font-size:36px;margin-bottom:6px">🎉</div>
     <div class="ut">ترقية متاحة!</div>
@@ -293,7 +372,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="sg2">
+<div class="os dim" id="sg2" role="dialog" aria-modal="true" aria-label="إفلاس">
   <div class="modal">
     <div class="gt">💸 إفلاس!</div>
     <div class="gs">ألعاب: <span id="g1">0</span></div>
@@ -308,27 +387,27 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="qaModal">
+<div class="os dim" id="qaModal" role="dialog" aria-modal="true" aria-label="ضمان الجودة">
   <div class="modal">
     <h2>🔍 ضمان الجودة</h2>
     <p>لعبتك جاهزة للإطلاق. كيف تريد إطلاقها؟</p>
-    <div class="qa-opt" onclick="ChooseQA('quick')">
+    <button class="qa-opt" id="qaOptQuick" onclick="ChooseQA('quick')">
       <div class="qat">⚡ إطلاق سريع</div>
-      <div class="qad">مجاناً • خطر بَقّات (Day-1 Patch) قد يخفض التقييم</div>
-    </div>
-    <div class="qa-opt" onclick="ChooseQA('normal')">
+      <div class="qad">خطر بَقّات (Day-1 Patch) قد يخفض التقييم<span class="qaprice"></span></div>
+    </button>
+    <button class="qa-opt" id="qaOptNormal" onclick="ChooseQA('normal')">
       <div class="qat">⚙️ اختبار عادي</div>
-      <div class="qad">تكلفة 10% من تكلفة التطوير • مخاطر منخفضة</div>
-    </div>
-    <div class="qa-opt" onclick="ChooseQA('full')">
+      <div class="qad">10% من تكلفة التطوير • مخاطر منخفضة<span class="qaprice"></span></div>
+    </button>
+    <button class="qa-opt" id="qaOptFull" onclick="ChooseQA('full')">
       <div class="qat">🛡️ اختبار شامل</div>
-      <div class="qad">تكلفة 25% من تكلفة التطوير • صفر بَقّات + بونص تقييم</div>
-    </div>
+      <div class="qad">25% من تكلفة التطوير • صفر بَقّات + بونص تقييم<span class="qaprice"></span></div>
+    </button>
     <div class="row"><button class="bg dg" onclick="CancelQA()">إلغاء</button></div>
   </div>
 </div>
 
-<div class="os dim" id="mktModal">
+<div class="os dim" id="mktModal" role="dialog" aria-modal="true" aria-label="حملة تسويقية">
   <div class="modal">
     <h2>📢 حملة تسويقية</h2>
     <p>قبل إطلاق لعبتك، هل تريد حملة إعلانية؟ الحملة الناجحة ترفع المعجبين والمبيعات.</p>
@@ -354,7 +433,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="settingsModal">
+<div class="os dim" id="settingsModal" role="dialog" aria-modal="true" aria-label="الإعدادات">
   <div class="modal">
     <h2>⚙️ الإعدادات</h2>
     <label>🔊 مستوى الصوت <input type="range" id="volSlider" min="0" max="100" value="60"></label>
@@ -370,7 +449,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="researchModal">
+<div class="os dim" id="researchModal" role="dialog" aria-modal="true" aria-label="شجرة الأبحاث">
   <div class="modal">
     <h2>🔬 شجرة الأبحاث</h2>
     <p>نقاط البحث: <span id="resPts" style="color:var(--g);font-weight:900">0</span> 🔬 — تكسب نقطة لكل لعبة (+2 إضافية لو تقييم ≥ 8)</p>
@@ -379,7 +458,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="empModal">
+<div class="os dim" id="empModal" role="dialog" aria-modal="true" aria-label="إدارة الموظفين">
   <div class="modal">
     <h2>👥 إدارة الموظفين</h2>
     <div class="tab-bar">
@@ -393,7 +472,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="ipModal">
+<div class="os dim" id="ipModal" role="dialog" aria-modal="true" aria-label="السلاسل والـ DLC">
   <div class="modal">
     <h2>📦 سلاسل وألعابك الناجحة</h2>
     <p>الألعاب بتقييم ≥ 7 تُحفظ كـ IP. يمكنك إصدار جزء ثانٍ أو DLC لها.</p>
@@ -402,7 +481,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="conventionModal">
+<div class="os dim" id="conventionModal" role="dialog" aria-modal="true" aria-label="معرض الألعاب">
   <div class="modal">
     <h2 id="convTitle">🎪 معرض الألعاب</h2>
     <p id="convDesc"></p>
@@ -411,7 +490,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="rivalsModal">
+<div class="os dim" id="rivalsModal" role="dialog" aria-modal="true" aria-label="سوق الألعاب">
   <div class="modal">
     <h2>📊 سوق الألعاب</h2>
     <p>نافس الاستوديوهات الأخرى على حصة السوق — حصتك تؤثر على مبيعاتك (×0.9 إلى ×1.3) وعلى سباق جائزة لعبة العام.</p>
@@ -420,7 +499,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="loanModal">
+<div class="os dim" id="loanModal" role="dialog" aria-modal="true" aria-label="قرض بنكي">
   <div class="modal">
     <h2>🏦 قرض بنكي</h2>
     <p id="loanDesc"></p>
@@ -429,7 +508,15 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
-<div class="os dim" id="contractModal">
+<div class="os dim" id="prodModal" role="dialog" aria-modal="true" aria-label="قرار منتصف الإنتاج">
+  <div class="modal">
+    <h2 id="prodTitle">⏳ منتصف الإنتاج</h2>
+    <p id="prodDesc"></p>
+    <div id="prodOpts"></div>
+  </div>
+</div>
+
+<div class="os dim" id="contractModal" role="dialog" aria-modal="true" aria-label="عرض عقد نشر">
   <div class="modal">
     <h2>📜 عرض عقد نشر</h2>
     <p id="contractDesc"></p>
@@ -533,6 +620,8 @@ function applyDayPhase(){
 // Celebration confetti burst (added to scene directly so buildRoom rebuilds can't wipe it)
 function spawnConfetti(n,gold){
   if(!scene)return;
+  // Large bursts of moving particles are exactly what "reduce motion" is for.
+  if(prefersReducedMotion())return;
   n=n||250;
   const geo=new THREE.BufferGeometry();
   const pos=new Float32Array(n*3),col=new Float32Array(n*3),vel=[];
@@ -547,32 +636,152 @@ function spawnConfetti(n,gold){
   geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));
   const mat=new THREE.PointsMaterial({size:.3,vertexColors:true,transparent:true,opacity:1});
+  geo.userData.owned=true;mat.userData.owned=true;
   const pts=new THREE.Points(geo,mat);
   scene.add(pts);
   confettiBursts.push({pts,vel,born:Date.now()});
 }
 
-function B(w,h,d,col,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:col,roughness:.6}));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m}
-function E(w,h,d,col,em,x,y,z,i){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:col,emissive:em,emissiveIntensity:i||.5,roughness:.2}));m.position.set(x,y,z);m.castShadow=true;return m}
-
-let rg;
-function clr(){
-  if(rg){
-    rg.traverse(o=>{
-      if(o.isMesh||o.isPoints){
-        if(o.geometry)o.geometry.dispose();
-        if(o.material&&o.material.dispose)o.material.dispose();
-      }
-    });
-    scene.remove(rg);
-  }
-  rg=new THREE.Group();scene.add(rg);employees=[];trophies=[];winMeshes=[];walkers=0;
+// ---- Shared GPU resources -------------------------------------------------
+// B() and E() used to allocate a fresh BoxGeometry AND a fresh
+// MeshStandardMaterial per box. At the skyscraper that meant 456 unique
+// geometries and 456 unique materials for a scene of only ~5.4k triangles, plus
+// a churn of 912 disposable objects on every room rebuild. The room is built
+// from a handful of repeated box sizes and colours, so both are cached and
+// reused. Cached resources are deliberately NEVER disposed — see clr().
+const GEO_CACHE=new Map(),MAT_CACHE=new Map();
+function boxGeo(w,h,d){
+  const k=w+'|'+h+'|'+d;
+  let g=GEO_CACHE.get(k);
+  if(!g){g=new THREE.BoxGeometry(w,h,d);GEO_CACHE.set(k,g);}
+  return g;
+}
+function stdMat(col,rough){
+  const k='s'+col+'|'+rough;
+  let m=MAT_CACHE.get(k);
+  if(!m){m=new THREE.MeshStandardMaterial({color:col,roughness:rough});MAT_CACHE.set(k,m);}
+  return m;
+}
+function emMat(col,em,i,rough){
+  const k='e'+col+'|'+em+'|'+i+'|'+rough;
+  let m=MAT_CACHE.get(k);
+  if(!m){m=new THREE.MeshStandardMaterial({color:col,emissive:em,emissiveIntensity:i,roughness:rough});MAT_CACHE.set(k,m);}
+  return m;
 }
 
-// Window helper: tracked for day/night emissive changes
+function B(w,h,d,col,x,y,z){
+  const m=new THREE.Mesh(boxGeo(w,h,d),stdMat(col,.6));
+  m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;
+}
+function E(w,h,d,col,em,x,y,z,i){
+  const m=new THREE.Mesh(boxGeo(w,h,d),emMat(col,em,i||.5,.2));
+  m.position.set(x,y,z);m.castShadow=true;return m;
+}
+
+// ---- Static geometry batching ---------------------------------------------
+// Sharing materials alone does not reduce draw calls: three.js issues one per
+// Mesh either way. Room furniture never moves once built, so after buildRoom()
+// finishes every static mesh is baked into one merged geometry per
+// material+shadow-flag bucket, cutting the skyscraper from ~452 draw calls to a
+// few dozen. Anything animated lives under a group flagged userData.dyn and is
+// skipped. All boxes, so toNonIndexed() sidesteps index remapping entirely.
+let _owned=[]; // per-room resources this module allocated and must dispose
+function own(r){if(r){r.userData=r.userData||{};r.userData.owned=true;_owned.push(r);}return r}
+
+function mergeStatic(entries){
+  const parts=[];let total=0;
+  for(const {geometry,matrix} of entries){
+    const g=geometry.index?geometry.toNonIndexed():geometry.clone();
+    g.applyMatrix4(matrix); // also transforms normals via the normal matrix
+    total+=g.attributes.position.count;
+    parts.push(g);
+  }
+  const pos=new Float32Array(total*3),nor=new Float32Array(total*3);
+  let off=0;
+  for(const g of parts){
+    pos.set(g.attributes.position.array,off*3);
+    nor.set(g.attributes.normal.array,off*3);
+    off+=g.attributes.position.count;
+    g.dispose();
+  }
+  const out=new THREE.BufferGeometry();
+  out.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  out.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  out.computeBoundingSphere();
+  return out;
+}
+
+function isDynamic(obj){
+  for(let o=obj;o&&o!==rg;o=o.parent)if(o.userData&&o.userData.dyn)return true;
+  return false;
+}
+
+function batchStatic(){
+  if(!rg)return;
+  rg.updateMatrixWorld(true);
+  const buckets=new Map(),victims=[];
+  rg.traverse(o=>{
+    if(!o.isMesh||isDynamic(o))return;
+    const key=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+(o.receiveShadow?1:0);
+    let b=buckets.get(key);
+    if(!b){b={material:o.material,cast:o.castShadow,receive:o.receiveShadow,entries:[]};buckets.set(key,b);}
+    b.entries.push({geometry:o.geometry,matrix:o.matrixWorld.clone()});
+    victims.push(o);
+  });
+  if(!buckets.size)return;
+  victims.forEach(o=>{if(o.parent)o.parent.remove(o)});
+  // Drop the now-empty furniture sub-groups left behind by mkDesk/mkCoffee.
+  [...rg.children].forEach(c=>{if(c.isGroup&&!c.userData.dyn&&c.children.length===0)rg.remove(c)});
+  buckets.forEach(b=>{
+    const mesh=new THREE.Mesh(own(mergeStatic(b.entries)),b.material);
+    mesh.castShadow=b.cast;mesh.receiveShadow=b.receive;
+    mesh.matrixAutoUpdate=false; // baked in world space; never moves again
+    rg.add(mesh);
+  });
+}
+
+let rg;
+// Animated / independently-refreshable sub-groups. Flagged userData.dyn so
+// batchStatic() leaves them alone, and each can be rebuilt on its own instead of
+// tearing down the whole room (hiring someone used to trigger a full rebuild).
+let gPeople,gPosters,gTrophies,gBoard,gWindows,gFx;
+function mkDynGroup(){const g=new THREE.Group();g.userData.dyn=true;rg.add(g);return g}
+
+// Dispose everything under a group, but only geometries/materials this module
+// owns. Cached box geometries and cached materials are shared across the whole
+// session and must survive; disposing them would blank out every other mesh.
+function purge(group){
+  if(!group)return;
+  group.traverse(o=>{
+    if(!(o.isMesh||o.isPoints))return;
+    if(o.geometry&&o.geometry.userData.owned)o.geometry.dispose();
+    if(o.material&&o.material.userData&&o.material.userData.owned&&o.material.dispose)o.material.dispose();
+  });
+  while(group.children.length)group.remove(group.children[0]);
+}
+
+function clr(){
+  if(rg){
+    purge(rg);
+    _owned.forEach(r=>{if(r&&r.dispose)r.dispose()});
+    _owned=[];
+    scene.remove(rg);
+  }
+  rg=new THREE.Group();scene.add(rg);
+  employees=[];trophies=[];winMeshes=[];walkers=0;particleSystem=null;
+  gPeople=mkDynGroup();gPosters=mkDynGroup();gTrophies=mkDynGroup();
+  gBoard=mkDynGroup();gWindows=mkDynGroup();gFx=mkDynGroup();
+}
+
+// Window helper: tracked for day/night emissive changes. Needs its own material
+// instance because the animation writes emissive/emissiveIntensity per mesh, so a
+// cached shared material would be mutated by (and for) unrelated meshes.
 function mkWindow(w,h,x,y,z){
-  const m=E(w,h,.06,0x88bbff,0x88bbff,x,y,z,.25);
-  winMeshes.push(m);rg.add(m);
+  const mat=new THREE.MeshStandardMaterial({color:0x88bbff,emissive:0x88bbff,emissiveIntensity:.25,roughness:.2});
+  mat.userData.owned=true;
+  const m=new THREE.Mesh(boxGeo(w,h,.06),mat);
+  m.position.set(x,y,z);m.castShadow=true;
+  winMeshes.push(m);gWindows.add(m);
   return m;
 }
 
@@ -587,7 +796,7 @@ function mkPerson(x,z,color){
   g.add(B(.25,.9,.25,color||0x00aaff,.6,1.65,0));
   g.position.set(x,0,z);
   g.userData={baseX:x,baseZ:z};
-  rg.add(g);employees.push(g);
+  gPeople.add(g);employees.push(g);
   return g;
 }
 
@@ -608,7 +817,7 @@ function mkPlant(x,z){rg.add(B(.45,.55,.45,0xcc6600,x,.28,z));rg.add(B(.8,1.1,.8
 
 function mkTrophy(x,y,z,col){
   const t=E(.35,.7,.35,col||0xffd700,col||0xffd700,x,y,z,.4);
-  rg.add(t);trophies.push(t);return t;
+  gTrophies.add(t);trophies.push(t);return t;
 }
 
 const COLORS=[0x00aaff,0xff6b6b,0x6c5ce7,0x00b894,0xfdcb6e,0xe17055,0x74b9ff,0xffeaa7];
@@ -658,12 +867,16 @@ const POSTER_WALLS=[
   {z:-19.85,startX:-13,maxCount:8,y:7.5},// skyscraper
 ];
 
+// Desks are static furniture; people animate. They used to be built together,
+// which is why hiring or firing anyone forced a full room teardown.
+function addDesks(stage){
+  const layout=STAGE_LAYOUT[stage];if(!layout)return;
+  layout.desks.forEach(desk=>{if(!desk.ceo)mkDesk(desk.x,desk.z,0)});
+}
 function placePeople(stage){
   const layout=STAGE_LAYOUT[stage];if(!layout)return;
   const emps=S.employees||[];
   layout.desks.forEach((desk,i)=>{
-    // Draw desk (unless it's the manually-drawn CEO desk)
-    if(!desk.ceo)mkDesk(desk.x,desk.z,0);
     // Slot 0 = self (player). Always present, gold colored.
     // Slots 1+ = hired employees in order. Empty slot = no person (visible empty desk).
     if(i===0){
@@ -679,8 +892,8 @@ function placePeople(stage){
 }
 
 function mkGamePoster(x,y,z,color){
-  rg.add(B(1.4,1,.04,0x111,x,y,z));
-  rg.add(E(1.2,.8,.06,color,color,x,y,z+.02,.35));
+  gPosters.add(B(1.4,1,.04,0x111,x,y,z));
+  gPosters.add(E(1.2,.8,.06,color,color,x,y,z+.02,.35));
 }
 
 function addGamePosters(stage){
@@ -713,8 +926,9 @@ function addParticles(stage){
   geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
   const partColor=stage>=4?0xffd700:0x00ccff;
   const mat=new THREE.PointsMaterial({color:partColor,size:.16,transparent:true,opacity:.55});
+  geo.userData.owned=true;mat.userData.owned=true;
   const points=new THREE.Points(geo,mat);
-  rg.add(points);
+  gFx.add(points);
   particleSystem={points,vel,maxY};
 }
 
@@ -746,10 +960,18 @@ function addStaffBoard(stage){
   const emps=(S.employees||[]).length;
   const cap=HIRE_CAPS[stage];
   const ratio=Math.max(0,Math.min(1,emps/cap));
-  rg.add(B(1.6,.9,.04,0x111,spec.x,spec.y,spec.z+.05));
+  gBoard.add(B(1.6,.9,.04,0x111,spec.x,spec.y,spec.z+.05));
   const barW=Math.max(.06,1.4*ratio);
   const barColor=ratio>=1?0x00ff88:ratio>.5?0xffd700:0xff6b6b;
-  rg.add(E(barW,.5,.05,barColor,barColor,spec.x-.7+barW/2,spec.y,spec.z+.08,.5));
+  gBoard.add(E(barW,.5,.05,barColor,barColor,spec.x-.7+barW/2,spec.y,spec.z+.08,.5));
+}
+
+// Award trophies on the floor near the back wall, sitting at ground level.
+function addTrophies(stage){
+  if(!(S.awards&&S.awards.length))return;
+  const maxT=Math.min(S.awards.length,8);
+  const zPos=[-7.3,-9.3,-11.3,-13.3,-16.3,-19.3][stage]||-15;
+  for(let i=0;i<maxT;i++)mkTrophy(-3.5+i*1,.45,zPos,0xffd700);
 }
 
 function buildRoom(s){
@@ -759,21 +981,30 @@ function buildRoom(s){
   else if(s===3)buildStudio();else if(s===4)buildCompany();else buildSkyscraper();
   setCam(s);
   applyDayPhase();
+  addDesks(s);
+  addDeskDecor(s);
   placePeople(s);
   addGamePosters(s);
-  addDeskDecor(s);
   addParticles(s);
   addStaffBoard(s);
-  // Dynamic award trophies on floor near back wall, sitting at ground level
-  if(S.awards&&S.awards.length){
-    const maxT=Math.min(S.awards.length,8);
-    const zPos=[-7.3,-9.3,-11.3,-13.3,-16.3,-19.3][s]||-15;
-    for(let i=0;i<maxT;i++){
-      const xpos=-3.5+i*1;
-      mkTrophy(xpos,.45,zPos,0xffd700);
-    }
-  }
+  addTrophies(s);
+  // Fold all the static furniture into a handful of merged meshes. Must run last,
+  // after every static mesh exists and before the first frame renders it.
+  batchStatic();
 }
+
+// ---- Targeted refreshes ----------------------------------------------------
+// Each of these replaces a full buildRoom() call. The room used to be rebuilt from
+// scratch after every release, hire, firing and resignation — 456 mesh
+// allocations and ~9ms of blocking work at the skyscraper, twice over on a
+// Game-of-the-Year release.
+function refreshPeople(){if(!rg)return;purge(gPeople);employees=[];walkers=0;placePeople(curStage);}
+function refreshPosters(){if(!rg)return;purge(gPosters);addGamePosters(curStage);}
+function refreshTrophies(){if(!rg)return;purge(gTrophies);trophies=[];addTrophies(curStage);}
+function refreshBoard(){if(!rg)return;purge(gBoard);addStaffBoard(curStage);}
+// After a release: new IP poster, new trophy, updated staff board, plus the roster
+// in case low morale triggered a resignation during settlement. No teardown.
+function refreshAfterRelease(){refreshPosters();refreshTrophies();refreshBoard();refreshPeople();}
 
 function buildBedroom(){
   const sz=16;
@@ -857,9 +1088,16 @@ function buildSkyscraper(){
   mkPlant(-17,-17);mkPlant(17,-17);mkPlant(-17,17);mkPlant(17,17);
 }
 
-let _lastFrame=0;
+let _lastFrame=0,_frameSkip=0;
+// Rendering used to run flat-out at all times: behind every modal and on the start
+// screen before the player had even pressed Start. Hidden tabs now render nothing,
+// and while a modal covers the scene we drop to every third frame — enough to keep
+// the confetti celebration behind the review card alive at a third of the GPU cost.
+const MODAL_FRAME_DIVISOR=3;
 function animate(){
   requestAnimationFrame(animate);
+  if(document.hidden){_lastFrame=0;return}
+  if(anyModalOpen()&&(++_frameSkip%MODAL_FRAME_DIVISOR)!==0)return;
   const now=Date.now();
   const t=now*.001;
   // Frame-rate independence: f is 1.0 at 60fps and scales up on slower frames,
@@ -867,7 +1105,7 @@ function animate(){
   // 60Hz and a 144Hz display. Clamped so a backgrounded tab can't teleport things.
   const f=_lastFrame?Math.min(3,(now-_lastFrame)/16.6667):1;
   _lastFrame=now;
-  const celebrating=now<celebrateUntil;
+  const celebrating=now<celebrateUntil&&!prefersReducedMotion();
   employees.forEach((e,i)=>{
     const u=e.userData||{};
     if(celebrating){
@@ -1020,17 +1258,27 @@ const PLATFORMS=[
   {id:'web',name:'ويب',icon:'🌐',costMult:0.4,audMult:0.7},
 ];
 
-// Upgrade costs follow a smooth ~×2.4–×6.7 curve. The old curve had a ×40 jump
-// at the small office (100K → 4M) that stranded players there for ~16 games while
-// neighbouring stages took ~2; these values (validated in tools/balance-sim.mjs)
-// keep every stage in a comparable, gently rising range.
+// Stage economy, tuned against tools/balance-sim.mjs (which parses this very table,
+// so the tool can never drift from the game). Three rounds of history:
+//   1. The original curve had a ×40 upgrade jump at the small office (100K → 4M)
+//      that stranded players there ~16 games while neighbours took ~2.
+//   2. That fixed the spike but left the run back-loaded: 17.0 games in the studio
+//      and 33.5 in the company — 50.5 of ~60, i.e. 83% of the playthrough in the
+//      last two stages. The cause was margin, not upgrade price: devCost jumped ×15
+//      from the small office to the studio (20K → 300K) while the revenue
+//      multiplier rose only ×1.29, so each late game barely cleared its own budget.
+//   3. devCost now follows a steady ~×2.5 curve, which holds the return-on-budget
+//      roughly constant across stages, and the upgrade prices are sized off that.
+//      Result: 33 simulated games with a 9/10/19/29/33% split — no stage owns the
+//      run, and the totals still grow enough to feel like a different scale.
+// Re-run `node tools/balance-sim.mjs` after touching any of these numbers.
 const STG=[
-  {name:'🛏️ غرفة النوم',devCost:5000,maxPts:10,upgCost:50000,emp:1},
-  {name:'🔧 الكراج',devCost:10000,maxPts:12,upgCost:120000,emp:1},
-  {name:'🏢 مكتب صغير',devCost:20000,maxPts:14,upgCost:800000,emp:2},
-  {name:'🎬 استوديو',devCost:300000,maxPts:17,upgCost:3500000,emp:4},
-  {name:'🏬 شركة',devCost:800000,maxPts:20,upgCost:18000000,emp:8},
-  {name:'🏙️ ناطحة سحاب',devCost:2000000,maxPts:24,upgCost:Infinity,emp:13},
+  {name:'🛏️ غرفة النوم',devCost:5000,maxPts:10,upgCost:70000},
+  {name:'🔧 الكراج',devCost:10000,maxPts:12,upgCost:230000},
+  {name:'🏢 مكتب صغير',devCost:22000,maxPts:14,upgCost:1100000},
+  {name:'🎬 استوديو',devCost:60000,maxPts:17,upgCost:3800000},
+  {name:'🏬 شركة',devCost:160000,maxPts:20,upgCost:7500000},
+  {name:'🏙️ ناطحة سحاب',devCost:420000,maxPts:24,upgCost:Infinity},
 ];
 
 const DIFFICULTY={
@@ -1101,7 +1349,10 @@ const ACHS=[
   {id:'emp5',n:'مدير ناجح (5 موظفين)',ch:s=>(s.employees||[]).length>=5},
   {id:'pr1',n:'⭐ Prestige أول!',ch:s=>(s.prestige?.level||0)>=1},
   {id:'award3',n:'3 جوائز سنوية',ch:s=>(s.awards||[]).length>=3},
-  {id:'mkt40',n:'متصدر السوق (40%)',ch:s=>{const r=s.rivals||[];if(!r.length||(s.gc||0)<5)return false;const pw=Math.max(100,(s.fn||0)*1.2+100);return pw/(pw+r.reduce((a,x)=>a+x.fans,0))>=0.4}},
+  // Threshold was 40%, which the shipped rival growth curve never reaches: the
+  // balance simulation plateaus the player around 19% share over 60 games. 25% is
+  // demanding but attainable through sustained quality plus convention/GOTY fans.
+  {id:'mkt40',n:'متصدر السوق (25%)',ch:s=>{const r=s.rivals||[];if(!r.length||(s.gc||0)<5)return false;const pw=Math.max(100,(s.fn||0)*1.2+100);return pw/(pw+r.reduce((a,x)=>a+x.fans,0))>=0.25}},
   {id:'goty2',n:'هزمت المنافسين ×2',ch:s=>(s.gotyWins||0)>=2},
   {id:'loan1',n:'سدّدت قرضاً كاملاً',ch:s=>(s.loansRepaid||0)>=1},
   {id:'eng3',n:'محرك ألعاب v3',ch:s=>(s.engineVersion||0)>=3},
@@ -1192,9 +1443,65 @@ const CONVENTIONS=[
   ]},
 ];
 
+// DLCs per IP before it's exhausted (mirrors the sequel-fatigue design).
+const DLC_MAX=3;
+
+// First-run hints. Each id is shown once, then remembered in S.tips so the save
+// carries the "already taught" state instead of re-teaching on every session.
+const TIP_IDS=['panel','review','upgrade'];
+
+// ---- Market taste -------------------------------------------------------
+// GENRES[].ideal and SYN are compile-time constants, and spending development
+// points is free, so the optimal build for a given genre used to be a single
+// fixed answer the player could memorise once and reuse forever — the central
+// decision of the game solved itself after a handful of releases. Each in-game
+// year now shifts the ideal design/code split and promotes three "hot" topics,
+// so the answer moves and the market panel becomes information worth reading.
+const TASTE_SHIFT=8;      // max ± percentage-point shift on the design/code targets
+const TASTE_HOT_COUNT=3;  // topics that get a synergy bump this year
+const TASTE_HOT_BONUS=1;  // how much synergy a hot topic gains
+
+function rollMarketTaste(year){
+  const pool=TOPICS.map(t=>t.id);
+  const hot=[];
+  for(let i=0;i<TASTE_HOT_COUNT&&pool.length;i++)hot.push(pool.splice(Math.random()*pool.length|0,1)[0]);
+  const r=()=>Math.round((Math.random()*2-1)*TASTE_SHIFT);
+  return {year:Math.max(1,year|0),design:r(),code:r(),hot};
+}
+function sanitizeTaste(t,year){
+  if(!t||typeof t!=='object')return rollMarketTaste(year||1);
+  const valid=new Set(TOPICS.map(x=>x.id));
+  const cl=v=>Math.max(-TASTE_SHIFT,Math.min(TASTE_SHIFT,Number.isFinite(+v)?Math.round(+v):0));
+  return {
+    year:Math.max(1,(+t.year||year||1)|0),
+    design:cl(t.design),code:cl(t.code),
+    hot:(Array.isArray(t.hot)?t.hot:[]).filter(x=>valid.has(x)).slice(0,TASTE_HOT_COUNT),
+  };
+}
+// The genre's ideal design/code/sound split for the CURRENT year's taste.
+// Shifts are absorbed by the sound axis, then everything is renormalised to 100
+// with a 5-point floor so no axis can become irrelevant.
+function idealFor(genre){
+  const t=S.marketTaste||{design:0,code:0};
+  let a=[genre.ideal[0]+(t.design||0),genre.ideal[1]+(t.code||0),genre.ideal[2]-(t.design||0)-(t.code||0)];
+  a=a.map(v=>Math.max(5,v));
+  const sum=a[0]+a[1]+a[2];
+  return a.map(v=>v/sum*100);
+}
+// Synergy for a genre/topic pair, including this year's hot-topic bonus.
+function synergyFor(genreId,topicId){
+  const base=SYN[genreId]?.[topicId]||0;
+  const hot=(S.marketTaste&&S.marketTaste.hot||[]).includes(topicId)?TASTE_HOT_BONUS:0;
+  return base+hot;
+}
+
 // ============ STATE ============
 let S={};
-const SAVE_VERSION=4;
+const SAVE_VERSION=5;
+
+// True only once a real play session has begun. Everything that writes to
+// localStorage checks it first — see the comment on saveGame().
+let _started=false;
 
 function initState(diff){
   const d=diff||'normal';
@@ -1216,7 +1523,7 @@ function initState(diff){
     year:1,
     gamesThisYear:0,
     awards:[],
-    prestige:{level:0,bonus:0},
+    prestige:{level:0},
     conventionCooldown:0,
     rivals:initRivals(),
     morale:75,
@@ -1228,11 +1535,163 @@ function initState(diff){
     gotyWins:0,
     partyUsed:false,
     pendingDevCost:0,
+    marketTaste:rollMarketTaste(1),
+    tips:[],
   };
 }
 
+// ---- Save sanitising ------------------------------------------------------
+// Every field below can arrive from a hand-edited or shared save file via
+// importSave(), so nothing here may be trusted. Three concrete bugs came from
+// skipping this: employees[].name reached an innerHTML template (script
+// execution), employees[].role and platforms[] both dereferenced a missing
+// table row and threw, which left the UI permanently frozen mid-update.
+const num=(v,d)=>Number.isFinite(+v)?+v:d;
+const clampName=s2=>(typeof s2==='string'?s2:String(s2??'')).slice(0,60);
+const clampInt=(v,d,lo,hi)=>Math.max(lo,Math.min(hi,num(v,d)|0));
+
+function sanitizeSave(p){
+  if(!p||typeof p!=='object')throw new Error('save is not an object');
+
+  p.money=num(p.money,0);p.fn=Math.max(0,num(p.fn,0));p.gc=Math.max(0,num(p.gc,0)|0);
+  p.st=clampInt(p.st,0,0,STG.length-1);
+  p.bs=Math.max(0,Math.min(10,num(p.bs,0)));p.pm=num(p.pm,p.money);p.hs=num(p.hs,5);
+  p.morale=Math.max(0,Math.min(100,num(p.morale,75)));
+  p.year=Math.max(1,num(p.year,1)|0);
+  p.gamesThisYear=clampInt(p.gamesThisYear,0,0,3);
+  p.eggs=Math.max(0,num(p.eggs,0)|0);
+  p.sk=Math.max(0,num(p.sk,0)|0);
+  p.gse=Math.max(0,num(p.gse,0)|0);
+  p.engineVersion=clampInt(p.engineVersion,0,0,ENGINE_VERSIONS.length);
+  p.conventionCooldown=Math.max(0,num(p.conventionCooldown,0)|0);
+  p.contractCooldown=Math.max(0,num(p.contractCooldown,0)|0);
+  p.loansRepaid=Math.max(0,num(p.loansRepaid,0)|0);
+  p.gotyWins=Math.max(0,num(p.gotyWins,0)|0);
+
+  if(!DIFFICULTY[p.difficulty])p.difficulty='normal';
+  if(p.theme!=='light')p.theme='dark';
+  const vol=num(p.audio&&p.audio.volume,0.6);
+  p.audio={volume:Math.max(0,Math.min(1,vol)),muted:!!(p.audio&&p.audio.muted)};
+  p.prestige={level:Math.max(0,num(p.prestige&&p.prestige.level,0)|0)};
+
+  // Point allocation must exist and must never exceed the stage cap.
+  const mx=STG[p.st].maxPts;
+  const sl=p.sl&&typeof p.sl==='object'?p.sl:{};
+  p.sl={design:clampInt(sl.design,3,0,mx),code:clampInt(sl.code,4,0,mx),sound:clampInt(sl.sound,3,0,mx)};
+  let over=(p.sl.design+p.sl.code+p.sl.sound)-mx;
+  for(const k of ['sound','code','design']){if(over<=0)break;const take=Math.min(over,p.sl[k]);p.sl[k]-=take;over-=take;}
+
+  // Whitelist platform ids — an unknown id used to throw inside getDevCost().
+  const validPlat=new Set(PLATFORMS.map(x=>x.id));
+  p.platforms=(Array.isArray(p.platforms)?p.platforms:[]).filter(x=>validPlat.has(x));
+  if(!p.platforms.length)p.platforms=['pc'];
+
+  // Whitelist research ids and genre/topic selections.
+  const validRes=new Set(RESEARCH.map(r=>r.id));
+  const resPts=num(p.research&&p.research.points,0);
+  p.research={
+    points:Math.max(0,resPts),
+    unlocked:(Array.isArray(p.research&&p.research.unlocked)?p.research.unlocked:[]).filter(x=>validRes.has(x)),
+  };
+  const validGenre=new Set(GENRES.map(g=>g.id)),validTopic=new Set(TOPICS.map(t=>t.id));
+  if(!validGenre.has(p.genre))p.genre=null;
+  if(!validTopic.has(p.topic))p.topic=null;
+  if(!validTopic.has(p.tt))p.tt=null;
+
+  // Whitelist employee roles and clamp names — both feed the DOM and the
+  // salary/promotion path in finishDevelopment().
+  const validRole=new Set(EMP_ROLES.map(r=>r.id));
+  p.employees=(Array.isArray(p.employees)?p.employees:[])
+    .filter(e=>e&&typeof e==='object'&&validRole.has(e.role))
+    .slice(0,HIRE_CAPS[HIRE_CAPS.length-1])
+    .map(e=>({
+      role:e.role,name:clampName(e.name)||'موظف',
+      level:clampInt(e.level,0,0,EMP_LEVELS.length-1),
+      exp:Math.max(0,num(e.exp,0)),
+      salary:Math.max(0,num(e.salary,EMP_ROLES.find(r=>r.id===e.role).baseSalary)),
+    }));
+
+  p.ips=(Array.isArray(p.ips)?p.ips:[])
+    .filter(i=>i&&typeof i==='object'&&validGenre.has(i.genre)&&validTopic.has(i.topic))
+    .slice(-15)
+    .map(i=>({
+      id:clampName(i.id)||('ip_'+Math.random().toString(36).slice(2,8)),
+      name:clampName(i.name)||'لعبة',genre:i.genre,topic:i.topic,
+      bestScore:Math.max(0,Math.min(10,num(i.bestScore,7))),
+      sequels:Math.max(0,num(i.sequels,0)|0),dlcs:clampInt(i.dlcs,0,0,DLC_MAX),
+    }));
+
+  p.hist=(Array.isArray(p.hist)?p.hist:[]).slice(0,100).map(h=>({
+    name:clampName(h&&h.name)||'لعبة',
+    genre:clampName(h&&h.genre),topic:clampName(h&&h.topic),
+    score:Math.max(0,Math.min(10,num(h&&h.score,0))),
+    revenue:num(h&&h.revenue,0),year:Math.max(1,num(h&&h.year,1)|0),
+    sequel:!!(h&&h.sequel),contract:!!(h&&h.contract),dlc:!!(h&&h.dlc),
+  }));
+
+  const validAch=new Set(ACHS.map(a=>a.id));
+  p.ach=(Array.isArray(p.ach)?p.ach:[]).filter(a=>validAch.has(a));
+  p.awards=(Array.isArray(p.awards)?p.awards:[]).slice(-32).map(a=>({
+    year:Math.max(1,num(a&&a.year,1)|0),game:clampName(a&&a.game),
+    score:Math.max(0,Math.min(10,num(a&&a.score,0))),
+  }));
+
+  // Rivals: rebuild from scratch if the shape is wrong rather than half-trusting it.
+  const rv=Array.isArray(p.rivals)?p.rivals:[];
+  p.rivals=RIVAL_DEFS.map((def,i)=>{
+    const r=rv.find(x=>x&&x.id===def.id)||rv[i]||{};
+    return {
+      id:def.id,
+      quality:Math.max(1,Math.min(10,num(r.quality,4.5+Math.random()*1.5))),
+      fans:Math.max(0,num(r.fans,1500+Math.floor(Math.random()*4500))),
+      games:Math.max(0,num(r.games,0)|0),
+      lastGame:r.lastGame&&typeof r.lastGame==='object'
+        ?{name:clampName(r.lastGame.name),score:Math.max(0,Math.min(10,num(r.lastGame.score,0))),year:Math.max(1,num(r.lastGame.year,1)|0)}
+        :null,
+      bestThisYear:Math.max(0,Math.min(10,num(r.bestThisYear,0))),
+      bestName:r.bestName==null?null:clampName(r.bestName),
+    };
+  });
+
+  if(p.loan&&typeof p.loan==='object'){
+    p.loan={
+      principal:Math.max(0,num(p.loan.principal,0)),
+      remaining:Math.max(0,num(p.loan.remaining,0)),
+      perGame:Math.max(1,num(p.loan.perGame,1)),
+      gamesLeft:Math.max(1,num(p.loan.gamesLeft,1)|0),
+    };
+    if(p.loan.remaining<=0)p.loan=null;
+  }else p.loan=null;
+
+  if(p.contract&&typeof p.contract==='object'&&validGenre.has(p.contract.genre)){
+    p.contract={
+      publisher:clampName(p.contract.publisher)||'ناشر',icon:clampName(p.contract.icon).slice(0,4)||'🏢',
+      genre:p.contract.genre,minScore:Math.max(0,Math.min(10,num(p.contract.minScore,7))),
+      payment:Math.max(0,num(p.contract.payment,0)),bonus:Math.max(0,num(p.contract.bonus,0)),
+      penalty:Math.max(0,num(p.contract.penalty,0)),
+      gamesLeft:clampInt(p.contract.gamesLeft,2,1,2),active:!!p.contract.active,
+    };
+  }else p.contract=null;
+
+  const validTip=new Set(TIP_IDS);
+  p.tips=(Array.isArray(p.tips)?p.tips:[]).filter(t=>validTip.has(t));
+  p.marketTaste=sanitizeTaste(p.marketTaste,p.year);
+
+  p.qaMode=null;p.dev=false;p.partyUsed=!!p.partyUsed;
+  p.bugs=Math.max(0,num(p.bugs,0)|0);
+  p.pendingDevCost=Math.max(0,num(p.pendingDevCost,0));
+  p.marketing={hype:0,campaign:null,cost:0,bonus:0};
+
+  // Drop any stray session-only key that leaked into the file.
+  for(const k of Object.keys(p))if(k[0]==='_')delete p[k];
+  p.saveVersion=SAVE_VERSION;
+  return p;
+}
+
 function migrateSave(p){
-  // Migrate older saves to latest schema
+  // Step older saves up to the latest schema, then hand everything to
+  // sanitizeSave() which is the single authority on shape and bounds.
+  if(!p||typeof p!=='object')throw new Error('save is not an object');
   if(!p.saveVersion){
     p.saveVersion=2;
     if(!p.audio)p.audio={volume:0.6,muted:false};
@@ -1242,50 +1701,45 @@ function migrateSave(p){
     if(!p.research)p.research={points:0,unlocked:[]};
     if(!p.employees)p.employees=[];
     if(!p.ips)p.ips=[];
-    if(!p.marketing)p.marketing={hype:0,campaign:null,cost:0};
-    if(p.bugs===undefined)p.bugs=0;
     if(!p.year)p.year=1;
-    if(!p.gamesThisYear)p.gamesThisYear=0;
     if(!p.awards)p.awards=[];
-    if(!p.prestige)p.prestige={level:0,bonus:0};
+    if(!p.prestige)p.prestige={level:0};
     if(!p.conventionCooldown)p.conventionCooldown=0;
   }
   if(p.saveVersion<3){
     p.saveVersion=3;
     if(!p.rivals)p.rivals=initRivals();
     if(p.morale===undefined)p.morale=75;
-    if(p.loan===undefined)p.loan=null;
     if(p.engineVersion===undefined)p.engineVersion=((p.research&&p.research.unlocked)||[]).includes('engine')?1:0;
-    if(p.contract===undefined)p.contract=null;
     if(!p.contractCooldown)p.contractCooldown=0;
     if(!p.loansRepaid)p.loansRepaid=0;
     if(!p.gotyWins)p.gotyWins=0;
-    if(p.partyUsed===undefined)p.partyUsed=false;
   }
   if(p.saveVersion<4){
     p.saveVersion=4;
     if(p.pendingDevCost===undefined)p.pendingDevCost=0;
   }
-  // Defensive coercion: guarantee critical numeric fields are finite and clamp
-  // free-text so a hand-edited or shared save can't inject NaN into the economy
-  // or oversized strings into the UI.
-  const num=(v,d)=>Number.isFinite(+v)?+v:d;
-  p.money=num(p.money,0);p.fn=Math.max(0,num(p.fn,0));p.gc=num(p.gc,0)|0;
-  p.st=Math.max(0,Math.min(5,num(p.st,0)|0));
-  p.bs=num(p.bs,0);p.pm=num(p.pm,p.money);p.hs=num(p.hs,5);
-  p.morale=Math.max(0,Math.min(100,num(p.morale,75)));
-  p.year=Math.max(1,num(p.year,1)|0);
-  if(p.research)p.research.points=num(p.research.points,0);
-  const clampName=s=>(typeof s==='string'?s:String(s??'')).slice(0,60);
-  if(Array.isArray(p.hist))p.hist.forEach(h=>{if(h)h.name=clampName(h.name);});
-  if(Array.isArray(p.ips))p.ips.forEach(i=>{if(i)i.name=clampName(i.name);});
-  return p;
+  if(p.saveVersion<5){
+    // v5 adds the per-year market taste and the first-run tip ledger. Existing
+    // players are treated as having seen the tips so they aren't re-taught.
+    p.saveVersion=5;
+    if(!p.marketTaste)p.marketTaste=rollMarketTaste(Math.max(1,+p.year||1));
+    if(!Array.isArray(p.tips))p.tips=(+p.gc>0)?TIP_IDS.slice():[];
+  }
+  return sanitizeSave(p);
 }
 
-// Persistence rule: fields whose name starts with '_' are session-only and are
-// never written to disk. The mid-development flag is likewise never persisted,
-// so closing the tab during a progress bar can't soft-lock the save.
+// Persistence rules:
+//  - Fields whose name starts with '_' are session-only and never written.
+//  - The mid-development flag is never persisted, so closing the tab during a
+//    progress bar can't soft-lock the save.
+//  - Nothing is written before startGame() runs. initState() populates S at
+//    module load (buildRoom/applyDayPhase need it), so without the _started
+//    guard the unload handler below would serialise that pristine default state
+//    over a real save whenever a returning player reloaded or left the start
+//    screen without pressing "متابعة" — silently destroying all progress.
 function saveGame(){
+  if(!_started)return;
   try{
     const clean={};
     for(const k in S){
@@ -1301,13 +1755,10 @@ function loadGame(){
     const d=localStorage.getItem('gd_save');
     if(d){
       const p=migrateSave(JSON.parse(d));
-      Object.assign(S,p);
+      S=p;
       // Recover from a mid-development reload: refund any in-flight spend
       // (marketing + QA + dev cost) and clear the transient flow state.
       if(S.pendingDevCost>0){S.money+=S.pendingDevCost;S.pendingDevCost=0;}
-      S.dev=false;
-      S.marketing={hype:0,campaign:null,cost:0,bonus:0};
-      S.qaMode=null;
       return true;
     }
   }catch(e){console.error('Load failed:',e);}
@@ -1328,21 +1779,42 @@ window.exportSave=function(){
 window.importSave=function(){
   const i=document.createElement('input');i.type='file';i.accept='.json,.txt';
   i.onchange=e=>{
+    const file=e.target.files&&e.target.files[0];
+    if(!file)return;
     const r=new FileReader();
+    r.onerror=()=>alert('تعذّر قراءة الملف');
     r.onload=()=>{
+      // Three distinct failure modes, three distinct messages. The old code
+      // caught everything as "ملف غير صالح" even when the file had already been
+      // half-applied to the live state, which left the game running on a broken
+      // mix of old and new values.
+      let raw;
       try{
-        let txt=r.result.trim();let d;
-        // Try base64 first, fallback to plain JSON
-        try{d=JSON.parse(decodeURIComponent(escape(atob(txt))))}
-        catch(_){d=JSON.parse(txt)}
-        d=migrateSave(d);
-        Object.assign(S,d);
+        const txt=String(r.result||'').trim();
+        try{raw=JSON.parse(decodeURIComponent(escape(atob(txt))))}
+        catch(_){raw=JSON.parse(txt)}
+      }catch(_){alert('الملف تالف أو ليس ملف حفظ لهذه اللعبة');return}
+
+      let next;
+      try{next=migrateSave(raw)}
+      catch(err){console.error('Save rejected:',err);alert('بيانات الحفظ مرفوضة — الملف لا يطابق مخطط اللعبة');return}
+
+      // Apply behind a snapshot: if anything throws while rebuilding the scene
+      // or the UI, roll all the way back instead of stranding a half-applied state.
+      const backup=S;
+      try{
+        S=next;
         applyTheme();
         buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();updateUI();saveGame();
         showToast('✅ تم تحميل الحفظ!');
-      }catch(e){alert('ملف غير صالح')}
+      }catch(err){
+        console.error('Import rollback:',err);
+        S=backup;
+        try{applyTheme();buildRoom(S.st);buildSelectors();BPlatforms();updateUI();}catch(_){}
+        alert('تعذّر تطبيق الحفظ — تم الرجوع إلى حالتك السابقة');
+      }
     };
-    r.readAsText(e.target.files[0]);
+    r.readAsText(file);
   };i.click();
 };
 function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString('en-US')}
@@ -1363,17 +1835,128 @@ function nextToast(){
   setTimeout(()=>{t.classList.remove('show');setTimeout(nextToast,300);},2200);
 }
 
+// ---- First-run hints ------------------------------------------------------
+// The game used to explain nothing: a new player met 11 genres, 15 topics, 4
+// platforms and 3 sliders with no indication of what any of them did, and the
+// only teaching signal arrived AFTER paying for a release. These fire once each.
+const TIP_TEXT={
+  panel:'👋 اختر <b>النوع</b> و<b>الموضوع</b> (بعض التوليفات تتفق وبعضها لا)، ثم وزّع النقاط على المحاور الثلاثة. العلامة الذهبية ⬦ على كل شريط = النسبة المثالية، والسطر الأزرق يقيّم اختيارك <b>قبل</b> أن تدفع.',
+  review:'💡 سطر «التوليفة والتوزيع» في نافذة التقييم يشرح سبب درجتك. نفس المؤشر ظاهر الآن في اللوحة قبل التطوير — استخدمه لتجرّب قبل أن تصرف مالك.',
+  upgrade:'🏗️ الترقية تفتح مكتباً أكبر: نقاط تطوير أكثر، سعة توظيف أعلى، وأرباح أكبر لكل لعبة — لكن تكلفة التطوير ترتفع أيضاً. لا تُرقِّ وأنت بلا سيولة احتياطية.',
+};
+function showTip(id){
+  if(!TIP_IDS.includes(id))return false;
+  if(!Array.isArray(S.tips))S.tips=[];
+  if(S.tips.includes(id))return false;
+  S.tips.push(id);
+  const host=document.getElementById('hintPanel');
+  if(host){
+    host.innerHTML='';
+    const bar=document.createElement('div');bar.className='hintbar';
+    const txt=document.createElement('div');txt.innerHTML=TIP_TEXT[id]||'';
+    const x=document.createElement('button');x.className='hx';x.textContent='×';
+    x.setAttribute('aria-label','إخفاء التلميح');
+    x.onclick=()=>{host.innerHTML='';saveGame();};
+    bar.appendChild(txt);bar.appendChild(x);
+    host.appendChild(bar);
+  }
+  saveGame();
+  return true;
+}
+
+// ---- Reduced motion ------------------------------------------------------
+// Gates confetti, the 4s celebration and the day/night lerp. Read live rather
+// than cached so toggling the OS setting takes effect without a reload.
+function prefersReducedMotion(){
+  try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}
+}
+
 function engineData(){return (S.engineVersion||0)>0?ENGINE_VERSIONS[S.engineVersion-1]:null;}
-function getDevCost(){
+// Development points used to be free, which made "spend every point" strictly
+// correct and reduced the remaining-points counter to decoration. Points beyond
+// SCOPE_FREE_RATIO of the stage cap now raise the budget, so scope is a real
+// trade-off: a tight, well-aimed build can beat a maxed-out one.
+const SCOPE_FREE_RATIO=0.7;
+const SCOPE_SURCHARGE=0.05;
+function scopePoints(){return S.sl.design+S.sl.code+S.sl.sound;}
+function scopeSurcharge(pts){
+  const free=Math.floor(STG[S.st].maxPts*SCOPE_FREE_RATIO);
+  return 1+Math.max(0,pts-free)*SCOPE_SURCHARGE;
+}
+function platformCostMult(){
+  return S.platforms.reduce((a,p)=>{const x=PLATFORMS.find(y=>y.id===p);return a+(x?x.costMult:0)},0)||1;
+}
+function getDevCost(opts){
+  const o=opts||{};
   let base=STG[S.st].devCost*DIFFICULTY[S.difficulty].costMult;
-  const platMult=S.platforms.reduce((a,p)=>a+PLATFORMS.find(x=>x.id===p).costMult,0)||1;
   const eng=engineData();
   const engineDisc=eng?eng.costDisc:1;
   const aiDisc=isResearched('aiart')?0.85:1;
-  let cost=base*platMult*engineDisc*aiDisc;
+  let cost=base*platformCostMult()*engineDisc*aiDisc;
+  if(!o.ignoreScope)cost*=scopeSurcharge(o.points!==undefined?o.points:scopePoints());
   if(S._sequelMode)cost*=0.5;
   if(S.em==='strike')cost*=2; // burned PCs event: next game costs double
   return Math.floor(cost);
+}
+// Cheapest release the player could still put together right now. Used for the
+// bankruptcy test so the scope surcharge on a maxed-out slider setup can't
+// declare a game over that the player could have avoided by scoping down.
+function minDevCost(){return getDevCost({ignoreScope:true});}
+
+// Largest point total the current budget can actually fund, or 0 if even the
+// cheapest build is out of reach.
+function affordablePoints(){
+  for(let p=scopePoints();p>=1;p--)if(getDevCost({points:p})<=S.money)return p;
+  return 0;
+}
+// Trim the allocation down to what the budget allows, taking from the axis that is
+// currently furthest above the genre's ideal share so the shape degrades gracefully
+// instead of collapsing one axis to zero.
+window.trimScope=function(){
+  const target=affordablePoints();
+  if(!target||target>=scopePoints())return;
+  const genre=GENRES.find(g=>g.id===S.genre);
+  const keys=['design','code','sound'];
+  while(scopePoints()>target){
+    const total=scopePoints();
+    const ideal=genre?idealFor(genre):[33.3,33.3,33.4];
+    let worst=null,worstGap=-Infinity;
+    keys.forEach((k,i)=>{
+      if(S.sl[k]<=0)return;
+      const gap=(S.sl[k]/total*100)-ideal[i];
+      if(gap>worstGap){worstGap=gap;worst=k;}
+    });
+    if(!worst)break;
+    S.sl[worst]--;
+  }
+  sn('c');updateUI();
+  showToast('✂️ قُلّص النطاق إلى '+scopePoints()+' نقطة ليناسب ميزانيتك');
+};
+
+// ---- Platform audience ----------------------------------------------------
+// Before this, audMult/costMult made PC and console mathematically pointless
+// (ratio exactly 1.00 each) and "tick all four platforms" strictly optimal.
+// Two counterweights: each platform now suits some genres and not others, and
+// each additional platform reaches a smaller slice of new players.
+const PLAT_AFFINITY={
+  pc:      {strategy:1.30,sim:1.25,mmo:1.20,rpg:1.15,horror:1.05,puzzle:0.95,racing:0.95},
+  mobile:  {puzzle:1.40,sim:1.15,racing:1.10,action:0.95,horror:0.80,strategy:0.70,mmo:0.70,rpg:0.60,vr:0.50},
+  console: {action:1.40,racing:1.35,br:1.25,adventure:1.20,horror:1.20,vr:1.10,sim:0.80,strategy:0.70,puzzle:0.85},
+  web:     {puzzle:1.30,mmo:1.10,strategy:1.05,adventure:0.90,action:0.80,br:0.80,horror:0.75,vr:0.40},
+};
+const PLAT_DECAY=[1,0.85,0.7,0.6];
+function platformAffinity(platId,genreId){
+  const m=PLAT_AFFINITY[platId];
+  return (m&&m[genreId]!==undefined)?m[genreId]:1;
+}
+// Total audience reach for the current platform selection and genre. Platforms
+// are sorted best-fit first so the decay penalises the marginal pick, not the
+// player's primary target.
+function platformAudience(genreId){
+  const eff=S.platforms
+    .map(id=>{const x=PLATFORMS.find(y=>y.id===id);return x?x.audMult*platformAffinity(id,genreId):0})
+    .sort((a,b)=>b-a);
+  return eff.reduce((a,v,i)=>a+v*(PLAT_DECAY[i]??PLAT_DECAY[PLAT_DECAY.length-1]),0);
 }
 function getTotalSalary(){return (S.employees||[]).reduce((a,e)=>a+e.salary,0);}
 function isResearched(id){return (S.research?.unlocked||[]).includes(id);}
@@ -1390,6 +1973,87 @@ function getShares(){
 
 function loanCap(){return Math.floor(STG[S.st].devCost*5*DIFFICULTY[S.difficulty].costMult);}
 
+// ---- Shared quality model -------------------------------------------------
+// finishDevelopment() used to compute these inline, which meant the player could
+// only ever learn the result after paying. They are extracted so updateUI() can
+// show the exact same numbers live, before a single riyal is spent.
+function skillBonuses(){
+  const b={design:0,code:0,sound:0,marketing:0};
+  (S.employees||[]).forEach(e=>{
+    const role=EMP_ROLES.find(r=>r.id===e.role);
+    const lvl=EMP_LEVELS[e.level||0];
+    if(role&&role.skill&&lvl)b[role.skill]+=lvl.mult*moraleMult();
+  });
+  return b;
+}
+// Raw slider points scaled by staff and research, i.e. what reviewers react to.
+function effectiveAxes(bonus){
+  const b=bonus||skillBonuses();
+  const d=S.sl.design*(1+b.design*0.15)*(isResearched('design')?1.3:1);
+  const c=S.sl.code*(1+b.code*0.15)*(isResearched('code')?1.3:1);
+  const so=S.sl.sound*(1+b.sound*0.15)*(isResearched('sound')?1.3:1);
+  return {d,c,s:so,tot:(d+c+so)||1};
+}
+// 0..1 — how closely the effective split matches this year's ideal for the genre.
+function axisBalance(genre,bonus){
+  const a=effectiveAxes(bonus);
+  const ideal=idealFor(genre);
+  const diff=Math.abs(a.d/a.tot*100-ideal[0])+Math.abs(a.c/a.tot*100-ideal[1])+Math.abs(a.s/a.tot*100-ideal[2]);
+  return Math.max(0,1-diff/120);
+}
+
+function renderTasteBar(){
+  const bar=document.getElementById('tasteBar');
+  const t=S.marketTaste;
+  if(!bar)return;
+  if(!t||S.gc<1){bar.style.display='none';return}
+  bar.style.display='block';
+  const lean=[];
+  if(t.design>=3)lean.push('التصميم');
+  if(t.code>=3)lean.push('البرمجة');
+  if(t.design<=-3&&t.code<=-3)lean.push('الصوت');
+  const hot=(t.hot||[]).map(id=>{const x=TOPICS.find(y=>y.id===id);return x?x.icon+' '+x.name:''}).filter(Boolean);
+  bar.innerHTML='📈 سنة '+(S.year||1)+': '
+    +(lean.length?'السوق يقدّر <b>'+lean.join(' و')+'</b> أكثر هذه السنة. ':'أذواق السوق متوازنة هذه السنة. ')
+    +(hot.length?'<br>🔥 مواضيع رائجة: <b>'+hot.join(' · ')+'</b>':'');
+}
+
+function renderQualityPreview(){
+  const box=document.getElementById('qualityPreview');
+  if(!box)return;
+  const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
+  if(!genre||!topic){
+    box.style.display='block';
+    box.innerHTML='<span class="qk">اختر النوع والموضوع لرؤية تقييم مبدئي لاختيارك قبل الدفع.</span>';
+    return;
+  }
+  box.style.display='block';
+  const syn=synergyFor(genre.id,topic.id);
+  const bal=axisBalance(genre);
+  const comboTxt=syn>=2?'<span class="good">مثالية ⭐</span>':syn>=1?'<span class="good">جيدة 👍</span>':syn<=-1?'<span class="bad">ضعيفة 👎</span>':'<span class="mid">عادية 😐</span>';
+  const balTxt=bal>=0.85?'<span class="good">ممتاز 🎯</span>':bal>=0.6?'<span class="mid">جيد 👌</span>':'<span class="bad">بعيد عن المثالي ⚠️</span>';
+  const aud=platformAudience(genre.id);
+  const audTxt=aud>=3?'<span class="good">واسع</span>':aud>=1.6?'<span class="mid">متوسط</span>':'<span class="bad">محدود</span>';
+  box.innerHTML='<span class="qk">التوليفة:</span> '+comboTxt
+    +' <span class="qk">•</span> <span class="qk">التوزيع:</span> '+balTxt
+    +' <span class="qk">•</span> <span class="qk">الجمهور:</span> '+audTxt+' <span class="qk">(×'+aud.toFixed(2)+')</span>';
+}
+
+// Golden tick on each slider track at the genre's ideal share for this year.
+function renderIdealMarkers(){
+  const ids={design:'mkd',code:'mkc',sound:'mks'};
+  const genre=GENRES.find(g=>g.id===S.genre);
+  const ideal=genre?idealFor(genre):null;
+  ['design','code','sound'].forEach((k,i)=>{
+    const el=document.getElementById(ids[k]);
+    if(!el)return;
+    if(!ideal){el.style.display='none';return}
+    el.style.display='block';
+    el.style.left=Math.max(0,Math.min(100,ideal[i]))+'%';
+    el.title='النسبة المثالية: '+Math.round(ideal[i])+'%';
+  });
+}
+
 function updateUI(){
   document.getElementById('dm').textContent=fmt(S.money);
   document.getElementById('df').textContent=fmt(S.fn);
@@ -1398,7 +2062,9 @@ function updateUI(){
   const u=S.sl.design+S.sl.code+S.sl.sound;
   document.getElementById('dpl').textContent=STG[S.st].maxPts-u;
   const cost=getDevCost();
-  document.getElementById('dcc').textContent='تكلفة: '+fmt(cost)+(S.platforms.length>1?' ('+S.platforms.length+' منصات)':'');
+  const freePts=Math.floor(STG[S.st].maxPts*SCOPE_FREE_RATIO);
+  const scopeNote=u>freePts?' • نطاق واسع +'+Math.round((scopeSurcharge(u)-1)*100)+'%':'';
+  document.getElementById('dcc').textContent='تكلفة: '+fmt(cost)+(S.platforms.length>1?' ('+S.platforms.length+' منصات)':'')+scopeNote;
   const mx=STG[S.st].maxPts;
   ['design','code','sound'].forEach(k=>{
     const p=(S.sl[k]/mx)*100;
@@ -1408,11 +2074,31 @@ function updateUI(){
     document.getElementById(fid).style.width=p+'%';
     document.getElementById(tid).style.left=p+'%';
     document.getElementById(vid).textContent=S.sl[k];
+    const w=document.querySelector('.stw[data-s="'+k+'"]');
+    if(w){w.setAttribute('aria-valuenow',S.sl[k]);w.setAttribute('aria-valuemax',mx);}
   });
+  renderIdealMarkers();
+  renderQualityPreview();
+  renderTasteBar();
   document.getElementById('bdev').disabled=!(S.genre&&S.topic&&S.money>=cost&&!S.dev&&S.platforms.length>0);
-  const broke=S.money<cost;
+  // Freelance is the survival valve: offer it whenever even the cheapest
+  // possible build is out of reach, not just the currently-configured one.
+  const broke=S.money<minDevCost();
   document.getElementById('bfree').style.display=broke?'block':'none';
   document.getElementById('freeDesc').style.display=broke?'block':'none';
+  // The gap in between: this build is too expensive but a smaller one is affordable.
+  // Without this the develop button just sat disabled with no explanation and no
+  // freelance fallback — a dead end the player had to reverse-engineer.
+  const overBudget=!broke&&S.genre&&S.topic&&S.money<cost;
+  const sb=document.getElementById('scopeBlock');
+  sb.style.display=overBudget?'block':'none';
+  if(overBudget){
+    const target=affordablePoints();
+    document.getElementById('scopeMsg').textContent=
+      '⚠️ ميزانيتك لا تكفي هذا النطاق ('+fmt(cost)+'). قلّل النقاط أو أزل منصة'
+      +(target?' — الحد المتاح الآن '+target+' نقطة.':'.');
+    document.getElementById('scopeTrim').style.display=target?'block':'none';
+  }
   // Research badge
   document.getElementById('rsBox').style.display=S.gc>=2?'flex':'none';
   document.getElementById('resBtn').style.display=S.gc>=2?'inline-block':'none';
@@ -1432,7 +2118,9 @@ function updateUI(){
   if(S.contract&&S.contract.active){
     const g=GENRES.find(x=>x.id===S.contract.genre);
     cb.style.display='block';
-    cb.innerHTML='📜 عقد '+S.contract.icon+' '+S.contract.publisher+': لعبة '+(g?g.icon+' '+g.name:'')+' بتقييم ≥ '+S.contract.minScore+' — الدفعة: '+fmt(S.contract.payment)+' 💰 — متبقي '+S.contract.gamesLeft+' إصدار';
+    cb.innerHTML='📜 عقد '+S.contract.icon+' '+S.contract.publisher+': لعبة '+(g?g.icon+' '+g.name:'')
+      +' بتقييم ≥ '+S.contract.minScore+' — الدفعة: '+fmt(S.contract.payment)+' 💰 — متبقي '+S.contract.gamesLeft+' إصدار'
+      +(S.genre&&S.genre!==S.contract.genre?'<br>⚠️ نوعك الحالي مختلف عن نوع العقد — إصدارك القادم يستهلك من المهلة بلا دفعة.':'');
   }else cb.style.display='none';
 }
 
@@ -1446,20 +2134,35 @@ function clearSequelSetup(){
 function buildSelectors(){
   const gr=document.getElementById('gr'),tr=document.getElementById('tr');
   gr.innerHTML='';tr.innerHTML='';
+  const contractGenre=(S.contract&&S.contract.active)?S.contract.genre:null;
   GENRES.forEach(g=>{
     const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
     if(g.research&&!isResearched(g.research)){b.classList.add('lock');b.disabled=true;b.title='يحتاج بحثاً';}
-    else if(S.contract&&S.contract.active&&g.id!==S.contract.genre){b.classList.add('lock');b.disabled=true;b.title='ملتزم بعقد نشر';}
-    else b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
+    else{
+      // Other genres used to be hard-locked while a contract ran, which made the
+      // advertised "deadline: two releases" penalty unreachable — the contract was
+      // pure upside with a fake risk. They are now selectable but flagged, so
+      // breaking the contract is a real (and costly) choice.
+      if(contractGenre&&g.id!==contractGenre){b.title='خارج نطاق عقدك — سيستهلك من المهلة بلا دفعة';b.textContent+=' ⚠️';}
+      else if(contractGenre)b.title='نوع العقد الحالي';
+      b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');BPlatforms();updateUI();};
+    }
     if(S.genre===g.id)b.classList.add('a');
+    b.setAttribute('aria-pressed',S.genre===g.id?'true':'false');
     gr.appendChild(b);
   });
+  const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
   TOPICS.forEach(t=>{
     const b=document.createElement('button');b.className='sb2';
-    // Highlight the trending topic so the ×2 sales opportunity is visible
-    b.textContent=t.icon+' '+t.name+(S.em==='trend'&&S.tt===t.id?' 🔥':'');
+    // Two separate signals: 🔥 = trending event (×2 sales), ⭐ = hot this year (+1 synergy)
+    let mark='';
+    if(S.em==='trend'&&S.tt===t.id)mark+=' 🔥';
+    if(hot.has(t.id))mark+=' ⭐';
+    b.textContent=t.icon+' '+t.name+mark;
+    if(hot.has(t.id))b.title='موضوع رائج هذه السنة (+'+TASTE_HOT_BONUS+' توافق)';
     b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
     if(S.topic===t.id)b.classList.add('a');
+    b.setAttribute('aria-pressed',S.topic===t.id?'true':'false');
     tr.appendChild(b);
   });
 }
@@ -1467,8 +2170,15 @@ function buildSelectors(){
 function BPlatforms(){
   const pr=document.getElementById('plr');pr.innerHTML='';
   PLATFORMS.forEach(p=>{
-    const b=document.createElement('button');b.className='sb2';b.textContent=p.icon+' '+p.name;
+    const b=document.createElement('button');b.className='sb2';
+    // Surface the genre affinity so it is a readable decision rather than a
+    // hidden table the player can only reverse-engineer from outcomes.
+    const aff=S.genre?platformAffinity(p.id,S.genre):1;
+    const mark=!S.genre?'':aff>=1.2?' 🔥':aff<=0.8?' 🔻':'';
+    b.textContent=p.icon+' '+p.name+mark;
+    if(S.genre)b.title='ملاءمة للنوع: ×'+aff.toFixed(2)+' • تكلفة ×'+p.costMult;
     if(S.platforms.includes(p.id))b.classList.add('a');
+    b.setAttribute('aria-pressed',S.platforms.includes(p.id)?'true':'false');
     b.onclick=()=>{
       if(S.platforms.includes(p.id)){
         if(S.platforms.length>1)S.platforms=S.platforms.filter(x=>x!==p.id);
@@ -1484,11 +2194,16 @@ function bindSliders(){
   document.querySelectorAll('.stw').forEach(w=>{
     if(w.dataset.bound)return;w.dataset.bound='1';
     const k=w.dataset.s;let dr=false;
+    function setVal(nv){
+      const mx=STG[S.st].maxPts;
+      const os=Object.keys(S.sl).filter(x=>x!==k).reduce((a,x)=>a+S.sl[x],0);
+      S.sl[k]=Math.max(0,Math.min(nv,mx-os));
+      updateUI();
+    }
     function calc(e){
       const r=w.getBoundingClientRect();const cx=e.clientX??e.touches?.[0]?.clientX??0;
-      const p=Math.max(0,Math.min(1,(cx-r.left)/r.width));const mx=STG[S.st].maxPts;
-      const nv=Math.round(p*mx);const ot=Object.keys(S.sl).filter(x=>x!==k);
-      const os=ot.reduce((s,x)=>s+S.sl[x],0);S.sl[k]=Math.max(0,Math.min(nv,mx-os));updateUI();
+      const p=Math.max(0,Math.min(1,(cx-r.left)/r.width));
+      setVal(Math.round(p*STG[S.st].maxPts));
     }
     w.addEventListener('mousedown',e=>{dr=true;calc(e)});
     w.addEventListener('touchstart',e=>{dr=true;calc(e);e.preventDefault()},{passive:false});
@@ -1496,11 +2211,34 @@ function bindSliders(){
     window.addEventListener('touchmove',e=>{if(dr)calc(e)},{passive:true});
     window.addEventListener('mouseup',()=>dr=false);
     window.addEventListener('touchend',()=>dr=false);
+    // Keyboard control. The sliders were pointer-only, which made the game's
+    // single most important input unreachable without a mouse or touchscreen.
+    // Note the RTL inversion: ArrowRight decreases, matching the visual direction.
+    w.addEventListener('keydown',e=>{
+      const mx=STG[S.st].maxPts;let handled=true;
+      switch(e.key){
+        case 'ArrowLeft': case 'ArrowUp':   setVal(S.sl[k]+1);break;
+        case 'ArrowRight': case 'ArrowDown':setVal(S.sl[k]-1);break;
+        case 'PageUp':   setVal(S.sl[k]+3);break;
+        case 'PageDown': setVal(S.sl[k]-3);break;
+        case 'Home': setVal(0);break;
+        case 'End':  setVal(mx);break;
+        default: handled=false;
+      }
+      if(handled)e.preventDefault();
+    });
   });
 }
 
 let po=false;
-window.togglePanel=function(){po=!po;document.getElementById('mp').classList.toggle('open',po);document.getElementById('pt').classList.toggle('open',po);document.getElementById('pa').textContent=po?'▼':'▲';};
+window.togglePanel=function(){
+  po=!po;
+  document.getElementById('mp').classList.toggle('open',po);
+  const pt=document.getElementById('pt');
+  pt.classList.toggle('open',po);
+  pt.setAttribute('aria-expanded',po?'true':'false');
+  document.getElementById('pa').textContent=po?'▼':'▲';
+};
 
 // ============ AUDIO (single context, volume control) ============
 let ac;
@@ -1548,8 +2286,11 @@ window.freelance=function(){
       const cap=15000+S.st*12000;
       const earn=Math.floor(Math.min(raw,cap));
       S.money+=earn;S.dev=false;S.gse++;
+      // Freelancing is not a release, so any staged sequel (half cost + IP bonus)
+      // must not survive into the next real game.
+      clearSequelSetup();
       document.getElementById('pt').style.display='flex';
-      openPanel();updateUI();
+      openPanel();updateUI();saveGame();
       showToast('💼 عمل حر: +'+fmt(earn));
     }
   },50);
@@ -1575,10 +2316,12 @@ function OpenMkt(){
 }
 
 window.ChooseMkt=function(tier){
-  document.getElementById('mktModal').classList.remove('show');
   const tiers={none:{cost:0,hype:0,bonus:0},s:{cost:5000,hype:20,bonus:0.15},m:{cost:25000,hype:50,bonus:0.35},l:{cost:100000,hype:100,bonus:0.75}};
   const t=tiers[tier];
-  if(S.money<getDevCost()+t.cost){showToast('❌ مال غير كافٍ');OpenMkt();return}
+  // Guard before dismissing (see ChooseQA): 'none' is free, so there is always a
+  // valid option and the modal never needs to re-open itself.
+  if(S.money<getDevCost()+t.cost){showToast('❌ مال غير كافٍ لهذه الحملة');return}
+  document.getElementById('mktModal').classList.remove('show');
   S.marketing.campaign=tier;
   S.marketing.cost=t.cost;
   // Analytics research bonus
@@ -1591,7 +2334,24 @@ window.ChooseMkt=function(tier){
   OpenQA();
 };
 
+// QA options are priced off the development budget, so at a tight margin the player
+// can afford the game but not the testing. The modal used to accept the click, fail
+// the affordability check, fire a toast and re-open itself — with only 'quick' being
+// free, that read as an unexplained dead end (and looped outright for anything
+// driving the UI). Unaffordable tiers are now disabled up front with their real
+// price shown, exactly like the marketing tiers.
 function OpenQA(){
+  const cost=getDevCost();
+  const tiers=[['qaOptQuick',0],['qaOptNormal',cost*0.1],['qaOptFull',cost*0.25]];
+  tiers.forEach(([id,c])=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const can=S.money>=Math.floor(c);
+    el.classList.toggle('dis',!can);
+    el.disabled=!can;
+    const price=el.querySelector('.qaprice');
+    if(price)price.textContent=c>0?(' — '+fmt(Math.floor(c))+' 💰'+(can?'':' (لا يكفي رصيدك)')):' — مجاناً';
+  });
   document.getElementById('qaModal').classList.add('show');
 }
 
@@ -1609,20 +2369,45 @@ window.CancelQA=function(){
 };
 
 window.ChooseQA=function(mode){
+  const cost=getDevCost();
+  const qaCost=Math.floor({quick:0,normal:cost*0.1,full:cost*0.25}[mode]||0);
+  // Guard before dismissing, and never re-open: 'quick' is always free, so a player
+  // who can afford the game always has at least one valid choice on screen.
+  if(S.money<qaCost){showToast('❌ تكلفة الاختبار أكبر من رصيدك — اختر إطلاقاً سريعاً');return}
   document.getElementById('qaModal').classList.remove('show');
   S.qaMode=mode;
-  const cost=getDevCost();
-  const qaCost={quick:0,normal:cost*0.1,full:cost*0.25}[mode];
-  if(S.money<cost+qaCost){showToast('❌ مال غير كافٍ');OpenQA();return}
-  S.money-=Math.floor(qaCost);
-  S.pendingDevCost=(S.pendingDevCost||0)+Math.floor(qaCost); // track in-flight spend for reload refund
+  S.money-=qaCost;
+  S.pendingDevCost=(S.pendingDevCost||0)+qaCost; // track in-flight spend for reload refund
   // Start actual development
   StartDevelopment();
 };
 
+// The development bar was 2.75s of pure waiting with no player agency — the least
+// interactive moment in the core loop, repeated for every one of the ~40 releases a
+// full playthrough takes. It now pauses once, halfway, for a real trade-off.
+const PROD_EVENTS=[
+  {q:'الفريق يرى أن اللعبة تحتاج أسبوعين إضافيين للتلميع. ما قرارك؟',opts:[
+    {n:'⏳ مدّد أسبوعين',d:'+0.3 تقييم • +10% من تكلفة التطوير',score:0.3,morale:0,costRatio:0.10},
+    {n:'📅 التزم بالموعد',d:'بلا تكلفة إضافية وبلا مكسب',score:0,morale:0,costRatio:0},
+    {n:'🔥 اضغط على الفريق (Crunch)',d:'+0.5 تقييم • -10 معنويات',score:0.5,morale:-10,costRatio:0},
+  ]},
+  {q:'ظهر خلل بنيوي في منتصف الإنتاج. كيف تتعامل معه؟',opts:[
+    {n:'🧰 أعِد كتابة النظام',d:'+0.4 تقييم • +15% من تكلفة التطوير',score:0.4,morale:0,costRatio:0.15},
+    {n:'🩹 رقعة سريعة',d:'-0.2 تقييم • بلا تكلفة',score:-0.2,morale:0,costRatio:0},
+    {n:'🌙 ليالٍ إضافية',d:'+0.3 تقييم • -8 معنويات',score:0.3,morale:-8,costRatio:0},
+  ]},
+  {q:'ناشر يعرض تمويلاً إضافياً مقابل تسريع الإطلاق. توافق؟',opts:[
+    {n:'💰 اقبل التمويل',d:'+15% من التكلفة نقداً الآن • -0.3 تقييم',score:-0.3,morale:0,costRatio:-0.15},
+    {n:'🚪 ارفض واستمر',d:'بلا تغيير',score:0,morale:0,costRatio:0},
+    {n:'🤝 تفاوض',d:'+0.2 تقييم • -5 معنويات',score:0.2,morale:-5,costRatio:0},
+  ]},
+];
+
 function StartDevelopment(){
   const cost=getDevCost();
   S.money-=cost;S.dev=true;
+  S._devCost=cost;
+  S._prodScoreBonus=0;S._prodMoraleDelta=0;
   S.pendingDevCost=(S.pendingDevCost||0)+cost; // track in-flight spend for reload refund
   if(S.em==='strike')S.em=null; // double cost paid, consume the event
   updateUI();sn('c');
@@ -1630,181 +2415,240 @@ function StartDevelopment(){
   document.getElementById('sp').classList.add('show');
   typingActive=true;
   const ph=['تخطيط اللعبة...','كتابة المحرك...','تصميم المراحل...','إضافة الأصوات...',S.qaMode==='full'?'اختبار شامل...':S.qaMode==='quick'?'إطلاق سريع...':'إصلاح الأخطاء...','تحضير الإطلاق...'];
-  let step=0;const total=55;
-  const iv=setInterval(()=>{
+  const total=55,pauseAt=27;
+  let step=0,paused=false;
+  const tick=()=>{
     step++;document.getElementById('pf').style.width=(step/total*100)+'%';
     document.getElementById('ppx').textContent=ph[Math.min(Math.floor(step/total*ph.length),ph.length-1)];
     if(step%7===0)sn('t');
-    if(step>=total){clearInterval(iv);finishDevelopment();}
-  },50);
+    if(step===pauseAt&&!paused){paused=true;clearInterval(S._devIv);askProdDecision(()=>{S._devIv=setInterval(tick,50)});return}
+    if(step>=total){clearInterval(S._devIv);finishDevelopment();}
+  };
+  S._devIv=setInterval(tick,50);
 }
 
-function finishDevelopment(){
-  typingActive=false;document.getElementById('sp').classList.remove('show');
+function askProdDecision(resume){
+  const ev=PROD_EVENTS[Math.random()*PROD_EVENTS.length|0];
+  document.getElementById('sp').classList.remove('show');
+  document.getElementById('prodDesc').textContent=ev.q;
+  const box=document.getElementById('prodOpts');box.innerHTML='';
+  ev.opts.forEach(opt=>{
+    const cash=Math.round((S._devCost||0)*opt.costRatio);
+    const b=document.createElement('button');b.className='prod-opt';
+    const affordable=cash<=0||S.money>=cash;
+    const t=document.createElement('div');t.className='pt2';t.textContent=opt.n;
+    const d=document.createElement('div');d.className='pd2';
+    d.textContent=opt.d+(cash>0?' — '+fmt(cash)+' 💰'+(affordable?'':' (لا يكفي رصيدك)'):cash<0?' — تحصل على '+fmt(-cash)+' 💰':'');
+    b.appendChild(t);b.appendChild(d);
+    b.disabled=!affordable;
+    if(!affordable)b.style.opacity='0.45';
+    b.onclick=()=>{
+      if(!affordable)return;
+      if(cash!==0){S.money-=cash;S.pendingDevCost=(S.pendingDevCost||0)+Math.max(0,cash);}
+      S._prodScoreBonus=(S._prodScoreBonus||0)+opt.score;
+      S._prodMoraleDelta=(S._prodMoraleDelta||0)+opt.morale;
+      document.getElementById('prodModal').classList.remove('show');
+      document.getElementById('sp').classList.add('show');
+      sn('c');updateUI();resume();
+    };
+    box.appendChild(b);
+  });
+  document.getElementById('prodModal').classList.add('show');
+  sn('ev');
+}
+
+// ---- Balance constants ----------------------------------------------------
+// These used to be ~30 unnamed literals inlined across a 240-line
+// finishDevelopment(), so nobody could tune the economy without editing the body
+// of the function. Everything the designer is expected to touch lives here.
+const BALANCE={
+  score:{
+    base:3,            // floor before any quality is earned
+    balanceWeight:4,   // how much matching the ideal axis split is worth
+    synergyWeight:0.7, // per point of genre/topic synergy
+    scopeWeight:2,     // how much using the full point budget is worth
+    balanceTolerance:120, // total deviation (percentage points) that zeroes out balance
+    hdBonus:0.5,esportsBonus:1,fullQaBonus:0.4,
+    moraleSwing:0.5,   // ±cap from studio morale
+    festivalBonus:1,quitPenalty:0.5,
+    quickBugPenalty:0.2,normalBugPenalty:0.1,
+    sequelCap:1.5,sequelFromParent:0.15,sequelFatigue:0.3,
+    reviewerSpread:1.5,finalJitter:0.8,
+    expectationCatchUp:0.3, // how fast the rubber-band baseline chases performance
+  },
+  sales:{
+    scoreExponent:2.5,unit:100,fanWeight:0.002,
+    stageRevenue:i=>1.5+i*1.0,
+    trend:2,recession:0.6,publisher:1.5,piracy:0.7,
+    sequel:1.5,prestigePerLevel:0.1,
+    shareFloor:0.9,shareRange:0.4,
+    crossPlatform:0.15,marketerCampaign:0.12,marketerWordOfMouth:0.05,
+  },
+  fans:{
+    great:[200,300],good:[50,100],ok:[-10,30],bad:[-50,-100],
+    hypePerPoint:2,communityMult:1.5,moddingMult:1.3,
+  },
+  dlc:{
+    scoreExponent:2.3,unit:60,fanWeight:0.001,costRatio:0.2,
+    fatigue:0.6,      // each additional DLC on the same IP earns this much of the last
+    stageRevenue:i=>1+i*0.35,
+    fansBase:50,fansPerScore:30,
+  },
+  research:{perGame:1,highScoreBonus:2,highScoreAt:8},
+  morale:{great:6,good:3,flop:-8,crunch:-4,resignChance:0.15,resignBelow:30},
+};
+
+// ---- Release pipeline -----------------------------------------------------
+// finishDevelopment() was a single 240-line function that mixed score maths,
+// sales maths, contract settlement, salaries, loan instalments, promotions,
+// resignations, rival simulation, DOM writes, scene rebuilding, sound and
+// persistence. It is now an orchestrator over named steps, each of which can be
+// read — and reasoned about — on its own.
+
+// Resolve the game's identity: name, easter egg, sequel parent.
+function resolveRelease(){
   const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
   const custName=document.getElementById('gni').value.trim().slice(0,60);
   const gameName=custName||NA[Math.random()*NA.length|0]+' '+NB[Math.random()*NB.length|0];
-
-  let eggBonus=1;
   const eggKey=Object.keys(EGGS).find(k=>gameName.includes(k));
-  if(eggKey){
-    const egg=EGGS[eggKey];eggBonus=egg.bonus;S.eggs++;
-    const el=document.getElementById('ee');
-    document.getElementById('eei').textContent=egg.emoji;
-    document.getElementById('eet').textContent=eggKey+'!';
-    document.getElementById('eed').textContent=egg.desc+' (×'+egg.bonus+' مبيعات!)';
-    el.classList.add('show');sn('egg');
-    setTimeout(()=>el.classList.remove('show'),2500);
-  }
+  const parentIP=(pendingGameData&&pendingGameData.parentIP)?S.ips.find(i=>i.id===pendingGameData.parentIP):null;
+  return {genre,topic,gameName,eggKey,egg:eggKey?EGGS[eggKey]:null,parentIP};
+}
 
-  const syn=SYN[genre.id]?.[topic.id]||0;
-  const mx=STG[S.st].maxPts;const tot=S.sl.design+S.sl.code+S.sl.sound||1;
+function showEggPopup(eggKey,egg){
+  S.eggs++;
+  const el=document.getElementById('ee');
+  document.getElementById('eei').textContent=egg.emoji;
+  document.getElementById('eet').textContent=eggKey+'!';
+  document.getElementById('eed').textContent=egg.desc+' (×'+egg.bonus+' مبيعات!)';
+  el.classList.add('show');sn('egg');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
 
-  // Employee bonuses to skill axes
-  let skillBonus={design:0,code:0,sound:0,marketing:0};
-  (S.employees||[]).forEach(e=>{
-    const role=EMP_ROLES.find(r=>r.id===e.role);
-    const lvl=EMP_LEVELS[e.level||0];
-    if(role&&role.skill)skillBonus[role.skill]+=lvl.mult*moraleMult();
-  });
-  const eDesign=S.sl.design*(1+skillBonus.design*0.15)*(isResearched('design')?1.3:1);
-  const eCode=S.sl.code*(1+skillBonus.code*0.15)*(isResearched('code')?1.3:1);
-  const eSound=S.sl.sound*(1+skillBonus.sound*0.15)*(isResearched('sound')?1.3:1);
-  const eTot=eDesign+eCode+eSound;
+// Reviewer scores. Returns the raw quality figure, the four review scores, their
+// average, and the inputs the review screen explains back to the player.
+function computeScore(rel){
+  const C=BALANCE.score;
+  const bonus=skillBonuses();
+  const syn=synergyFor(rel.genre.id,rel.topic.id);
+  const bal=axisBalance(rel.genre,bonus);
+  const pts=S.sl.design+S.sl.code+S.sl.sound;
+  const scope=pts/STG[S.st].maxPts;
 
-  const pD=(eDesign/eTot)*100,pC=(eCode/eTot)*100,pS=(eSound/eTot)*100;
-  const diff=Math.abs(pD-genre.ideal[0])+Math.abs(pC-genre.ideal[1])+Math.abs(pS-genre.ideal[2]);
-  const bal=Math.max(0,1-diff/120);const used=tot/mx;
-
-  let raw=3+bal*4+syn*.7+used*2;
-  if(S.em==='festival'){raw+=1;S.em=null}
-  if(S.em==='quit'){raw-=.5;S.em=null}
-  // HD graphics research bonus
-  if(isResearched('hd'))raw+=0.5;
-  // E-sports bonus for action/racing
-  if(isResearched('esports')&&(genre.id==='action'||genre.id==='racing'))raw+=1;
-  // Engine version score bonus (v2+)
+  let raw=C.base+bal*C.balanceWeight+syn*C.synergyWeight+scope*C.scopeWeight;
+  if(S.em==='festival'){raw+=C.festivalBonus;S.em=null}
+  if(S.em==='quit'){raw-=C.quitPenalty;S.em=null}
+  if(isResearched('hd'))raw+=C.hdBonus;
+  if(isResearched('esports')&&(rel.genre.id==='action'||rel.genre.id==='racing'))raw+=C.esportsBonus;
   const eng=engineData();
   if(eng&&eng.score)raw+=eng.score;
-  // Studio morale nudge (±0.5 max)
-  raw+=Math.max(-0.5,Math.min(0.5,((S.morale??75)-50)/100));
-  // QA mode effects
+  raw+=Math.max(-C.moraleSwing,Math.min(C.moraleSwing,((S.morale??75)-50)/100));
+  raw+=S._prodScoreBonus||0; // mid-production decision
+
   let bugCount=0;
-  if(S.qaMode==='quick'){
-    bugCount=Math.floor(2+Math.random()*4);
-    raw-=bugCount*0.2;
-  }else if(S.qaMode==='normal'){
-    bugCount=Math.floor(Math.random()*2);
-    raw-=bugCount*0.1;
-  }else if(S.qaMode==='full'){
-    bugCount=0;
-    raw+=0.4;
-  }
+  if(S.qaMode==='quick'){bugCount=Math.floor(2+Math.random()*4);raw-=bugCount*C.quickBugPenalty;}
+  else if(S.qaMode==='normal'){bugCount=Math.floor(Math.random()*2);raw-=bugCount*C.normalBugPenalty;}
+  else if(S.qaMode==='full'){raw+=C.fullQaBonus;}
 
-  // Sequel bonus: if this is a sequel, raw gets boost based on parent IP
   let sequelInfo=null;
-  if(pendingGameData&&pendingGameData.parentIP){
-    const ip=S.ips.find(i=>i.id===pendingGameData.parentIP);
-    if(ip){
-      raw+=Math.min(1.5,ip.bestScore*0.15);
-      // Sequel fatigue: each sequel beyond 2 reduces effect
-      if(ip.sequels>=3)raw-=(ip.sequels-2)*0.3;
-      sequelInfo={ipId:ip.id,sequelNum:ip.sequels+1};
-    }
+  if(rel.parentIP){
+    const ip=rel.parentIP;
+    raw+=Math.min(C.sequelCap,ip.bestScore*C.sequelFromParent);
+    if(ip.sequels>=3)raw-=(ip.sequels-2)*C.sequelFatigue;
+    sequelInfo={ipId:ip.id,sequelNum:ip.sequels+1};
   }
 
+  // Rubber band: scores are relative to the studio's own track record, so a
+  // winning formula cannot simply be repeated forever.
   const d2=raw-S.hs;let fin;
-  if(d2>1)fin=9+Math.random()*1.2;else if(d2>0)fin=7.5+Math.random()*2;
-  else if(d2>-1)fin=6+Math.random()*2;else fin=3+Math.random()*3;
-  fin+=(Math.random()-.5)*.8;fin=Math.max(1,Math.min(10,Math.round(fin*10)/10));
-  if(raw>S.hs)S.hs+=(raw-S.hs)*.3;
+  if(d2>1)fin=9+Math.random()*1.2;
+  else if(d2>0)fin=7.5+Math.random()*2;
+  else if(d2>-1)fin=6+Math.random()*2;
+  else fin=3+Math.random()*3;
+  fin+=(Math.random()-.5)*C.finalJitter;
+  fin=Math.max(1,Math.min(10,Math.round(fin*10)/10));
+  if(raw>S.hs)S.hs+=(raw-S.hs)*C.expectationCatchUp;
 
-  const scores=[];for(let i=0;i<4;i++){let sc=fin+(Math.random()-.5)*1.5;scores.push(Math.max(1,Math.min(10,Math.round(sc*10)/10)));}
+  const scores=[];
+  for(let i=0;i<4;i++)scores.push(Math.max(1,Math.min(10,Math.round((fin+(Math.random()-.5)*C.reviewerSpread)*10)/10)));
   const avg=Math.round(scores.reduce((a,b)=>a+b)/4*10)/10;
+  return {raw,scores,avg,bugCount,sequelInfo,syn,bal,bonus};
+}
 
-  // Sales with all multipliers
-  let sales=Math.pow(avg,2.5)*100*(1+S.fn*.002)*eggBonus;
+// Market revenue and fan delta for a finished game.
+function computeSales(rel,q){
+  const C=BALANCE.sales,F=BALANCE.fans;
+  const eggBonus=rel.egg?rel.egg.bonus:1;
+  let sales=Math.pow(q.avg,C.scoreExponent)*C.unit*(1+S.fn*C.fanWeight)*eggBonus;
+
   let mult=1;
-  if(S.em==='trend'&&topic.id===S.tt){mult=2;S.em=null}
-  if(S.em==='recession'){mult=.6;S.em=null}
-  if(S.em==='publisher'){mult=1.5;S.em=null}
-  if(S.em==='piracy'){mult=.7;S.em=null}
+  if(S.em==='trend'&&rel.topic.id===S.tt){mult=C.trend;S.em=null}
+  if(S.em==='recession'){mult=C.recession;S.em=null}
+  if(S.em==='publisher'){mult=C.publisher;S.em=null}
+  if(S.em==='piracy'){mult=C.piracy;S.em=null}
   sales*=mult;
 
-  // Marketing: a paid campaign multiplies sales; marketer employees amplify
-  // that campaign AND add a small baseline word-of-mouth boost on their own,
-  // so hiring a marketer is never dead weight (was previously computed then ignored).
-  const mktSkill=skillBonus.marketing;
-  if(S.marketing.bonus)sales*=(1+S.marketing.bonus*(1+mktSkill*0.12));
-  if(mktSkill>0)sales*=(1+mktSkill*0.05);
+  // A paid campaign multiplies sales; marketer employees amplify the campaign AND
+  // add a small baseline word-of-mouth boost on their own.
+  const mktSkill=q.bonus.marketing;
+  if(S.marketing.bonus)sales*=(1+S.marketing.bonus*(1+mktSkill*C.marketerCampaign));
+  if(mktSkill>0)sales*=(1+mktSkill*C.marketerWordOfMouth);
 
-  // Platform multipliers
-  const platAud=S.platforms.reduce((a,p)=>a+PLATFORMS.find(x=>x.id===p).audMult,0);
-  sales*=platAud;
-  // Cross-platform research bonus
-  if(isResearched('crossplat')&&S.platforms.length>1)sales*=(1+0.15*(S.platforms.length-1));
+  // Genre-aware platform reach with diminishing returns per extra platform.
+  sales*=platformAudience(rel.genre.id);
+  if(isResearched('crossplat')&&S.platforms.length>1)sales*=(1+C.crossPlatform*(S.platforms.length-1));
 
-  // Sequel sales multiplier
-  if(sequelInfo)sales*=1.5;
-
-  // Difficulty
+  if(q.sequelInfo)sales*=C.sequel;
   sales*=DIFFICULTY[S.difficulty].rewardMult;
-  // Prestige bonus
-  sales*=(1+S.prestige.level*0.1);
-  // Market share vs rival studios (×0.9 at 0% share → ×1.3 at 100%)
-  sales*=0.9+getShares().player*0.4;
+  sales*=(1+S.prestige.level*C.prestigePerLevel);
+  sales*=C.shareFloor+getShares().player*C.shareRange;
 
-  let rev=Math.floor(sales*(1.5+S.st*1.0));
+  let rev=Math.floor(sales*C.stageRevenue(S.st));
 
-  let fd=0;
-  if(avg>=9)fd=200+(Math.random()*300|0);else if(avg>=7)fd=50+(Math.random()*100|0);
-  else if(avg>=5)fd=-10+(Math.random()*30|0);else fd=-(50+(Math.random()*100|0));
-  // Hype gives initial fan boost (marketer employees amplify it too)
-  if(S.marketing.hype)fd+=Math.floor(S.marketing.hype*2*(1+mktSkill*0.12));
-  // Community management research
-  if(isResearched('community')&&fd>0)fd=Math.floor(fd*1.5);
-  // Modding research for RPG/Sim
-  if(isResearched('modding')&&(genre.id==='rpg'||genre.id==='sim')&&fd>0)fd=Math.floor(fd*1.3);
+  const pick=r=>r[0]+(Math.random()*r[1]|0);
+  let fd;
+  if(q.avg>=9)fd=pick(F.great);else if(q.avg>=7)fd=pick(F.good);
+  else if(q.avg>=5)fd=pick(F.ok);else fd=-(50+(Math.random()*100|0));
+  if(S.marketing.hype)fd+=Math.floor(S.marketing.hype*F.hypePerPoint*(1+mktSkill*C.marketerCampaign));
+  if(isResearched('community')&&fd>0)fd=Math.floor(fd*F.communityMult);
+  if(isResearched('modding')&&(rel.genre.id==='rpg'||rel.genre.id==='sim')&&fd>0)fd=Math.floor(fd*F.moddingMult);
 
-  // Publisher contract settlement: fixed payment replaces market revenue
-  let contractResult=null;
-  if(S.contract&&S.contract.active&&genre.id===S.contract.genre){
+  return {rev,fd};
+}
+
+// Publisher contract: a fixed payment replaces market revenue when the delivered
+// game matches the contracted genre; otherwise the deadline burns down.
+function settleContract(rel,q,out){
+  if(!(S.contract&&S.contract.active))return null;
+  if(rel.genre.id===S.contract.genre){
     const c=S.contract;
     let pay=c.payment,txt,cls='ps';
-    if(avg>=c.minScore){pay+=c.bonus;txt='تم التسليم + مكافأة '+fmt(c.bonus)+' 💰';}
-    else if(avg<c.minScore-2){pay-=c.penalty;txt='جودة منخفضة! غرامة -'+fmt(c.penalty);cls='ng';}
+    if(q.avg>=c.minScore){pay+=c.bonus;txt='تم التسليم + مكافأة '+fmt(c.bonus)+' 💰';}
+    else if(q.avg<c.minScore-2){pay-=c.penalty;txt='جودة منخفضة! غرامة -'+fmt(c.penalty);cls='ng';}
     else{txt='تم التسليم (بدون مكافأة)';cls='gl';}
-    rev=Math.max(0,pay);
-    fd=Math.floor(fd/2);
-    contractResult={pub:c.publisher,icon:c.icon,txt,cls};
+    out.rev=Math.max(0,pay);
+    out.fd=Math.floor(out.fd/2);
+    const r={pub:c.publisher,icon:c.icon,txt,cls};
     S.contract=null;
-  }else if(S.contract&&S.contract.active){
-    S.contract.gamesLeft--;
-    if(S.contract.gamesLeft<=0){
-      S.contract=null;
-      S.fn=Math.max(0,S.fn-500);
-      S.morale=Math.max(0,(S.morale??75)-5);
-      showToast('📜 انتهت مهلة العقد! -500 معجب');
-    }
+    return r;
   }
+  // Off-contract release: the genre picker now allows this, so the advertised
+  // two-release deadline is finally reachable.
+  S.contract.gamesLeft--;
+  if(S.contract.gamesLeft<=0){
+    S.contract=null;
+    S.fn=Math.max(0,S.fn-500);
+    S.morale=Math.max(0,(S.morale??75)-5);
+    showToast('📜 انتهت مهلة العقد! -500 معجب');
+  }else showToast('📜 إصدار خارج العقد — متبقي '+S.contract.gamesLeft+' إصدار على المهلة');
+  return null;
+}
 
-  S.money+=rev;S.fn=Math.max(0,S.fn+fd);S.gc++;S.gamesThisYear++;
-  const relYear=S.year; // release belongs to the current year even if the year rolls over below
-  if(S.money>S.pm)S.pm=S.money;if(avg>S.bs)S.bs=avg;
-  if(avg>=8)S.sk++;else S.sk=0;S.gse++;
-
-  // Morale shifts from release outcome + crunch
-  let dMorale=0;
-  if(avg>=8)dMorale+=6;else if(avg>=7)dMorale+=3;else if(avg<5)dMorale-=8;
-  if(S.qaMode==='quick')dMorale-=4;
-  S.morale=Math.max(0,Math.min(100,(S.morale??75)+dMorale));
-  S.partyUsed=false;
-
-  // Pay salaries
+// Salaries and the automatic loan instalment.
+function payObligations(){
   const salary=getTotalSalary();
   if(salary>0)S.money=Math.max(0,S.money-salary);
 
-  // Loan installment
   let loanPay=0;
   if(S.loan){
     loanPay=Math.min(S.loan.perGame,S.loan.remaining);
@@ -1817,67 +2661,110 @@ function finishDevelopment(){
       showToast('🏦 سدّدت القرض بالكامل! 🎉');
     }else if(S.loan.gamesLeft<=0){S.loan.perGame=S.loan.remaining;S.loan.gamesLeft=1;}
   }
+  return {salary,loanPay};
+}
 
-  // Research points
-  S.research.points+=1;
-  if(avg>=8)S.research.points+=2;
+// Studio morale, staff promotions and low-morale resignations.
+function tickStudio(q){
+  const M=BALANCE.morale;
+  let dMorale=0;
+  if(q.avg>=8)dMorale+=M.great;else if(q.avg>=7)dMorale+=M.good;else if(q.avg<5)dMorale+=M.flop;
+  if(S.qaMode==='quick')dMorale+=M.crunch;
+  dMorale+=S._prodMoraleDelta||0;
+  S.morale=Math.max(0,Math.min(100,(S.morale??75)+dMorale));
+  S.partyUsed=false;
 
-  // Track IP - save score-7+ games (contract games belong to the publisher, no IP)
-  if(avg>=7&&!sequelInfo&&!contractResult){
-    S.ips.push({
-      id:'ip_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-      name:gameName.replace(eggKey||'','').trim()||gameName,
-      genre:genre.id,topic:topic.id,bestScore:avg,sequels:0,
-    });
-    if(S.ips.length>15)S.ips=S.ips.slice(-15);
-  }else if(sequelInfo){
-    const ip=S.ips.find(i=>i.id===sequelInfo.ipId);
-    if(ip){ip.sequels++;if(avg>ip.bestScore)ip.bestScore=avg;}
-  }
-
-  // Employee experience growth
   (S.employees||[]).forEach(e=>{
-    e.exp=(e.exp||0)+(avg>=7?2:1);
-    const newLevel=Math.min(3,Math.floor(e.exp/10));
+    e.exp=(e.exp||0)+(q.avg>=7?2:1);
+    const newLevel=Math.min(EMP_LEVELS.length-1,Math.floor(e.exp/10));
     if(newLevel>(e.level||0)){
       e.level=newLevel;
-      e.salary=Math.floor(EMP_ROLES.find(r=>r.id===e.role).baseSalary*EMP_LEVELS[newLevel].salMult);
+      const role=EMP_ROLES.find(r=>r.id===e.role);
+      // sanitizeSave() guarantees a valid role, but a missing row must never take
+      // down the whole release settlement mid-way through.
+      if(role)e.salary=Math.floor(role.baseSalary*EMP_LEVELS[newLevel].salMult);
       showToast('🎉 '+e.name+' ترقى إلى '+EMP_LEVELS[newLevel].n);
     }
   });
 
-  // Low morale resignation risk
-  if((S.morale??75)<30&&(S.employees||[]).length){
+  if((S.morale??75)<M.resignBelow&&(S.employees||[]).length){
     for(let i=S.employees.length-1;i>=0;i--){
-      if(Math.random()<0.15){
+      if(Math.random()<M.resignChance){
         const quitter=S.employees.splice(i,1)[0];
         showToast('🚪 '+quitter.name+' استقال بسبب انخفاض المعنويات!');
       }
     }
   }
+}
 
-  // Rival studios tick: they release games, gain/lose fans, drift in quality
+// IP ledger: successful non-contract originals become sequel/DLC material.
+function recordIP(rel,q){
+  if(q.avg>=7&&!q.sequelInfo&&!q.contractResult){
+    S.ips.push({
+      id:'ip_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      name:rel.gameName.replace(rel.eggKey||'','').trim()||rel.gameName,
+      genre:rel.genre.id,topic:rel.topic.id,bestScore:q.avg,sequels:0,dlcs:0,
+    });
+    if(S.ips.length>15)S.ips=S.ips.slice(-15);
+  }else if(q.sequelInfo){
+    const ip=S.ips.find(i=>i.id===q.sequelInfo.ipId);
+    if(ip){ip.sequels++;if(q.avg>ip.bestScore)ip.bestScore=q.avg;}
+  }
+}
+
+// World simulation: rivals, the calendar, and cooldowns.
+function tickWorld(){
   TickRivals();
-
-  // Year tracking - every 4 games = 1 year (GOTY runs after the review modal closes)
   if(S.gamesThisYear>=4){
     S.gamesThisYear=0;S.year++;
+    // Reroll what the market wants, so the optimal build shifts year over year.
+    S.marketTaste=rollMarketTaste(S.year);
     S._pendingGOTY=true;
+    S._tasteChanged=true;
   }
-
-  // Convention + contract cooldowns
   if(S.conventionCooldown>0)S.conventionCooldown--;
   if(S.contractCooldown>0)S.contractCooldown--;
+}
 
-  S.hist.unshift({name:gameName,genre:genre.name,topic:topic.name,score:avg,revenue:rev,year:relYear,sequel:!!sequelInfo,contract:!!contractResult});
-  if(S.hist.length>100)S.hist.length=100; // bound save size in the long game (UI shows 30, GOTY needs last year)
+function finishDevelopment(){
+  typingActive=false;document.getElementById('sp').classList.remove('show');
 
-  setTimeout(()=>showRev(gameName,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,syn,bal),eggKey?2600:100);
-  // Rebuild scene to reflect new IPs (posters), awards (trophies), and any visual updates
-  buildRoom(S.st);
+  const rel=resolveRelease();
+  if(rel.egg)showEggPopup(rel.eggKey,rel.egg);
+
+  const q=computeScore(rel);
+  const money=computeSales(rel,q);
+  q.contractResult=settleContract(rel,q,money);
+
+  S.money+=money.rev;S.fn=Math.max(0,S.fn+money.fd);S.gc++;S.gamesThisYear++;
+  const relYear=S.year; // release belongs to the current year even if it rolls over below
+  if(S.money>S.pm)S.pm=S.money;
+  if(q.avg>S.bs)S.bs=q.avg;
+  if(q.avg>=8)S.sk++;else S.sk=0;
+  S.gse++;
+
+  tickStudio(q);
+  const paid=payObligations();
+
+  S.research.points+=BALANCE.research.perGame;
+  if(q.avg>=BALANCE.research.highScoreAt)S.research.points+=BALANCE.research.highScoreBonus;
+
+  recordIP(rel,q);
+  tickWorld();
+
+  S.hist.unshift({name:rel.gameName,genre:rel.genre.name,topic:rel.topic.name,score:q.avg,
+    revenue:money.rev,year:relYear,sequel:!!q.sequelInfo,contract:!!q.contractResult});
+  if(S.hist.length>100)S.hist.length=100; // bound save size in the long game
+
+  setTimeout(()=>showRev(rel.gameName,q.scores,q.avg,money.rev,money.fd,q.bugCount,
+    paid.salary,paid.loanPay,q.contractResult,q.syn,q.bal),rel.eggKey?2600:100);
+
+  refreshAfterRelease();
   checkAchievements();updateUI();saveGame();
+
   pendingGameData=null;
   S._sequelMode=false;
+  S._prodScoreBonus=0;S._prodMoraleDelta=0;
   S.marketing={hype:0,campaign:null,cost:0,bonus:0};
   S.qaMode=null;
   S.pendingDevCost=0; // development completed: nothing in-flight
@@ -1935,9 +2822,10 @@ function CheckGOTY(){
     const te=document.getElementById('evt2');te.textContent='جائزة لعبة العام!';te.className='et gd2';
     const beat=rScore>0?' متفوقاً على المنافسين ('+rScore+')':'';
     document.getElementById('evd').textContent='لعبة "'+playerBest.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+beat+'! +'+fmt(reward)+' مكافأة + 2K معجب';
+    S._flowStep='tryGOTY';
     document.getElementById('se').classList.add('show');sn('egg');
     spawnConfetti(500,true);celebrateUntil=Date.now()+4000;
-    buildRoom(S.st); // refresh to add trophy
+    refreshTrophies(); // was a second full buildRoom() in the same release
     shown=true;
   }else if(rScore>=8.5){
     rivalBest.fans+=2000;
@@ -1945,6 +2833,7 @@ function CheckGOTY(){
     document.getElementById('evi').textContent='🏆';
     const te=document.getElementById('evt2');te.textContent='منافسك خطف لعبة العام!';te.className='et bd3';
     document.getElementById('evd').textContent=def.icon+' '+def.name+' فاز بجائزة لعبة العام عن "'+(rivalBest.bestName||'لعبته الأخيرة')+'" ('+rScore+')! نافسه على اللقب السنة القادمة.';
+    S._flowStep='tryGOTY';
     document.getElementById('se').classList.add('show');sn('f');
     shown=true;
   }
@@ -1979,28 +2868,84 @@ function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,s
   });
 }
 
+// ---- Post-release flow ----------------------------------------------------
+// "then check for an upgrade, then reopen the panel" used to be re-implemented in
+// five independent places (nextGame, closeEvent, JoinConv, SkipConv,
+// cancelUpgrade). Adding a stage meant remembering all five, and forgetting one
+// silently created a path that skipped the upgrade prompt. There is now one
+// ordered list and one advance().
+const POST_GAME=[
+  // Game-of-the-Year runs first: the prize money can rescue a broke studio.
+  function tryGOTY(){
+    if(!S._pendingGOTY)return false;
+    S._pendingGOTY=false;
+    return CheckGOTY();
+  },
+  function tryTasteChange(){
+    if(!S._tasteChanged)return false;
+    S._tasteChanged=false;
+    renderTasteBar();
+    const hot=((S.marketTaste&&S.marketTaste.hot)||[])
+      .map(id=>{const x=TOPICS.find(y=>y.id===id);return x?x.icon:''}).join(' ');
+    showToast('📈 سنة '+S.year+': تغيّرت أذواق السوق '+hot);
+    return false; // informational only, keep advancing
+  },
+  function tryBankruptcy(){
+    if(!(S.money<minDevCost()&&S.money<500))return false;
+    // Last chance: a rescue loan before bankruptcy (from the garage stage onward).
+    if(!S.loan&&S.st>=1&&loanCap()>0){OpenLoan(true);return true}
+    gameOver();return true;
+  },
+  function tryUpgrade(){
+    if(!(S.st<5&&S.money>=STG[S.st].upgCost))return false;
+    showUpgrade();return true;
+  },
+  function tryContract(){
+    if(!(S.gc>=4&&!S.contract&&(S.contractCooldown||0)<=0&&Math.random()<.22))return false;
+    ShowContractOffer();return true;
+  },
+  function tryConvention(){
+    if(!(S.gc>=3&&S.conventionCooldown<=0&&Math.random()<.25))return false;
+    S.gse=0;triggerConvention();return true;
+  },
+  function tryEvent(){
+    if(!(S.gse>=3&&Math.random()<.45))return false;
+    S.gse=0;triggerEvent();return true;
+  },
+];
+
+// Run the pipeline from `from` onward. Each step returns true when it took over the
+// screen; the caller that closes that step's modal calls advance() again with the
+// next index, so the chain resumes instead of restarting.
+function advance(from){
+  for(let i=from||0;i<POST_GAME.length;i++){
+    if(POST_GAME[i]())return POST_GAME[i].name;
+  }
+  openPanel();updateUI();
+  return null;
+}
+// Index of a named step, so a modal's close handler can resume after itself.
+function stepAfter(name){
+  const i=POST_GAME.findIndex(f=>f.name===name);
+  return i<0?0:i+1;
+}
+
+function openPanel(){
+  po=true;
+  document.getElementById('mp').classList.add('open');
+  const pt=document.getElementById('pt');
+  pt.classList.add('open');pt.style.display='flex';pt.setAttribute('aria-expanded','true');
+  document.getElementById('pa').textContent='▼';
+}
+
 window.nextGame=function(){
   document.getElementById('sr2').classList.remove('show');
   document.getElementById('pt').style.display='flex';
-  S.genre=null;S.topic=null;buildSelectors();
+  S.genre=null;S.topic=null;buildSelectors();BPlatforms();
   document.getElementById('gni').value='';S.dev=false;
-  // Year rolled over with this release: run the GOTY ceremony first (award money may even save a broke studio)
-  if(S._pendingGOTY){S._pendingGOTY=false;if(CheckGOTY())return;}
-  if(S.money<getDevCost()&&S.money<500){
-    // Last chance: bank loan rescue before bankruptcy (from garage stage onward)
-    if(!S.loan&&S.st>=1&&loanCap()>0){OpenLoan(true);return}
-    gameOver();return
-  }
-  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
-  // Publisher contract offer chance
-  if(S.gc>=4&&!S.contract&&(S.contractCooldown||0)<=0&&Math.random()<.22){ShowContractOffer();return}
-  // Convention chance
-  if(S.gc>=3&&S.conventionCooldown<=0&&Math.random()<.25){S.gse=0;triggerConvention();return}
-  if(S.gse>=3&&Math.random()<.45){S.gse=0;triggerEvent();return}
-  openPanel();updateUI();
+  if(showTip('review'))openPanel();
+  advance(0);
 };
-
-function openPanel(){po=true;document.getElementById('mp').classList.add('open');document.getElementById('pt').classList.add('open');document.getElementById('pa').textContent='▼';document.getElementById('pt').style.display='flex';}
 
 // ============ EVENTS ============
 function triggerEvent(){
@@ -2029,7 +2974,7 @@ function triggerEvent(){
       const q=S.employees.splice(Math.random()*S.employees.length|0,1)[0];
       const qr=EMP_ROLES.find(r=>r.id===q.role);
       desc=(qr?qr.icon+' ':'')+q.name+' استقال ورحل! التقييم القادم -0.5';
-      buildRoom(S.st);
+      refreshPeople();refreshBoard();
     }
   }
   else if(ev.type==='piracy')S.em='piracy';
@@ -2042,13 +2987,16 @@ function triggerEvent(){
   document.getElementById('evi').textContent=ev.icon;
   const te=document.getElementById('evt2');te.textContent=ev.title;te.className='et '+(ev.good?'gd2':'bd3');
   document.getElementById('evd').textContent=desc;
+  S._flowStep='tryEvent';
   document.getElementById('se').classList.add('show');sn('ev');updateUI();
 }
 window.closeEvent=function(){
   document.getElementById('se').classList.remove('show');
-  buildSelectors(); // refresh genre/topic buttons (trend marker, employee changes)
-  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
-  openPanel();updateUI();
+  buildSelectors();BPlatforms(); // refresh trend/hot markers and platform affinity
+  // The event modal is reused by the GOTY ceremony, so resume from whichever step
+  // opened it rather than assuming a fixed position in the pipeline.
+  advance(stepAfter(S._flowStep||'tryEvent'));
+  S._flowStep=null;
 };
 
 // ============ CONVENTIONS ============
@@ -2076,13 +3024,12 @@ function JoinConv(opt){
   if(opt.research)S.research.points+=opt.research;
   document.getElementById('conventionModal').classList.remove('show');
   showToast('🎪 شاركت في المعرض! +'+fmt(opt.fans)+' معجب');
-  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
-  openPanel();updateUI();saveGame();
+  saveGame();
+  advance(stepAfter('tryConvention'));
 }
 window.SkipConv=function(){
   document.getElementById('conventionModal').classList.remove('show');
-  if(S.st<5&&S.money>=STG[S.st].upgCost){showUpgrade();return}
-  openPanel();updateUI();
+  advance(stepAfter('tryConvention'));
 };
 
 // ============ UPGRADE ============
@@ -2090,6 +3037,7 @@ function showUpgrade(){
   const nx=STG[S.st+1];document.getElementById('upd').textContent='الانتقال إلى: '+nx.name;
   document.getElementById('upc').textContent='التكلفة: '+fmt(STG[S.st].upgCost);
   document.getElementById('su').classList.add('show');
+  showTip('upgrade');
 }
 window.doUpgrade=function(){
   S.money-=STG[S.st].upgCost;S.st++;
@@ -2098,9 +3046,14 @@ window.doUpgrade=function(){
   const mx=STG[S.st].maxPts,old=S.sl.design+S.sl.code+S.sl.sound||1,r=mx/(old);
   S.sl.design=Math.floor(S.sl.design*r*.9);S.sl.code=Math.floor(S.sl.code*r*.9);
   S.sl.sound=Math.max(0,mx-S.sl.design-S.sl.code);
-  document.getElementById('su').classList.remove('show');openPanel();sn('ok');updateUI();checkAchievements();saveGame();
+  document.getElementById('su').classList.remove('show');
+  sn('ok');checkAchievements();saveGame();
+  advance(stepAfter('tryUpgrade'));
 };
-window.cancelUpgrade=function(){document.getElementById('su').classList.remove('show');openPanel();updateUI();};
+window.cancelUpgrade=function(){
+  document.getElementById('su').classList.remove('show');
+  advance(stepAfter('tryUpgrade'));
+};
 
 // ============ GAME OVER + PRESTIGE ============
 function gameOver(){
@@ -2119,17 +3072,19 @@ window.DoPrestige=function(){
   const gain=S._pendingPrestige||0;
   const newLevel=(S.prestige?.level||0)+gain;
   document.getElementById('sg2').classList.remove('show');
-  initState(S.difficulty);
+  const diff=S.difficulty;
+  initState(diff);
   S.prestige.level=newLevel;
-  S.prestige.bonus=newLevel*0.1;
+  S.tips=TIP_IDS.slice(); // a prestiging player has already been taught the basics
   buildRoom(0);buildSelectors();bindSliders();BPlatforms();openPanel();updateUI();saveGame();
   showToast('⭐ Prestige Level '+newLevel+'!');
 };
 window.restartGame=function(){
   document.getElementById('sg2').classList.remove('show');
-  const prevDiff=S.difficulty;const prevPrestige=S.prestige;
+  const prevDiff=S.difficulty,prevPrestige=S.prestige,prevTips=S.tips;
   initState(prevDiff);
   S.prestige=prevPrestige; // keep prestige
+  S.tips=Array.isArray(prevTips)?prevTips:TIP_IDS.slice(); // don't re-teach the basics
   buildRoom(0);buildSelectors();bindSliders();BPlatforms();openPanel();updateUI();saveGame();
 };
 
@@ -2170,6 +3125,10 @@ window.OpenSettings=function(){
 window.CloseSettings=function(){document.getElementById('settingsModal').classList.remove('show');saveGame();};
 window.ResetGame=function(){
   if(!confirm('هل أنت متأكد؟ سيُحذف الحفظ نهائياً!'))return;
+  // Clearing _started first is essential: location.reload() fires beforeunload/
+  // pagehide, and an unguarded saveGame() there would immediately write the
+  // in-memory state back and undo the deletion.
+  _started=false;
   localStorage.removeItem('gd_save');
   document.getElementById('settingsModal').classList.remove('show');
   location.reload();
@@ -2242,6 +3201,18 @@ window.EmpTab=function(tab){
   RenderEmps();
 };
 function moraleEmoji(m){return m>=80?'😄':m>=60?'🙂':m>=40?'😐':m>=25?'😟':'😡';}
+// Builds the left half of an employee card. `name` is untrusted, so it goes in
+// via textContent; `meta` is caller-authored markup only.
+function empCard(icon,name,meta){
+  const info=document.createElement('div');info.className='info';
+  const ic=document.createElement('span');ic.style.fontSize='18px';ic.textContent=icon;
+  const box=document.createElement('div');
+  const nm=document.createElement('div');nm.style.fontWeight='900';nm.textContent=name;
+  const mt=document.createElement('div');mt.style.cssText='font-size:10px;color:var(--tx3)';mt.innerHTML=meta;
+  box.appendChild(nm);box.appendChild(mt);
+  info.appendChild(ic);info.appendChild(box);
+  return info;
+}
 function RenderEmps(){
   const c=document.getElementById('empContent');c.innerHTML='';
   if(empTab==='morale'){
@@ -2297,8 +3268,14 @@ function RenderEmps(){
       const role=EMP_ROLES.find(r=>r.id===e.role);
       const lvl=EMP_LEVELS[e.level||0];
       const div=document.createElement('div');div.className='empcard';
-      div.innerHTML=`<div class="info"><span style="font-size:18px">${role.icon}</span><div><div style="font-weight:900">${e.name}</div><div style="font-size:9px;color:var(--tx3)">${role.n} <span class="lv">${lvl.n}</span> • Exp: ${e.exp||0}</div></div></div><div style="text-align:left"><div class="sal">💼 ${fmt(e.salary)}/شهر</div></div>`;
-      const fb=document.createElement('button');fb.textContent='فصل';fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);buildRoom(S.st);RenderEmps();updateUI();saveGame();}};
+      // e.name originates from the save file, which importSave() accepts from the
+      // player. Interpolating it into innerHTML executed arbitrary script; it is
+      // now written as text. sanitizeSave() also clamps it, so this is layer two.
+      div.appendChild(empCard(role.icon,e.name,`${role.n} <span class="lv">${lvl.n}</span> • Exp: ${e.exp||0}`));
+      const right=document.createElement('div');right.style.textAlign='left';
+      right.innerHTML='<div class="sal">💼 '+fmt(e.salary)+'/شهر</div>';
+      div.appendChild(right);
+      const fb=document.createElement('button');fb.textContent='فصل';fb.setAttribute('aria-label','فصل '+e.name);fb.onclick=()=>{if(confirm('فصل '+e.name+'؟')){S.employees.splice(idx,1);refreshPeople();refreshBoard();RenderEmps();updateUI();saveGame();}};
       div.appendChild(fb);
       c.appendChild(div);
     });
@@ -2324,15 +3301,18 @@ function RenderEmps(){
       const lvl=EMP_LEVELS[cand.level];
       const div=document.createElement('div');div.className='empcard';
       const can=S.money>=cand.hireCost&&S.employees.length<HIRE_CAPS[S.st];
-      div.innerHTML=`<div class="info"><span style="font-size:18px">${role.icon}</span><div><div style="font-weight:900">${cand.name}</div><div style="font-size:9px;color:var(--tx3)">${role.n} <span class="lv">${lvl.n}</span></div></div></div><div style="text-align:left"><div class="sal">💼 ${fmt(cand.salary)}/شهر</div><div style="font-size:9px;color:var(--g)">توظيف: ${fmt(cand.hireCost)}</div></div>`;
-      const hb=document.createElement('button');hb.textContent='وظّف';hb.style.background='rgba(0,255,136,.15)';hb.style.borderColor='rgba(0,255,136,.3)';hb.style.color='var(--p)';hb.disabled=!can;
+      div.appendChild(empCard(role.icon,cand.name,`${role.n} <span class="lv">${lvl.n}</span>`));
+      const right=document.createElement('div');right.style.textAlign='left';
+      right.innerHTML='<div class="sal">💼 '+fmt(cand.salary)+'/شهر</div><div style="font-size:10px;color:var(--g)">توظيف: '+fmt(cand.hireCost)+'</div>';
+      div.appendChild(right);
+      const hb=document.createElement('button');hb.textContent='وظّف';hb.setAttribute('aria-label','وظّف '+cand.name);hb.style.background='rgba(0,255,136,.15)';hb.style.borderColor='rgba(0,255,136,.3)';hb.style.color='var(--p)';hb.disabled=!can;
       hb.onclick=()=>{
         if(!can)return;
         S.money-=cand.hireCost;
         S.employees.push({...cand});
         S._candidates.splice(idx,1);
         sn('ok');showToast('✅ تم توظيف '+cand.name);
-        buildRoom(S.st);updateUI();saveGame();RenderEmps();checkAchievements();
+        refreshPeople();refreshBoard();updateUI();saveGame();RenderEmps();checkAchievements();
       };
       div.appendChild(hb);
       c.appendChild(div);
@@ -2375,27 +3355,37 @@ function RenderIPs(){
 }
 function StartSequel(ip){
   document.getElementById('ipModal').classList.remove('show');
+  // This used to assign S.genre directly, which was the one path that bypassed the
+  // contract genre restriction entirely. The restriction is now a warning rather
+  // than a lock, so the sequel is allowed — but the player is told what it costs.
+  if(S.contract&&S.contract.active&&ip.genre!==S.contract.genre)
+    showToast('⚠️ هذا الجزء خارج نطاق عقدك — سيستهلك من المهلة بلا دفعة');
   S.genre=ip.genre;S.topic=ip.topic;
   pendingGameData={parentIP:ip.id};
   document.getElementById('gni').value=ip.name+' '+(ip.sequels+2);
   showToast('🔄 سيتم تطوير "'+ip.name+' '+(ip.sequels+2)+'" بنصف التكلفة!');
   // Override cost to half
   S._sequelMode=true;
-  buildSelectors();updateUI();openPanel();
+  buildSelectors();BPlatforms();updateUI();openPanel();
 }
-const DLC_MAX=3; // DLCs per IP before it's exhausted (mirrors the sequel-fatigue design)
 function StartDLC(ip){
   const made=ip.dlcs||0;
   if(made>=DLC_MAX){showToast('📦 استُنفد هذا الـ IP — لا مزيد من الـ DLC');return;}
+  const D=BALANCE.dlc;
   // DLC cost is anchored to the stage's base dev cost (not the *next* game's platform selection)
-  const cost=Math.floor(STG[S.st].devCost*DIFFICULTY[S.difficulty].costMult*0.2);
+  const cost=Math.floor(STG[S.st].devCost*DIFFICULTY[S.difficulty].costMult*D.costRatio);
   if(S.money<cost){showToast('❌ مال غير كافٍ ('+fmt(cost)+')');return;}
   S.money-=cost;
-  // Fatigue: each additional DLC on the same IP earns ~40% less
-  const fatigue=Math.pow(0.6,made);
-  const rev=Math.floor(Math.pow(ip.bestScore,2.3)*60*(1+S.fn*.001)*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5)*fatigue);
+  // Fatigue: each additional DLC on the same IP earns ~40% less.
+  // The stage multiplier was (1+st*0.5), the same slope a full release gets, which
+  // made a one-click DLC a better return on capital (~5.3×) than shipping an actual
+  // game (~3.9×) — the lowest-effort action was the highest-yield one. A shallower
+  // slope keeps DLC as useful bridging income without out-earning real releases.
+  const fatigue=Math.pow(D.fatigue,made);
+  const rev=Math.floor(Math.pow(ip.bestScore,D.scoreExponent)*D.unit*(1+S.fn*D.fanWeight)
+    *DIFFICULTY[S.difficulty].rewardMult*D.stageRevenue(S.st)*fatigue);
   S.money+=rev;
-  const fans=Math.floor((50+ip.bestScore*30)*fatigue);
+  const fans=Math.floor((D.fansBase+ip.bestScore*D.fansPerScore)*fatigue);
   S.fn+=fans;
   S.gc++;
   ip.dlcs=made+1;
@@ -2419,7 +3409,8 @@ window.OpenLoan=function(rescue){
 };
 window.CloseLoan=function(){
   document.getElementById('loanModal').classList.remove('show');
-  if(loanRescue){loanRescue=false;openPanel();updateUI();} // rescue declined: panel back (freelance still possible)
+  // Rescue declined: back to the panel so freelancing is still an option.
+  if(loanRescue){loanRescue=false;advance(stepAfter('tryBankruptcy'));}
 };
 function RenderLoan(){
   const desc=document.getElementById('loanDesc');
@@ -2472,7 +3463,7 @@ window.TakeLoan=function(frac){
   CloseLoan();
   sn('ok');showToast('🏦 حصلت على قرض '+fmt(principal)+' 💰');
   updateUI();saveGame();
-  if(wasRescue)openPanel();
+  if(wasRescue)advance(stepAfter('tryBankruptcy'));
 };
 
 // ============ PUBLISHER CONTRACTS ============
@@ -2510,13 +3501,15 @@ window.AcceptContract=function(){
   S.genre=S.contract.genre;S.topic=null;
   document.getElementById('contractModal').classList.remove('show');
   sn('ok');showToast('📜 وقّعت العقد مع '+S.contract.icon+' '+S.contract.publisher);
-  buildSelectors();openPanel();updateUI();saveGame();
+  buildSelectors();BPlatforms();saveGame();
+  advance(stepAfter('tryContract'));
 };
 window.DeclineContract=function(){
   S._contractOffer=null;
   S.contractCooldown=2;
   document.getElementById('contractModal').classList.remove('show');
-  openPanel();updateUI();saveGame();
+  saveGame();
+  advance(stepAfter('tryContract'));
 };
 
 // ============ RIVAL STUDIOS PANEL ============
@@ -2543,6 +3536,64 @@ function RenderRivals(){
     rl.textContent=row.last?('👥 '+fmt(row.fans)+' معجب • آخر لعبة: "'+row.last.name+'" ('+row.last.score+')'):('👥 '+fmt(row.fans)+' معجب • لم يصدر شيئاً بعد');
     div.appendChild(share);div.appendChild(title);div.appendChild(hype);div.appendChild(rl);
     list.appendChild(div);
+  });
+}
+
+// ============ KEYBOARD + FOCUS ============
+// The game was pointer-only: no key handler existed anywhere, modals could not be
+// dismissed from the keyboard, and focus stayed behind an open overlay.
+// Escape is wired only to informational panels — never to decision modals, where
+// silently picking an outcome for the player would be worse than doing nothing.
+const ESCAPABLE={
+  settingsModal:()=>window.CloseSettings(),
+  researchModal:()=>window.CloseResearch(),
+  empModal:()=>window.CloseEmps(),
+  ipModal:()=>window.CloseIPs(),
+  rivalsModal:()=>window.CloseRivals(),
+  loanModal:()=>window.CloseLoan(),
+};
+function openOverlays(){return [...document.querySelectorAll('.os.show')];}
+function anyModalOpen(){return document.querySelector('.os.show:not(#sp)')!==null;}
+
+function bindKeyboard(){
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      const open=openOverlays().reverse();
+      for(const el of open){
+        const act=ESCAPABLE[el.id];
+        if(act){act();e.preventDefault();return}
+        return; // topmost overlay is a decision modal: swallow, don't guess
+      }
+      const hp=document.getElementById('hp');
+      if(hp&&hp.style.display==='block'){hp.style.display='none';e.preventDefault();return}
+      if(po){window.togglePanel();e.preventDefault();}
+      return;
+    }
+    // Space/Enter on the div-based panel handle (role="button").
+    if((e.key==='Enter'||e.key===' ')&&document.activeElement&&document.activeElement.id==='pt'){
+      window.togglePanel();e.preventDefault();
+    }
+  });
+}
+
+// Move focus into a modal when it opens and restore it when it closes, so
+// keyboard and screen-reader users are never left tabbing through the page behind
+// an overlay. Done with an observer so every existing open/close call site — there
+// are dozens — gets the behaviour without being rewritten.
+let _focusBeforeModal=null;
+function bindModalFocus(){
+  document.querySelectorAll('.os').forEach(el=>{
+    if(el.id==='sp')return; // progress overlay is non-interactive
+    new MutationObserver(()=>{
+      if(el.classList.contains('show')){
+        if(!_focusBeforeModal)_focusBeforeModal=document.activeElement;
+        const first=el.querySelector('button:not([disabled]),[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+        if(first)try{first.focus({preventScroll:true})}catch(_){}
+      }else if(!anyModalOpen()&&_focusBeforeModal){
+        try{_focusBeforeModal.focus({preventScroll:true})}catch(_){}
+        _focusBeforeModal=null;
+      }
+    }).observe(el,{attributes:true,attributeFilter:['class']});
   });
 }
 
@@ -2577,10 +3628,13 @@ function bindDifficulty(){
 function startGame(fresh){
   document.getElementById('ss').style.display='none';
   if(fresh||!loadGame())initState(window._selectedDiff||'normal');
+  // From here on the state in memory represents a real session, so it is safe
+  // for the unload handlers to persist it.
+  _started=true;
   applyTheme();
   buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();
   document.getElementById('nm').style.display='block';
-  openPanel();updateUI();sn('ok');checkAchievements();saveGame();
+  openPanel();updateUI();sn('ok');checkAchievements();showTip('panel');saveGame();
 }
 let _hasSave=false;
 try{_hasSave=!!localStorage.getItem('gd_save')}catch(e){}
@@ -2597,10 +3651,15 @@ document.getElementById('bnew').onclick=()=>{
 
 bindDifficulty();
 bindSettings();
+bindKeyboard();
+bindModalFocus();
 initThree();
 initState('normal');
 
+// Both events are needed: iOS Safari commonly discards a backgrounded tab without
+// ever firing beforeunload. saveGame() is a no-op until a session has started.
 window.addEventListener('beforeunload',()=>{try{saveGame()}catch(e){}});
+window.addEventListener('pagehide',()=>{try{saveGame()}catch(e){}});
 
 // PWA: service worker registration + install prompt
 if('serviceWorker' in navigator){

@@ -4,12 +4,14 @@
  *  - Network-first for navigations (so new releases ship immediately when
  *    online) with offline fallback to the cached index.
  *  - Stale-while-revalidate for same-origin static assets (icons, manifest).
- *  - Cache-first for Google Fonts, which are versioned and safe long-term.
- *  - Three.js is now vendored locally (./vendor/three.module.js) and pre-cached
- *    as part of the app shell, so the game works fully offline from first load.
+ *  - Three.js AND the Cairo font are vendored locally under ./vendor/ and
+ *    pre-cached as part of the app shell, so the game genuinely works offline from
+ *    the first load. The font used to come from fonts.googleapis.com and was never
+ *    pre-cached, which quietly broke that promise (and blocked first paint).
+ *  - There are no third-party requests left, so no cross-origin caching rules.
  */
 
-const VERSION = 'v1.3.0';
+const VERSION = 'v1.4.0';
 const APP_SHELL = `room-to-top-shell-${VERSION}`;
 const RUNTIME = `room-to-top-runtime-${VERSION}`;
 
@@ -18,6 +20,9 @@ const PRECACHE_URLS = [
   './index.html',
   './manifest.webmanifest',
   './vendor/three.module.js',
+  './vendor/fonts/cairo-arabic.woff2',
+  './vendor/fonts/cairo-latin.woff2',
+  './vendor/fonts/cairo-latin-ext.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
@@ -46,16 +51,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-function isCdnAsset(url) {
-  return (
-    url.hostname === 'fonts.googleapis.com' ||
-    url.hostname === 'fonts.gstatic.com' ||
-    url.hostname === 'cdn.jsdelivr.net' ||
-    url.hostname === 'unpkg.com' ||
-    url.hostname === 'cdnjs.cloudflare.com'
-  );
-}
-
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -76,23 +71,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2) Long-lived CDN assets (Three.js, fonts) → cache-first.
-  if (isCdnAsset(url)) {
-    event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((res) => {
-            const copy = res.clone();
-            caches.open(RUNTIME).then((c) => c.put(request, copy));
-            return res;
-          })
-      )
-    );
-    return;
-  }
-
-  // 3) Same-origin static files → stale-while-revalidate.
+  // 2) Same-origin static files → stale-while-revalidate.
+  //    (A cache-first branch for fonts.googleapis.com / jsdelivr / unpkg / cdnjs
+  //    used to live here. Nothing is loaded cross-origin any more, and leaving it
+  //    in would have silently pinned any future CDN asset to its first response.)
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(request).then((cached) => {

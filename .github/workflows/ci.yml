@@ -25,8 +25,25 @@ jobs:
           npm install
           npx playwright install --with-deps chromium
 
-      - name: Smoke test
-        run: npm test
+      - name: Smoke test (boots the game, drives a full develop loop)
+        run: npm run test:smoke
+
+      # Pins the save/import regressions: the start-screen reload that used to wipe
+      # progress, the reset that used to resurrect it, and the hostile save files
+      # that used to execute script or freeze the panel.
+      - name: Save integrity suite
+        run: npm run test:save
+
+      # Walks ~26 consecutive releases through the post-release pipeline, which a
+      # one-release smoke test cannot cover: a mis-ordered flow step only shows up
+      # as a dead end after a year rollover or an award ceremony.
+      - name: Long-run playthrough
+        run: npm run test:play
+
+      # Reports pacing from the stage table it parses out of index.html. Not a gate,
+      # but the numbers land in the build log next to the diff that changed them.
+      - name: Balance simulation (informational)
+        run: npm run balance
 
       # 3) Guard: the service worker VERSION must be bumped whenever index.html
       #    changes, or returning players stay stuck on a stale cached build.
