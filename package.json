@@ -1,13 +1,17 @@
 {
   "name": "room-to-top",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "من الغرفة للقمة — محاكي تطوير ألعاب ثلاثي الأبعاد في ملف HTML واحد",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "node tools/check-syntax.mjs",
-    "test": "node tests/smoke.mjs",
-    "icons": "python3 scripts/make_icons.py"
+    "test": "node tests/smoke.mjs && node tests/save-integrity.mjs && node tests/playthrough.mjs",
+    "test:smoke": "node tests/smoke.mjs",
+    "test:save": "node tests/save-integrity.mjs",
+    "balance": "node tools/balance-sim.mjs",
+    "icons": "python3 scripts/make_icons.py",
+    "test:play": "node tests/playthrough.mjs"
   },
   "devDependencies": {
     "playwright": "^1.48.0"
