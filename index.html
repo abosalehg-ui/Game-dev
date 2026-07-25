@@ -58,41 +58,18 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 #mp::-webkit-scrollbar-thumb{background:rgba(0,204,255,.3);border-radius:2px}
 .ph{text-align:center;font-size:14px;font-weight:900;color:var(--s);margin-bottom:10px}
 
+.sg{margin-bottom:8px}
 .sl{font-size:11px;color:var(--tx3);margin-bottom:4px;font-weight:700;letter-spacing:.5px}
-
-/* ---- Summary chips: one row per decision, opens a focused picker ---- */
-#chips{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
-.chip{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;background:rgba(255,255,255,.035);
-  border:1px solid rgba(255,255,255,.09);border-radius:9px;font-family:'Cairo';cursor:pointer;
-  text-align:right;transition:border-color .15s,background .15s}
-.chip:hover{background:rgba(0,204,255,.06);border-color:rgba(0,204,255,.3)}
-.chip .ck{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--tx3)}
-.chip .cv{flex:1 1 auto;font-size:13px;font-weight:900;color:var(--s);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.chip .cx{flex:0 0 auto;font-size:15px;color:var(--tx3);transform:scaleX(-1)}
-.chip.empty{border-style:dashed;border-color:rgba(255,215,0,.4)}
-.chip.empty .cv{color:var(--g)}
-
-/* ---- Focused picker ---- */
-.modal.picker{max-width:min(480px,96vw)}
-#pickerBody{max-height:min(56vh,460px);overflow-y:auto;overscroll-behavior:contain;margin:2px -4px 0;padding:0 4px}
-#pickerBody::-webkit-scrollbar{width:3px}
-#pickerBody::-webkit-scrollbar-thumb{background:rgba(0,204,255,.35);border-radius:2px}
-.opt{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;margin-bottom:5px;
-  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;
-  font-family:'Cairo';cursor:pointer;text-align:right;transition:all .13s}
-.opt:hover{border-color:var(--s);background:rgba(0,204,255,.06)}
-.opt.a{background:rgba(0,204,255,.12);border-color:var(--s)}
-.opt.lock{opacity:.42;cursor:not-allowed}
-.opt .oi{flex:0 0 auto;font-size:19px;width:26px;text-align:center}
-.opt .on{flex:1 1 auto;font-size:13px;font-weight:700;color:var(--tx)}
-.opt .om{flex:0 0 auto;font-size:11px;font-weight:900;padding:2px 8px;border-radius:11px}
-.om.r4{color:var(--p);background:rgba(0,255,136,.12)}
-.om.r3{color:var(--p);background:rgba(0,255,136,.08)}
-.om.r2{color:var(--g);background:rgba(255,215,0,.1)}
-.om.r1{color:var(--d);background:rgba(255,0,85,.1)}
-.om.rl{color:var(--tx3);background:rgba(255,255,255,.05)}
-.pickgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-@media (max-width:420px){.pickgrid{grid-template-columns:1fr}}
+/* Genre (11) and topic (15) used to wrap into 4-5 rows each, ~280px of the panel,
+   which pushed the develop button and the live quality preview off-screen. The grid
+   shape is kept for discoverability but bounded with its own scroll. */
+.sr{display:flex;flex-wrap:wrap;gap:4px;max-height:84px;overflow-y:auto;overscroll-behavior:contain}
+.sr::-webkit-scrollbar{width:3px}.sr::-webkit-scrollbar-thumb{background:rgba(0,204,255,.35);border-radius:2px}
+.sb2{padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);color:var(--tx2);font-size:11px;font-weight:700;font-family:'Cairo';cursor:pointer;transition:all .15s}
+.sb2:hover{background:rgba(0,204,255,.06);border-color:rgba(0,204,255,.15)}
+.sb2.a{background:rgba(0,204,255,.1);border-color:var(--s);color:var(--s)}
+.sb2.lock{opacity:.35;cursor:not-allowed}
+.sb2.lock:after{content:' 🔒'}
 
 .slt{font-size:10px;color:var(--tx3);margin:8px 0 5px;font-weight:700;display:flex;justify-content:space-between}
 .slt .pl{color:var(--g)}
@@ -106,7 +83,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .stf.ds{background:linear-gradient(90deg,#ff6b6b,#ee5a24)}.stf.cd{background:linear-gradient(90deg,#4ecdc4,#00b894)}.stf.sn2{background:linear-gradient(90deg,#a29bfe,#6c5ce7)}
 .sth{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#ddd);border:2.5px solid var(--s);position:absolute;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px rgba(0,204,255,.3),0 2px 6px rgba(0,0,0,.5);z-index:2;pointer-events:none}
 .sth.ds{border-color:#ff6b6b}.sth.cd{border-color:#00b894}.sth.sn2{border-color:#6c5ce7}
-@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.opt{padding:11px 10px}.chip{padding:11px 10px}}
+@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.sb2{padding:5px 10px;font-size:12px}.sr{max-height:96px}}
 
 .bd{width:100%;padding:9px;margin-top:8px;background:linear-gradient(135deg,var(--s),#2d00f7);border:none;border-radius:8px;color:#fff;font-family:'Cairo';font-size:14px;font-weight:900;cursor:pointer;transition:all .2s;box-shadow:0 0 12px rgba(0,204,255,.15)}
 .bd:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,204,255,.25)}
@@ -179,6 +156,8 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 #hp{display:none;position:fixed;top:96px;right:12px;width:min(260px,80vw);max-height:50vh;background:rgba(12,12,30,.96);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px;overflow-y:auto;z-index:40;font-size:11px}
 .hr{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)}.hn{color:var(--tx2)}.hs{font-weight:900}
 
+.platrow{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
+.platrow .sb2{font-size:10px}
 .hype{height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin:4px 0;overflow:hidden}
 .hype div{height:100%;background:linear-gradient(90deg,var(--p),var(--g));transition:width .3s}
 
@@ -252,7 +231,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .hintbar .hx{flex:0 0 auto;background:none;border:none;color:var(--g);font-family:'Cairo';font-size:15px;font-weight:900;cursor:pointer;line-height:1;padding:0 2px}
 
 /* ---- Target marker on the point sliders, at the genre's ideal share ---- */
-.stt{position:absolute;top:50%;width:3px;height:18px;margin-top:-9px;background:var(--g);opacity:.9;border-radius:2px;pointer-events:none;z-index:3;box-shadow:0 0 4px rgba(255,215,0,.6)}
+.stt{position:absolute;top:50%;width:2px;height:14px;margin-top:-7px;background:var(--g);opacity:.75;border-radius:1px;pointer-events:none;z-index:1}
 
 /* ---- Mid-production decision (replaces part of the dead 2.75s wait) ---- */
 .prod-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin:6px 0;cursor:pointer;text-align:right;transition:all .15s;width:100%;font-family:'Cairo'}
@@ -322,33 +301,18 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div id="contractBanner"></div>
     <div id="tasteBar"></div>
     <div id="hintPanel"></div>
-    <!-- The panel used to stack nine sections with three nested scrollbars: the sheet
-         itself plus a clipped grid for each of the 11 genres and 15 topics. It is now
-         a four-row summary; each row opens a focused picker with room to show its own
-         inline rating, which also un-hides the synergy and affinity tables that were
-         previously discoverable only by trial and error. -->
-    <div id="chips" role="group" aria-label="إعداد المشروع">
-      <button class="chip" id="chipGenre" onclick="OpenPicker('genre')">
-        <span class="ck">📂 النوع</span><span class="cv" id="cvGenre">—</span><span class="cx">›</span>
-      </button>
-      <button class="chip" id="chipTopic" onclick="OpenPicker('topic')">
-        <span class="ck">🏷️ الموضوع</span><span class="cv" id="cvTopic">—</span><span class="cx">›</span>
-      </button>
-      <button class="chip" id="chipPlat" onclick="OpenPicker('platform')">
-        <span class="ck">📱 المنصات</span><span class="cv" id="cvPlat">—</span><span class="cx">›</span>
-      </button>
-      <button class="chip" id="chipScope" onclick="OpenPicker('scope')">
-        <span class="ck">⚙️ التوزيع</span><span class="cv" id="cvScope">—</span><span class="cx">›</span>
-      </button>
-      <button class="chip" id="chipName" onclick="OpenPicker('name')">
-        <span class="ck">✏️ الاسم</span><span class="cv" id="cvName">عشوائي</span><span class="cx">›</span>
-      </button>
-    </div>
+    <div class="sg"><div class="sl">📂 النوع</div><div class="sr" id="gr" role="group" aria-label="نوع اللعبة"></div></div>
+    <div class="sg"><div class="sl">🏷️ الموضوع</div><div class="sr" id="tr" role="group" aria-label="موضوع اللعبة"></div></div>
+    <div class="sg"><div class="sl">📱 المنصات (اختر واحدة أو أكثر — 🔥 مناسبة للنوع، 🔻 غير مناسبة)</div><div class="platrow" id="plr" role="group" aria-label="منصات النشر"></div></div>
+    <div class="slt"><span>⚙️ توزيع نقاط التطوير</span><span class="pl">المتبقي: <span id="dpl">0</span> / <span id="dpm">10</span></span></div>
+    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
+    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
+    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
+    <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:var(--tx);font-family:'Cairo';font-size:12px;outline:none"></div>
     <!-- Pinned: the live quality read-out and the primary action must stay on screen
          no matter how far the player has scrolled the genre/topic grids. -->
     <div id="devFooter">
       <div id="qualityPreview" aria-live="polite"></div>
-
       <button class="bd" id="bdev" onclick="startDevelop()">🚀 طوّر اللعبة</button>
       <div class="dc" id="dcc">تكلفة: 2,000</div>
       <div id="scopeBlock" style="display:none">
@@ -359,18 +323,6 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
       <div class="dc" id="freeDesc" style="display:none;color:#ffb347">أرباح قليلة بدون تقييم أو معجبين</div>
     </div>
   </div>
-</div>
-
-<!-- Long-lived controls the pickers borrow. Kept outside the picker body so a
-     re-render cannot destroy their bindings or in-progress input. -->
-<div id="pickerStash" style="display:none">
-  <div id="scopeRows">
-    <div class="slt"><span>⚙️ توزيع نقاط التطوير</span><span class="pl">المتبقي: <span id="dpl">0</span> / <span id="dpm">10</span></span></div>
-    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
-    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
-    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
-  </div>
-  <div id="nm"><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:7px 9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--tx);font-family:'Cairo';font-size:13px;outline:none"></div>
 </div>
 
 <div class="os transp" id="sp" role="status" aria-live="polite" aria-label="جاري التطوير">
@@ -553,15 +505,6 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <p id="loanDesc"></p>
     <div id="loanBody"></div>
     <div class="row" id="loanFooter"><button class="bg" onclick="CloseLoan()">إغلاق</button></div>
-  </div>
-</div>
-
-<div class="os dim" id="pickerModal" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
-  <div class="modal picker">
-    <h2 id="pickerTitle">اختر</h2>
-    <p id="pickerHint"></p>
-    <div id="pickerBody"></div>
-    <div class="row"><button class="bg" onclick="ClosePicker()">تم</button></div>
   </div>
 </div>
 
@@ -2363,7 +2306,6 @@ function updateUI(){
   renderIdealMarkers();
   renderQualityPreview();
   renderTasteBar();
-  renderChips();
   document.getElementById('bdev').disabled=!(S.genre&&S.topic&&S.money>=cost&&!S.dev&&S.platforms.length>0);
   // Freelance is the survival valve: offer it whenever even the cheapest
   // possible build is out of reach, not just the currently-configured one.
@@ -2415,192 +2357,64 @@ function clearSequelSetup(){
   document.getElementById('gni').value='';
   showToast('🔄 أُلغي وضع الجزء الثاني');
 }
-// ---- Summary chips + focused pickers --------------------------------------
-// buildSelectors() used to render the full 11-genre and 15-topic grids straight
-// into the panel. They now render into a picker opened from a summary chip, which
-// buys enough room to put each option's rating beside it — the synergy table and
-// the platform affinities stop being invisible systems the player has to infer.
-
-// Synergy → a label the player can act on. Same thresholds as the review screen.
-function synergyBadge(v){
-  if(v>=3)return {t:'مثالية ⭐',c:'r4'};
-  if(v>=2)return {t:'ممتازة ⭐',c:'r4'};
-  if(v>=1)return {t:'جيدة 👍',c:'r3'};
-  if(v<=-1)return {t:'ضعيفة 👎',c:'r1'};
-  return {t:'عادية 😐',c:'r2'};
-}
-function affinityBadge(v){
-  if(v>=1.25)return {t:'ممتازة 🔥',c:'r4'};
-  if(v>=1.05)return {t:'جيدة 👍',c:'r3'};
-  if(v<=0.8)return {t:'ضعيفة 🔻',c:'r1'};
-  return {t:'عادية 😐',c:'r2'};
-}
-
-function chipRow(icon,name,badge,active,locked,onClick){
-  const b=document.createElement('button');
-  b.className='opt'+(active?' a':'')+(locked?' lock':'');
-  b.disabled=!!locked;
-  b.setAttribute('aria-pressed',active?'true':'false');
-  const i=document.createElement('span');i.className='oi';i.textContent=icon;
-  const n=document.createElement('span');n.className='on';n.textContent=name;
-  b.appendChild(i);b.appendChild(n);
-  if(badge){const m=document.createElement('span');m.className='om '+badge.c;m.textContent=badge.t;b.appendChild(m);}
-  if(!locked&&onClick)b.onclick=onClick;
-  return b;
-}
-
-let pickerKind=null;
-window.OpenPicker=function(kind){
-  pickerKind=kind;
-  RenderPicker();
-  document.getElementById('pickerModal').classList.add('show');
-};
-window.ClosePicker=function(){
-  pickerKind=null;
-  const stash=document.getElementById('pickerStash');
-  ['scopeRows','nm'].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentNode!==stash)stash.appendChild(el);});
-  document.getElementById('pickerModal').classList.remove('show');
-  updateUI();
-};
-
-function RenderPicker(){
-  const title=document.getElementById('pickerTitle');
-  const hint=document.getElementById('pickerHint');
-  const body=document.getElementById('pickerBody');
-  // Hand back anything borrowed from the stash before wiping the body, otherwise
-  // innerHTML='' would destroy the sliders and the half-typed game name with them.
-  const stash=document.getElementById('pickerStash');
-  ['scopeRows','nm'].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentNode!==stash)stash.appendChild(el);});
-  body.innerHTML='';body.className='';
-  const genre=GENRES.find(g=>g.id===S.genre);
-  const contractGenre=(S.contract&&S.contract.active)?S.contract.genre:null;
-
-  if(pickerKind==='genre'){
-    title.textContent='📂 اختر النوع';
-    hint.textContent=contractGenre
-      ? 'أنت ملتزم بعقد نشر — أي نوع آخر يستهلك من المهلة بلا دفعة.'
-      : 'النوع يحدّد التوزيع المثالي للنقاط، وأي المواضيع تتفق معه.';
-    GENRES.forEach(g=>{
-      const locked=g.research&&!isResearched(g.research);
-      let badge=null;
-      if(locked)badge={t:'يحتاج بحثاً 🔒',c:'rl'};
-      else if(contractGenre)badge=g.id===contractGenre?{t:'نوع العقد 📜',c:'r4'}:{t:'خارج العقد ⚠️',c:'r1'};
-      body.appendChild(chipRow(g.icon,g.name,badge,S.genre===g.id,locked,()=>{
-        if(S.genre!==g.id)clearSequelSetup();
-        S.genre=g.id;
-        RenderPicker();updateUI();
-      }));
-    });
-    return;
-  }
-
-  if(pickerKind==='topic'){
-    title.textContent='🏷️ اختر الموضوع';
-    hint.textContent=genre
-      ? 'التقييم بجانب كل موضوع يوضّح مدى توافقه مع '+genre.icon+' '+genre.name+' هذه السنة.'
-      : 'اختر النوع أولاً لترى توافق كل موضوع معه.';
-    const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
-    // Best fits first: the list stops being 15 undifferentiated buttons.
-    const sorted=TOPICS.slice().sort((a,b)=>
-      genre?synergyFor(genre.id,b.id)-synergyFor(genre.id,a.id):0);
-    sorted.forEach(tp=>{
-      const syn=genre?synergyFor(genre.id,tp.id):0;
-      const badge=genre?synergyBadge(syn):null;
-      const name=tp.name+(hot.has(tp.id)?' ⭐ رائج':'')+(S.em==='trend'&&S.tt===tp.id?' 🔥 ترند':'');
-      body.appendChild(chipRow(tp.icon,name,badge,S.topic===tp.id,false,()=>{
-        if(S.topic!==tp.id)clearSequelSetup();
-        S.topic=tp.id;
-        RenderPicker();updateUI();
-      }));
-    });
-    return;
-  }
-
-  if(pickerKind==='platform'){
-    title.textContent='📱 اختر المنصات';
-    hint.textContent=(genre?'الملاءمة محسوبة لـ '+genre.icon+' '+genre.name+'. ':'')
-      +'كل منصة إضافية تصل إلى شريحة أصغر من الجمهور، والتكلفة تتراكم كاملة.';
-    PLATFORMS.forEach(pl=>{
-      const on=S.platforms.includes(pl.id);
-      const aff=genre?platformAffinity(pl.id,genre.id):1;
-      const badge=genre?affinityBadge(aff):{t:'تكلفة ×'+pl.costMult,c:'r2'};
-      body.appendChild(chipRow(pl.icon,pl.name+' — تكلفة ×'+pl.costMult,badge,on,false,()=>{
-        if(on){
-          if(S.platforms.length>1)S.platforms=S.platforms.filter(x=>x!==pl.id);
-          else{showToast('❌ تحتاج منصة واحدة على الأقل');return}
-        }else S.platforms.push(pl.id);
-        RenderPicker();updateUI();
-      }));
-    });
-    const note=document.createElement('p');
-    note.style.cssText='font-size:11px;color:var(--tx3);margin-top:8px;line-height:1.6';
-    const aud=genre?platformAudience(genre.id):0;
-    note.textContent='الوصول الحالي: ×'+aud.toFixed(2)+' • معامل التكلفة: ×'+platformCostMult().toFixed(2);
-    body.appendChild(note);
-    return;
-  }
-
-  if(pickerKind==='scope'){
-    title.textContent='⚙️ توزيع نقاط التطوير';
-    const mx=STG[S.st].maxPts,free=Math.floor(mx*SCOPE_FREE_RATIO);
-    hint.textContent='لديك '+mx+' نقطة. أول '+free+' بلا تكلفة إضافية، وكل نقطة بعدها ترفع الميزانية '
-      +Math.round(SCOPE_SURCHARGE*100)+'%. العلامة الذهبية ⬦ على كل شريط هي النسبة المثالية'
-      +(genre?' لـ '+genre.name:'')+'.';
-    body.appendChild(document.getElementById('scopeRows'));
-    bindSliders();
-    return;
-  }
-
-  if(pickerKind==='name'){
-    title.textContent='✏️ اسم اللعبة';
-    hint.textContent='اتركه فارغاً لاسم عشوائي. وبعض الأسماء المشهورة تخفي مكافأة 🥚';
-    body.appendChild(document.getElementById('nm'));
-    const input=document.getElementById('gni');
-    setTimeout(()=>{try{input.focus()}catch(_){}},60);
-    input.oninput=()=>updateUI();
-    return;
-  }
-}
-
-// Keeps the five summary rows in sync with the state behind them.
-function renderChips(){
-  const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
-  const set=(id,chipId,text,empty)=>{
-    document.getElementById(id).textContent=text;
-    document.getElementById(chipId).classList.toggle('empty',!!empty);
-  };
-  set('cvGenre','chipGenre',genre?genre.icon+' '+genre.name:'اختر النوع',!genre);
-
-  let topicTxt='اختر الموضوع';
-  if(topic){
-    topicTxt=topic.icon+' '+topic.name;
-    if(genre)topicTxt+=' · '+synergyBadge(synergyFor(genre.id,topic.id)).t;
-  }
-  set('cvTopic','chipTopic',topicTxt,!topic);
-
-  const plats=S.platforms.map(id=>{
-    const pl=PLATFORMS.find(x=>x.id===id);
-    if(!pl)return '';
-    const aff=genre?platformAffinity(id,genre.id):1;
-    return pl.icon+(genre?(aff>=1.25?'🔥':aff<=0.8?'🔻':''):'');
-  }).join(' ');
-  set('cvPlat','chipPlat',plats||'اختر منصة',!S.platforms.length);
-
-  const mx=STG[S.st].maxPts,used=scopePoints();
-  set('cvScope','chipScope',S.sl.design+' / '+S.sl.code+' / '+S.sl.sound+'  ('+used+'/'+mx+')',false);
-
-  const nm=document.getElementById('gni').value.trim();
-  set('cvName','chipName',nm||'عشوائي',false);
-}
-
-// Kept for the callers that refresh selection state after events, contracts and
-// research unlocks. The chips read straight from S, so this only has to re-render
-// whatever picker happens to be open.
 function buildSelectors(){
-  renderChips();
-  if(pickerKind)RenderPicker();
+  const gr=document.getElementById('gr'),tr=document.getElementById('tr');
+  gr.innerHTML='';tr.innerHTML='';
+  const contractGenre=(S.contract&&S.contract.active)?S.contract.genre:null;
+  GENRES.forEach(g=>{
+    const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
+    if(g.research&&!isResearched(g.research)){b.classList.add('lock');b.disabled=true;b.title='يحتاج بحثاً';}
+    else{
+      // Other genres used to be hard-locked while a contract ran, which made the
+      // advertised "deadline: two releases" penalty unreachable — the contract was
+      // pure upside with a fake risk. They are now selectable but flagged, so
+      // breaking the contract is a real (and costly) choice.
+      if(contractGenre&&g.id!==contractGenre){b.title='خارج نطاق عقدك — سيستهلك من المهلة بلا دفعة';b.textContent+=' ⚠️';}
+      else if(contractGenre)b.title='نوع العقد الحالي';
+      b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');BPlatforms();updateUI();};
+    }
+    if(S.genre===g.id)b.classList.add('a');
+    b.setAttribute('aria-pressed',S.genre===g.id?'true':'false');
+    gr.appendChild(b);
+  });
+  const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
+  TOPICS.forEach(t=>{
+    const b=document.createElement('button');b.className='sb2';
+    // Two separate signals: 🔥 = trending event (×2 sales), ⭐ = hot this year (+1 synergy)
+    let mark='';
+    if(S.em==='trend'&&S.tt===t.id)mark+=' 🔥';
+    if(hot.has(t.id))mark+=' ⭐';
+    b.textContent=t.icon+' '+t.name+mark;
+    if(hot.has(t.id))b.title='موضوع رائج هذه السنة (+'+TASTE_HOT_BONUS+' توافق)';
+    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
+    if(S.topic===t.id)b.classList.add('a');
+    b.setAttribute('aria-pressed',S.topic===t.id?'true':'false');
+    tr.appendChild(b);
+  });
 }
-function BPlatforms(){renderChips();}
+
+function BPlatforms(){
+  const pr=document.getElementById('plr');pr.innerHTML='';
+  PLATFORMS.forEach(p=>{
+    const b=document.createElement('button');b.className='sb2';
+    // Surface the genre affinity so it is a readable decision rather than a
+    // hidden table the player can only reverse-engineer from outcomes.
+    const aff=S.genre?platformAffinity(p.id,S.genre):1;
+    const mark=!S.genre?'':aff>=1.2?' 🔥':aff<=0.8?' 🔻':'';
+    b.textContent=p.icon+' '+p.name+mark;
+    if(S.genre)b.title='ملاءمة للنوع: ×'+aff.toFixed(2)+' • تكلفة ×'+p.costMult;
+    if(S.platforms.includes(p.id))b.classList.add('a');
+    b.setAttribute('aria-pressed',S.platforms.includes(p.id)?'true':'false');
+    b.onclick=()=>{
+      if(S.platforms.includes(p.id)){
+        if(S.platforms.length>1)S.platforms=S.platforms.filter(x=>x!==p.id);
+        else return; // need at least one
+      }else S.platforms.push(p.id);
+      BPlatforms();updateUI();
+    };
+    pr.appendChild(b);
+  });
+}
 
 function bindSliders(){
   document.querySelectorAll('.stw').forEach(w=>{
@@ -3957,7 +3771,6 @@ function RenderRivals(){
 // Escape is wired only to informational panels — never to decision modals, where
 // silently picking an outcome for the player would be worse than doing nothing.
 const ESCAPABLE={
-  pickerModal:()=>window.ClosePicker(),
   settingsModal:()=>window.CloseSettings(),
   researchModal:()=>window.CloseResearch(),
   empModal:()=>window.CloseEmps(),
@@ -4046,6 +3859,7 @@ function startGame(fresh){
   _started=true;
   applyTheme();
   buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();
+  document.getElementById('nm').style.display='block';
   openPanel();updateUI();sn('ok');checkAchievements();showTip('panel');saveGame();
 }
 let _hasSave=false;
