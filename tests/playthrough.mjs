@@ -76,12 +76,19 @@ async function settle(budgetMs){
 let stopped=null,usedTrim=false;
 for(let g=1;g<=GAMES;g++){
   if(!await settle(30000)){stopped='settle timeout before game '+g;break;}
+  // Pick through the focused pickers, the way a player now does.
   const ready=await pg.evaluate(()=>{
-    const gb=[...document.querySelectorAll('#gr .sb2')].filter(x=>!x.disabled);
-    const tb=[...document.querySelectorAll('#tr .sb2')].filter(x=>!x.disabled);
-    if(!gb.length||!tb.length)return false;
-    gb[Math.floor(Math.random()*Math.min(3,gb.length))].click();
-    tb[Math.floor(Math.random()*tb.length)].click();
+    const pick=(kind,choose)=>{
+      window.OpenPicker(kind);
+      const opts=[...document.querySelectorAll('#pickerBody .opt')].filter(x=>!x.disabled);
+      if(!opts.length){window.ClosePicker();return false;}
+      choose(opts).click();
+      window.ClosePicker();
+      return true;
+    };
+    if(!pick('genre',o=>o[Math.floor(Math.random()*Math.min(3,o.length))]))return false;
+    // Topics are sorted best-fit first, so taking from the front plays competently.
+    if(!pick('topic',o=>o[Math.floor(Math.random()*Math.min(4,o.length))]))return false;
     return true;
   });
   if(!ready){stopped='no selectable genre/topic at game '+g;break;}

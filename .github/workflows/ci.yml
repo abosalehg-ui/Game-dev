@@ -34,6 +34,11 @@ jobs:
       - name: Save integrity suite
         run: npm run test:save
 
+      # Asserts employees route around furniture on all six stage layouts instead of
+      # walking through it, and that every seat can still reach the coffee corner.
+      - name: Pathfinding suite
+        run: npm run test:path
+
       # Walks ~26 consecutive releases through the post-release pipeline, which a
       # one-release smoke test cannot cover: a mis-ordered flow step only shows up
       # as a dead end after a year rollover or an award ceremony.

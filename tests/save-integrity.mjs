@@ -172,11 +172,16 @@ try {
   {
     const { page, errors } = await boot({ save: null });
     await importInto(page, { ...REAL_SAVE, st: 2, money: 99999, platforms: ['switch', 'pc'] });
-    const platforms = await page.evaluate(() => document.querySelectorAll('#plr .sb2.a').length);
+    // Platform selection lives in a focused picker now; 'a' marks the active rows.
+    await page.evaluate(() => window.OpenPicker('platform'));
+    await page.waitForTimeout(250);
+    const platforms = await page.evaluate(() => document.querySelectorAll('#pickerBody .opt.a').length);
     const costBefore = await page.locator('#dcc').textContent();
     // The panel must keep updating after the import — this is what used to freeze.
-    await page.locator('#plr .sb2').nth(1).click();
-    await page.waitForTimeout(300);
+    await page.locator('#pickerBody .opt:not(.a)').first().click();
+    await page.waitForTimeout(250);
+    await page.evaluate(() => window.ClosePicker());
+    await page.waitForTimeout(250);
     const costAfter = await page.locator('#dcc').textContent();
     checks['unknown platform id is filtered out'] = platforms >= 1;
     checks['UI still updates after a bad-platform import'] = costBefore !== costAfter;

@@ -58,18 +58,41 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 #mp::-webkit-scrollbar-thumb{background:rgba(0,204,255,.3);border-radius:2px}
 .ph{text-align:center;font-size:14px;font-weight:900;color:var(--s);margin-bottom:10px}
 
-.sg{margin-bottom:8px}
 .sl{font-size:11px;color:var(--tx3);margin-bottom:4px;font-weight:700;letter-spacing:.5px}
-/* Genre (11) and topic (15) used to wrap into 4-5 rows each, ~280px of the panel,
-   which pushed the develop button and the live quality preview off-screen. The grid
-   shape is kept for discoverability but bounded with its own scroll. */
-.sr{display:flex;flex-wrap:wrap;gap:4px;max-height:84px;overflow-y:auto;overscroll-behavior:contain}
-.sr::-webkit-scrollbar{width:3px}.sr::-webkit-scrollbar-thumb{background:rgba(0,204,255,.35);border-radius:2px}
-.sb2{padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);color:var(--tx2);font-size:11px;font-weight:700;font-family:'Cairo';cursor:pointer;transition:all .15s}
-.sb2:hover{background:rgba(0,204,255,.06);border-color:rgba(0,204,255,.15)}
-.sb2.a{background:rgba(0,204,255,.1);border-color:var(--s);color:var(--s)}
-.sb2.lock{opacity:.35;cursor:not-allowed}
-.sb2.lock:after{content:' 🔒'}
+
+/* ---- Summary chips: one row per decision, opens a focused picker ---- */
+#chips{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.chip{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.09);border-radius:9px;font-family:'Cairo';cursor:pointer;
+  text-align:right;transition:border-color .15s,background .15s}
+.chip:hover{background:rgba(0,204,255,.06);border-color:rgba(0,204,255,.3)}
+.chip .ck{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--tx3)}
+.chip .cv{flex:1 1 auto;font-size:13px;font-weight:900;color:var(--s);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .cx{flex:0 0 auto;font-size:15px;color:var(--tx3);transform:scaleX(-1)}
+.chip.empty{border-style:dashed;border-color:rgba(255,215,0,.4)}
+.chip.empty .cv{color:var(--g)}
+
+/* ---- Focused picker ---- */
+.modal.picker{max-width:min(480px,96vw)}
+#pickerBody{max-height:min(56vh,460px);overflow-y:auto;overscroll-behavior:contain;margin:2px -4px 0;padding:0 4px}
+#pickerBody::-webkit-scrollbar{width:3px}
+#pickerBody::-webkit-scrollbar-thumb{background:rgba(0,204,255,.35);border-radius:2px}
+.opt{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;margin-bottom:5px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;
+  font-family:'Cairo';cursor:pointer;text-align:right;transition:all .13s}
+.opt:hover{border-color:var(--s);background:rgba(0,204,255,.06)}
+.opt.a{background:rgba(0,204,255,.12);border-color:var(--s)}
+.opt.lock{opacity:.42;cursor:not-allowed}
+.opt .oi{flex:0 0 auto;font-size:19px;width:26px;text-align:center}
+.opt .on{flex:1 1 auto;font-size:13px;font-weight:700;color:var(--tx)}
+.opt .om{flex:0 0 auto;font-size:11px;font-weight:900;padding:2px 8px;border-radius:11px}
+.om.r4{color:var(--p);background:rgba(0,255,136,.12)}
+.om.r3{color:var(--p);background:rgba(0,255,136,.08)}
+.om.r2{color:var(--g);background:rgba(255,215,0,.1)}
+.om.r1{color:var(--d);background:rgba(255,0,85,.1)}
+.om.rl{color:var(--tx3);background:rgba(255,255,255,.05)}
+.pickgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+@media (max-width:420px){.pickgrid{grid-template-columns:1fr}}
 
 .slt{font-size:10px;color:var(--tx3);margin:8px 0 5px;font-weight:700;display:flex;justify-content:space-between}
 .slt .pl{color:var(--g)}
@@ -83,7 +106,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .stf.ds{background:linear-gradient(90deg,#ff6b6b,#ee5a24)}.stf.cd{background:linear-gradient(90deg,#4ecdc4,#00b894)}.stf.sn2{background:linear-gradient(90deg,#a29bfe,#6c5ce7)}
 .sth{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#ddd);border:2.5px solid var(--s);position:absolute;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px rgba(0,204,255,.3),0 2px 6px rgba(0,0,0,.5);z-index:2;pointer-events:none}
 .sth.ds{border-color:#ff6b6b}.sth.cd{border-color:#00b894}.sth.sn2{border-color:#6c5ce7}
-@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.sb2{padding:5px 10px;font-size:12px}.sr{max-height:96px}}
+@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.opt{padding:11px 10px}.chip{padding:11px 10px}}
 
 .bd{width:100%;padding:9px;margin-top:8px;background:linear-gradient(135deg,var(--s),#2d00f7);border:none;border-radius:8px;color:#fff;font-family:'Cairo';font-size:14px;font-weight:900;cursor:pointer;transition:all .2s;box-shadow:0 0 12px rgba(0,204,255,.15)}
 .bd:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,204,255,.25)}
@@ -156,8 +179,6 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 #hp{display:none;position:fixed;top:96px;right:12px;width:min(260px,80vw);max-height:50vh;background:rgba(12,12,30,.96);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px;overflow-y:auto;z-index:40;font-size:11px}
 .hr{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)}.hn{color:var(--tx2)}.hs{font-weight:900}
 
-.platrow{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
-.platrow .sb2{font-size:10px}
 .hype{height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin:4px 0;overflow:hidden}
 .hype div{height:100%;background:linear-gradient(90deg,var(--p),var(--g));transition:width .3s}
 
@@ -231,7 +252,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .hintbar .hx{flex:0 0 auto;background:none;border:none;color:var(--g);font-family:'Cairo';font-size:15px;font-weight:900;cursor:pointer;line-height:1;padding:0 2px}
 
 /* ---- Target marker on the point sliders, at the genre's ideal share ---- */
-.stt{position:absolute;top:50%;width:2px;height:14px;margin-top:-7px;background:var(--g);opacity:.75;border-radius:1px;pointer-events:none;z-index:1}
+.stt{position:absolute;top:50%;width:3px;height:18px;margin-top:-9px;background:var(--g);opacity:.9;border-radius:2px;pointer-events:none;z-index:3;box-shadow:0 0 4px rgba(255,215,0,.6)}
 
 /* ---- Mid-production decision (replaces part of the dead 2.75s wait) ---- */
 .prod-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin:6px 0;cursor:pointer;text-align:right;transition:all .15s;width:100%;font-family:'Cairo'}
@@ -301,18 +322,33 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <div id="contractBanner"></div>
     <div id="tasteBar"></div>
     <div id="hintPanel"></div>
-    <div class="sg"><div class="sl">📂 النوع</div><div class="sr" id="gr" role="group" aria-label="نوع اللعبة"></div></div>
-    <div class="sg"><div class="sl">🏷️ الموضوع</div><div class="sr" id="tr" role="group" aria-label="موضوع اللعبة"></div></div>
-    <div class="sg"><div class="sl">📱 المنصات (اختر واحدة أو أكثر — 🔥 مناسبة للنوع، 🔻 غير مناسبة)</div><div class="platrow" id="plr" role="group" aria-label="منصات النشر"></div></div>
-    <div class="slt"><span>⚙️ توزيع نقاط التطوير</span><span class="pl">المتبقي: <span id="dpl">0</span> / <span id="dpm">10</span></span></div>
-    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
-    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
-    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
-    <div id="nm" style="margin:6px 0 2px;display:none"><div class="sl">✏️ اسم اللعبة (اختياري)</div><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:var(--tx);font-family:'Cairo';font-size:12px;outline:none"></div>
+    <!-- The panel used to stack nine sections with three nested scrollbars: the sheet
+         itself plus a clipped grid for each of the 11 genres and 15 topics. It is now
+         a four-row summary; each row opens a focused picker with room to show its own
+         inline rating, which also un-hides the synergy and affinity tables that were
+         previously discoverable only by trial and error. -->
+    <div id="chips" role="group" aria-label="إعداد المشروع">
+      <button class="chip" id="chipGenre" onclick="OpenPicker('genre')">
+        <span class="ck">📂 النوع</span><span class="cv" id="cvGenre">—</span><span class="cx">›</span>
+      </button>
+      <button class="chip" id="chipTopic" onclick="OpenPicker('topic')">
+        <span class="ck">🏷️ الموضوع</span><span class="cv" id="cvTopic">—</span><span class="cx">›</span>
+      </button>
+      <button class="chip" id="chipPlat" onclick="OpenPicker('platform')">
+        <span class="ck">📱 المنصات</span><span class="cv" id="cvPlat">—</span><span class="cx">›</span>
+      </button>
+      <button class="chip" id="chipScope" onclick="OpenPicker('scope')">
+        <span class="ck">⚙️ التوزيع</span><span class="cv" id="cvScope">—</span><span class="cx">›</span>
+      </button>
+      <button class="chip" id="chipName" onclick="OpenPicker('name')">
+        <span class="ck">✏️ الاسم</span><span class="cv" id="cvName">عشوائي</span><span class="cx">›</span>
+      </button>
+    </div>
     <!-- Pinned: the live quality read-out and the primary action must stay on screen
          no matter how far the player has scrolled the genre/topic grids. -->
     <div id="devFooter">
       <div id="qualityPreview" aria-live="polite"></div>
+
       <button class="bd" id="bdev" onclick="startDevelop()">🚀 طوّر اللعبة</button>
       <div class="dc" id="dcc">تكلفة: 2,000</div>
       <div id="scopeBlock" style="display:none">
@@ -323,6 +359,18 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
       <div class="dc" id="freeDesc" style="display:none;color:#ffb347">أرباح قليلة بدون تقييم أو معجبين</div>
     </div>
   </div>
+</div>
+
+<!-- Long-lived controls the pickers borrow. Kept outside the picker body so a
+     re-render cannot destroy their bindings or in-progress input. -->
+<div id="pickerStash" style="display:none">
+  <div id="scopeRows">
+    <div class="slt"><span>⚙️ توزيع نقاط التطوير</span><span class="pl">المتبقي: <span id="dpl">0</span> / <span id="dpm">10</span></span></div>
+    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
+    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
+    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
+  </div>
+  <div id="nm"><input id="gni" type="text" placeholder="اسم عشوائي إن تركته فارغاً" style="width:100%;padding:7px 9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--tx);font-family:'Cairo';font-size:13px;outline:none"></div>
 </div>
 
 <div class="os transp" id="sp" role="status" aria-live="polite" aria-label="جاري التطوير">
@@ -508,6 +556,15 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
+<div class="os dim" id="pickerModal" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+  <div class="modal picker">
+    <h2 id="pickerTitle">اختر</h2>
+    <p id="pickerHint"></p>
+    <div id="pickerBody"></div>
+    <div class="row"><button class="bg" onclick="ClosePicker()">تم</button></div>
+  </div>
+</div>
+
 <div class="os dim" id="prodModal" role="dialog" aria-modal="true" aria-label="قرار منتصف الإنتاج">
   <div class="modal">
     <h2 id="prodTitle">⏳ منتصف الإنتاج</h2>
@@ -533,7 +590,7 @@ import * as THREE from './vendor/three.module.js';
 
 // ============ THREE.JS ============
 let scene,camera,renderer,employees=[],typingActive=false,trophies=[];
-let amb,dl,winMeshes=[],confettiBursts=[],celebrateUntil=0,walkers=0,curStage=0;
+let amb,dl,fill,winMeshes=[],confettiBursts=[],celebrateUntil=0,walkers=0,curStage=0;
 
 // Camera base positions per stage + interactive orbit/zoom state
 const CAM_POS=[[20,20,20],[22,22,22],[26,26,26],[30,28,30],[36,34,36],[42,40,42]];
@@ -548,6 +605,22 @@ function setCam(stage){
   camera.updateProjectionMatrix();
 }
 
+// ---- Colour + lighting model (Three.js r185) ------------------------------
+// This project ran on r128, which had no colour management: material colours were
+// fed to the shader as raw sRGB values and the output was written unencoded. r152+
+// converts colours to linear working space on assignment and encodes back to sRGB
+// on output, which is physically correct — better gradients, correct blending —
+// but it darkens mid-tones by roughly the sRGB gamma, so the r128 light rig came
+// out about 35% dimmer on the same scene.
+//
+// The fix is a re-lit rig, not disabling colour management: LIGHT_GAIN scales the
+// whole day/night curve back up, and ACES tone mapping rolls off the highlights so
+// the brighter key light doesn't clip the emissive neon. Values were tuned against
+// the r128 reference frames with tools/shot-stages.mjs — re-run it after touching
+// anything here.
+const LIGHT_GAIN=2.6;
+const TONE_EXPOSURE=1.0;
+
 function initThree(){
   const c=document.getElementById('gC');
   scene=new THREE.Scene();scene.background=new THREE.Color(0x0c0c14);
@@ -557,16 +630,25 @@ function initThree(){
   renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(window.innerWidth,window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=TONE_EXPOSURE;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   c.appendChild(renderer.domElement);
-  amb=new THREE.AmbientLight(0x556677,0.7);
+  amb=new THREE.AmbientLight(0x556677,0.7*LIGHT_GAIN);
   scene.add(amb);
-  dl=new THREE.DirectionalLight(0xffeedd,0.9);
+  dl=new THREE.DirectionalLight(0xffeedd,0.9*LIGHT_GAIN);
   dl.position.set(15,25,15);dl.castShadow=true;
   dl.shadow.mapSize.set(1024,1024);
   dl.shadow.camera.left=-30;dl.shadow.camera.right=30;dl.shadow.camera.top=30;dl.shadow.camera.bottom=-30;
   scene.add(dl);
-  scene.add(new THREE.PointLight(0x00ccff,0.3,30));
+  // Cyan fill. Under r128 this was `PointLight(0x00ccff,0.3,30)` left at the
+  // origin — i.e. buried in the floor — and with the old decay=1 falloff it read as
+  // a faint tint. Modern lights use physically-correct decay=2, which made it
+  // vanish entirely, so it is now positioned and powered deliberately.
+  fill=new THREE.PointLight(0x00ccff,60,60,2);
+  fill.position.set(0,10,0);
+  scene.add(fill);
   bindCameraControls();
   animate();
 }
@@ -974,6 +1056,189 @@ function addTrophies(stage){
   for(let i=0;i<maxT;i++)mkTrophy(-3.5+i*1,.45,zPos,0xffd700);
 }
 
+// ---- Navigation ------------------------------------------------------------
+// Employees used to lerp in a straight line from their desk to the coffee corner,
+// which walked them clean through desks, beds, sofas and crates like ghosts.
+//
+// Rather than hand-authoring corridors per stage (six layouts, and any future one
+// would silently regress), the walkable space is derived from the room the game
+// already built: every static object's world-space footprint becomes an obstacle,
+// the floor is rasterised into a grid, and routes are A*-searched and then
+// string-pulled back into a small number of natural-looking straight legs.
+const NAV_CELL=0.7;          // grid resolution, world units
+const PERSON_RADIUS=0.55;    // obstacles are inflated by this so bodies clear corners
+const WALK_BAND=[0.25,2.2];  // the vertical slice a walking person occupies
+let nav=null;
+const _navBox=new THREE.Box3();
+
+// Anything solid at torso height counts. The floor and its tiles sit below the
+// band, ceiling lights and wall posters sit above it, so both drop out naturally
+// and desks/plants/walls/furniture are picked up without a manual list.
+function collectObstacles(){
+  const boxes=[];
+  rg.children.forEach(child=>{
+    if(child.userData&&child.userData.dyn)return; // people, posters, trophies, fx
+    _navBox.setFromObject(child);
+    if(!Number.isFinite(_navBox.min.x))return;
+    if(_navBox.max.y<WALK_BAND[0]||_navBox.min.y>WALK_BAND[1])return;
+    boxes.push({minX:_navBox.min.x,maxX:_navBox.max.x,minZ:_navBox.min.z,maxZ:_navBox.max.z});
+  });
+  return boxes;
+}
+
+// Must run before batchStatic() merges the furniture away.
+function buildNav(){
+  nav=null;
+  const boxes=collectObstacles();
+  if(!boxes.length)return;
+  let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+  for(const o of boxes){
+    if(o.minX<minX)minX=o.minX; if(o.maxX>maxX)maxX=o.maxX;
+    if(o.minZ<minZ)minZ=o.minZ; if(o.maxZ>maxZ)maxZ=o.maxZ;
+  }
+  const cols=Math.ceil((maxX-minX)/NAV_CELL)+1,rows=Math.ceil((maxZ-minZ)/NAV_CELL)+1;
+  if(cols*rows>20000)return; // safety valve; real stages are well under 4k cells
+  const blocked=new Uint8Array(cols*rows);
+  for(let r=0;r<rows;r++){
+    const z=minZ+r*NAV_CELL;
+    for(let c=0;c<cols;c++){
+      const x=minX+c*NAV_CELL;
+      for(const o of boxes){
+        if(x>=o.minX-PERSON_RADIUS&&x<=o.maxX+PERSON_RADIUS&&
+           z>=o.minZ-PERSON_RADIUS&&z<=o.maxZ+PERSON_RADIUS){blocked[r*cols+c]=1;break;}
+      }
+    }
+  }
+  nav={minX,minZ,cols,rows,blocked};
+}
+
+const navCol=x=>Math.round((x-nav.minX)/NAV_CELL);
+const navRow=z=>Math.round((z-nav.minZ)/NAV_CELL);
+const navX=c=>nav.minX+c*NAV_CELL;
+const navZ=r=>nav.minZ+r*NAV_CELL;
+function navFree(c,r){
+  return c>=0&&r>=0&&c<nav.cols&&r<nav.rows&&!nav.blocked[r*nav.cols+c];
+}
+// A person standing at their desk, or a coffee spot tucked against a crate, can
+// legitimately fall inside an inflated obstacle. Snap to the closest open cell
+// instead of failing the search.
+function nearestFree(c,r){
+  if(navFree(c,r))return {c,r};
+  for(let ring=1;ring<=8;ring++){
+    for(let dc=-ring;dc<=ring;dc++)for(let dr=-ring;dr<=ring;dr++){
+      if(Math.max(Math.abs(dc),Math.abs(dr))!==ring)continue;
+      if(navFree(c+dc,r+dr))return {c:c+dc,r:r+dr};
+    }
+  }
+  return null;
+}
+
+// Walkability test for the straight segment between two cells, used by the
+// string-puller. A thin Bresenham line is NOT safe here: it steps diagonally past
+// blocked cells, so a smoothed leg could clip the corner of a desk (measured: a
+// shoulder 0.1 units inside a desk footprint at the skyscraper). Sampling the
+// segment finely instead means every cell it actually crosses is tested. Blocked
+// cells already carry the PERSON_RADIUS inflation, and a sample can sit at most
+// half a cell off-centre, so clearing every sample leaves ~0.2 units of real margin.
+function navClear(c0,r0,c1,r1){
+  const x0=navX(c0),z0=navZ(r0),x1=navX(c1),z1=navZ(r1);
+  const len=Math.hypot(x1-x0,z1-z0);
+  const steps=Math.max(1,Math.ceil(len/(NAV_CELL/3)));
+  for(let i=0;i<=steps;i++){
+    const t=i/steps;
+    if(!navFree(navCol(x0+(x1-x0)*t),navRow(z0+(z1-z0)*t)))return false;
+  }
+  return true;
+}
+
+const NAV_NEIGHBOURS=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.414],[1,-1,1.414],[-1,1,1.414],[-1,-1,1.414]];
+// A* over the grid. Returns world-space waypoints, or null when unreachable.
+function navPath(fromX,fromZ,toX,toZ){
+  if(!nav)return null;
+  const start=nearestFree(navCol(fromX),navRow(fromZ));
+  const goal=nearestFree(navCol(toX),navRow(toZ));
+  if(!start||!goal)return null;
+  const n=nav.cols*nav.rows;
+  const si=start.r*nav.cols+start.c,gi=goal.r*nav.cols+goal.c;
+  if(si===gi)return [{x:navX(goal.c),z:navZ(goal.r)}];
+  const g=new Float32Array(n).fill(Infinity),fScore=new Float32Array(n).fill(Infinity);
+  const prev=new Int32Array(n).fill(-1),closed=new Uint8Array(n);
+  const h=(c,r)=>{const dc=Math.abs(c-goal.c),dr=Math.abs(r-goal.r);return (dc+dr)+(1.414-2)*Math.min(dc,dr);};
+  g[si]=0;fScore[si]=h(start.c,start.r);
+  const open=[si];
+  let guard=0;
+  while(open.length&&guard++<20000){
+    // Small grids, so a linear scan for the best node beats maintaining a heap.
+    let bi=0;
+    for(let k=1;k<open.length;k++)if(fScore[open[k]]<fScore[open[bi]])bi=k;
+    const cur=open.splice(bi,1)[0];
+    if(cur===gi)break;
+    closed[cur]=1;
+    const cc=cur%nav.cols,cr=(cur-cc)/nav.cols;
+    for(const [dc,dr,cost] of NAV_NEIGHBOURS){
+      const nc=cc+dc,nr=cr+dr;
+      if(!navFree(nc,nr))continue;
+      // Don't cut a diagonal between two blocked cells — it clips furniture corners.
+      if(dc&&dr&&(!navFree(cc+dc,cr)||!navFree(cc,cr+dr)))continue;
+      const ni=nr*nav.cols+nc;
+      if(closed[ni])continue;
+      const t=g[cur]+cost;
+      if(t<g[ni]){
+        g[ni]=t;fScore[ni]=t+h(nc,nr);prev[ni]=cur;
+        if(!open.includes(ni))open.push(ni);
+      }
+    }
+  }
+  if(prev[gi]<0&&si!==gi)return null;
+  const cells=[];
+  for(let cur=gi;cur!==-1;cur=prev[cur]){
+    const c=cur%nav.cols;cells.push({c,r:(cur-c)/nav.cols});
+    if(cur===si)break;
+  }
+  cells.reverse();
+  // String-pull: collapse the grid staircase into long straight legs so the walk
+  // reads as someone crossing a room rather than tracing a maze.
+  const out=[];
+  let anchor=0;
+  while(anchor<cells.length-1){
+    let far=anchor+1;
+    for(let k=cells.length-1;k>anchor+1;k--){
+      if(navClear(cells[anchor].c,cells[anchor].r,cells[k].c,cells[k].r)){far=k;break;}
+    }
+    out.push({x:navX(cells[far].c),z:navZ(cells[far].r)});
+    anchor=far;
+  }
+  if(!out.length)out.push({x:navX(goal.c),z:navZ(goal.r)});
+
+  // Two endpoint fixes, both mattering visually:
+  //
+  // 1. An employee standing at their desk is legitimately inside the desk's inflated
+  //    footprint, so planning starts from the nearest OPEN cell. The body, however,
+  //    starts where it stands — and the straight line from there to the first
+  //    smoothed waypoint was never validated, which let a walker cut diagonally
+  //    across their own desk on the way out. Prepend the snapped start so the first
+  //    move is a short, checked step into open floor.
+  const s0={x:navX(start.c),z:navZ(start.r)};
+  if(Math.hypot(s0.x-fromX,s0.z-fromZ)>0.2&&!navClear(navCol(fromX),navRow(fromZ),
+      navCol(out[0].x),navRow(out[0].z)))out.unshift(s0);
+  //
+  // 2. The goal is snapped the same way, so a walk home would end a cell short of
+  //    the chair and then snap. End on the true destination instead: that last leg
+  //    is under a cell long and approaching your own desk is the point.
+  const lastWp=out[out.length-1];
+  if(Math.hypot(lastWp.x-toX,lastWp.z-toZ)>0.05)out.push({x:toX,z:toZ});
+  return out;
+}
+
+// Smooth heading change instead of snapping the body to the new direction.
+function turnToward(obj,tx,tz,f){
+  const want=Math.atan2(tx-obj.position.x,tz-obj.position.z);
+  let d=want-obj.rotation.y;
+  while(d>Math.PI)d-=Math.PI*2;
+  while(d<-Math.PI)d+=Math.PI*2;
+  obj.rotation.y+=d*Math.min(1,0.2*f);
+}
+
 function buildRoom(s){
   curStage=s;
   clr();
@@ -988,6 +1253,9 @@ function buildRoom(s){
   addParticles(s);
   addStaffBoard(s);
   addTrophies(s);
+  // Derive the walkable grid while the furniture is still individual objects —
+  // batchStatic() below merges them into room-spanning meshes.
+  buildNav();
   // Fold all the static furniture into a handful of merged meshes. Must run last,
   // after every static mesh exists and before the first frame renders it.
   batchStatic();
@@ -1110,7 +1378,7 @@ function animate(){
     const u=e.userData||{};
     if(celebrating){
       // Everyone jumps and spins with arms raised
-      if(u.anim&&u.anim!=='idle'){u.anim='idle';walkers=Math.max(0,walkers-1);}
+      if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);}
       e.position.x=u.baseX;e.position.z=u.baseZ;
       e.position.y=Math.abs(Math.sin(t*9+i))*1.2;
       e.rotation.y+=0.15;
@@ -1119,7 +1387,7 @@ function animate(){
       if(e.children[3])e.children[3].rotation.x=-2.6;
     }else if(typingActive){
       // Development crunch: everyone back at their desk, hands on keyboard
-      if(u.anim&&u.anim!=='idle'){u.anim='idle';walkers=Math.max(0,walkers-1);}
+      if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);}
       e.position.y=Math.abs(Math.sin(t*7+i*.8))*.5;
       e.rotation.y=Math.sin(t*4+i)*.12;
       e.scale.y=1;
@@ -1140,37 +1408,52 @@ function animate(){
         if(u.baseX!==undefined){e.position.x=u.baseX;e.position.z=u.baseZ;}
         const cc=COFFEE_SPOTS[curStage];
         if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008*f){
-          u.anim='walk';
-          u.tx=cc.x+(Math.random()-.5)*1.5;u.tz=cc.z+(Math.random()-.5)*1.5;
-          walkers++;
+          const tx=cc.x+(Math.random()-.5)*1.5,tz=cc.z+(Math.random()-.5)*1.5;
+          const path=navPath(e.position.x,e.position.z,tx,tz);
+          // No route (a blocked-in layout, or the grid failed to build) means stay
+          // put. Better a stationary employee than one strolling through a desk.
+          if(path){u.anim='walk';u.path=path;u.pi=0;walkers++;}
         }
       }else if(u.anim==='walk'||u.anim==='return'){
-        const tx=u.anim==='walk'?u.tx:u.baseX,tz=u.anim==='walk'?u.tz:u.baseZ;
-        const dx=tx-e.position.x,dz=tz-e.position.z;
-        const dist=Math.hypot(dx,dz);
-        if(dist<0.15){
+        const wp=u.path&&u.path[u.pi];
+        if(!wp){
+          // Path exhausted: arrive.
           if(u.anim==='walk'){u.anim='pause';u.pauseUntil=Date.now()+2000+Math.random()*2000;}
           else{u.anim='idle';walkers=Math.max(0,walkers-1);}
+          u.path=null;
         }else{
-          const sp=0.045*f;
-          e.position.x+=dx/dist*sp;e.position.z+=dz/dist*sp;
-          e.rotation.y=Math.atan2(dx,dz);
-          e.position.y=Math.abs(Math.sin(t*10+i))*.12;
-          if(e.children[2])e.children[2].rotation.x=Math.sin(t*8+i)*.5;
-          if(e.children[3])e.children[3].rotation.x=Math.sin(t*8+i+Math.PI)*.5;
+          const dx=wp.x-e.position.x,dz=wp.z-e.position.z;
+          const dist=Math.hypot(dx,dz);
+          const last=u.pi>=u.path.length-1;
+          if(dist<(last?0.18:0.45)){
+            u.pi++;
+          }else{
+            const sp=0.045*f;
+            e.position.x+=dx/dist*Math.min(sp,dist);
+            e.position.z+=dz/dist*Math.min(sp,dist);
+            turnToward(e,wp.x,wp.z,f);
+            e.position.y=Math.abs(Math.sin(t*10+i))*.12;
+            if(e.children[2])e.children[2].rotation.x=Math.sin(t*8+i)*.5;
+            if(e.children[3])e.children[3].rotation.x=Math.sin(t*8+i+Math.PI)*.5;
+          }
         }
       }else if(u.anim==='pause'){
         e.position.y=0;
         e.scale.y=1+Math.sin(t*1.5+i)*.015;
-        if(Date.now()>u.pauseUntil)u.anim='return';
+        if(Date.now()>u.pauseUntil){
+          const back=navPath(e.position.x,e.position.z,u.baseX,u.baseZ);
+          // If the way home is somehow blocked, snap back rather than stranding them.
+          if(back){u.anim='return';u.path=back;u.pi=0;}
+          else{u.anim='idle';e.position.x=u.baseX;e.position.z=u.baseZ;walkers=Math.max(0,walkers-1);}
+        }
       }
     }
   });
   // Day/night lighting: smooth lerp toward current phase targets
   if(amb&&dayTarget){
     const k=Math.min(1,0.02*f);
-    amb.color.lerp(_dc1.set(dayTarget.amb),k);amb.intensity+=(dayTarget.ambI-amb.intensity)*k;
-    dl.color.lerp(_dc2.set(dayTarget.dl),k);dl.intensity+=(dayTarget.dlI-dl.intensity)*k;
+    amb.color.lerp(_dc1.set(dayTarget.amb),k);amb.intensity+=(dayTarget.ambI*LIGHT_GAIN-amb.intensity)*k;
+    dl.color.lerp(_dc2.set(dayTarget.dl),k);dl.intensity+=(dayTarget.dlI*LIGHT_GAIN-dl.intensity)*k;
     if(scene.background&&scene.background.isColor)scene.background.lerp(_dc3.set(dayTarget.bg),k);
     _dc4.set(dayTarget.win);
     winMeshes.forEach(w=>{
@@ -2080,6 +2363,7 @@ function updateUI(){
   renderIdealMarkers();
   renderQualityPreview();
   renderTasteBar();
+  renderChips();
   document.getElementById('bdev').disabled=!(S.genre&&S.topic&&S.money>=cost&&!S.dev&&S.platforms.length>0);
   // Freelance is the survival valve: offer it whenever even the cheapest
   // possible build is out of reach, not just the currently-configured one.
@@ -2131,64 +2415,192 @@ function clearSequelSetup(){
   document.getElementById('gni').value='';
   showToast('🔄 أُلغي وضع الجزء الثاني');
 }
-function buildSelectors(){
-  const gr=document.getElementById('gr'),tr=document.getElementById('tr');
-  gr.innerHTML='';tr.innerHTML='';
-  const contractGenre=(S.contract&&S.contract.active)?S.contract.genre:null;
-  GENRES.forEach(g=>{
-    const b=document.createElement('button');b.className='sb2';b.textContent=g.icon+' '+g.name;
-    if(g.research&&!isResearched(g.research)){b.classList.add('lock');b.disabled=true;b.title='يحتاج بحثاً';}
-    else{
-      // Other genres used to be hard-locked while a contract ran, which made the
-      // advertised "deadline: two releases" penalty unreachable — the contract was
-      // pure upside with a fake risk. They are now selectable but flagged, so
-      // breaking the contract is a real (and costly) choice.
-      if(contractGenre&&g.id!==contractGenre){b.title='خارج نطاق عقدك — سيستهلك من المهلة بلا دفعة';b.textContent+=' ⚠️';}
-      else if(contractGenre)b.title='نوع العقد الحالي';
-      b.onclick=()=>{if(S.genre!==g.id)clearSequelSetup();S.genre=g.id;gr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');BPlatforms();updateUI();};
-    }
-    if(S.genre===g.id)b.classList.add('a');
-    b.setAttribute('aria-pressed',S.genre===g.id?'true':'false');
-    gr.appendChild(b);
-  });
-  const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
-  TOPICS.forEach(t=>{
-    const b=document.createElement('button');b.className='sb2';
-    // Two separate signals: 🔥 = trending event (×2 sales), ⭐ = hot this year (+1 synergy)
-    let mark='';
-    if(S.em==='trend'&&S.tt===t.id)mark+=' 🔥';
-    if(hot.has(t.id))mark+=' ⭐';
-    b.textContent=t.icon+' '+t.name+mark;
-    if(hot.has(t.id))b.title='موضوع رائج هذه السنة (+'+TASTE_HOT_BONUS+' توافق)';
-    b.onclick=()=>{if(S.topic!==t.id)clearSequelSetup();S.topic=t.id;tr.querySelectorAll('.sb2').forEach(x=>x.classList.remove('a'));b.classList.add('a');updateUI();};
-    if(S.topic===t.id)b.classList.add('a');
-    b.setAttribute('aria-pressed',S.topic===t.id?'true':'false');
-    tr.appendChild(b);
-  });
+// ---- Summary chips + focused pickers --------------------------------------
+// buildSelectors() used to render the full 11-genre and 15-topic grids straight
+// into the panel. They now render into a picker opened from a summary chip, which
+// buys enough room to put each option's rating beside it — the synergy table and
+// the platform affinities stop being invisible systems the player has to infer.
+
+// Synergy → a label the player can act on. Same thresholds as the review screen.
+function synergyBadge(v){
+  if(v>=3)return {t:'مثالية ⭐',c:'r4'};
+  if(v>=2)return {t:'ممتازة ⭐',c:'r4'};
+  if(v>=1)return {t:'جيدة 👍',c:'r3'};
+  if(v<=-1)return {t:'ضعيفة 👎',c:'r1'};
+  return {t:'عادية 😐',c:'r2'};
+}
+function affinityBadge(v){
+  if(v>=1.25)return {t:'ممتازة 🔥',c:'r4'};
+  if(v>=1.05)return {t:'جيدة 👍',c:'r3'};
+  if(v<=0.8)return {t:'ضعيفة 🔻',c:'r1'};
+  return {t:'عادية 😐',c:'r2'};
 }
 
-function BPlatforms(){
-  const pr=document.getElementById('plr');pr.innerHTML='';
-  PLATFORMS.forEach(p=>{
-    const b=document.createElement('button');b.className='sb2';
-    // Surface the genre affinity so it is a readable decision rather than a
-    // hidden table the player can only reverse-engineer from outcomes.
-    const aff=S.genre?platformAffinity(p.id,S.genre):1;
-    const mark=!S.genre?'':aff>=1.2?' 🔥':aff<=0.8?' 🔻':'';
-    b.textContent=p.icon+' '+p.name+mark;
-    if(S.genre)b.title='ملاءمة للنوع: ×'+aff.toFixed(2)+' • تكلفة ×'+p.costMult;
-    if(S.platforms.includes(p.id))b.classList.add('a');
-    b.setAttribute('aria-pressed',S.platforms.includes(p.id)?'true':'false');
-    b.onclick=()=>{
-      if(S.platforms.includes(p.id)){
-        if(S.platforms.length>1)S.platforms=S.platforms.filter(x=>x!==p.id);
-        else return; // need at least one
-      }else S.platforms.push(p.id);
-      BPlatforms();updateUI();
-    };
-    pr.appendChild(b);
-  });
+function chipRow(icon,name,badge,active,locked,onClick){
+  const b=document.createElement('button');
+  b.className='opt'+(active?' a':'')+(locked?' lock':'');
+  b.disabled=!!locked;
+  b.setAttribute('aria-pressed',active?'true':'false');
+  const i=document.createElement('span');i.className='oi';i.textContent=icon;
+  const n=document.createElement('span');n.className='on';n.textContent=name;
+  b.appendChild(i);b.appendChild(n);
+  if(badge){const m=document.createElement('span');m.className='om '+badge.c;m.textContent=badge.t;b.appendChild(m);}
+  if(!locked&&onClick)b.onclick=onClick;
+  return b;
 }
+
+let pickerKind=null;
+window.OpenPicker=function(kind){
+  pickerKind=kind;
+  RenderPicker();
+  document.getElementById('pickerModal').classList.add('show');
+};
+window.ClosePicker=function(){
+  pickerKind=null;
+  const stash=document.getElementById('pickerStash');
+  ['scopeRows','nm'].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentNode!==stash)stash.appendChild(el);});
+  document.getElementById('pickerModal').classList.remove('show');
+  updateUI();
+};
+
+function RenderPicker(){
+  const title=document.getElementById('pickerTitle');
+  const hint=document.getElementById('pickerHint');
+  const body=document.getElementById('pickerBody');
+  // Hand back anything borrowed from the stash before wiping the body, otherwise
+  // innerHTML='' would destroy the sliders and the half-typed game name with them.
+  const stash=document.getElementById('pickerStash');
+  ['scopeRows','nm'].forEach(id=>{const el=document.getElementById(id);if(el&&el.parentNode!==stash)stash.appendChild(el);});
+  body.innerHTML='';body.className='';
+  const genre=GENRES.find(g=>g.id===S.genre);
+  const contractGenre=(S.contract&&S.contract.active)?S.contract.genre:null;
+
+  if(pickerKind==='genre'){
+    title.textContent='📂 اختر النوع';
+    hint.textContent=contractGenre
+      ? 'أنت ملتزم بعقد نشر — أي نوع آخر يستهلك من المهلة بلا دفعة.'
+      : 'النوع يحدّد التوزيع المثالي للنقاط، وأي المواضيع تتفق معه.';
+    GENRES.forEach(g=>{
+      const locked=g.research&&!isResearched(g.research);
+      let badge=null;
+      if(locked)badge={t:'يحتاج بحثاً 🔒',c:'rl'};
+      else if(contractGenre)badge=g.id===contractGenre?{t:'نوع العقد 📜',c:'r4'}:{t:'خارج العقد ⚠️',c:'r1'};
+      body.appendChild(chipRow(g.icon,g.name,badge,S.genre===g.id,locked,()=>{
+        if(S.genre!==g.id)clearSequelSetup();
+        S.genre=g.id;
+        RenderPicker();updateUI();
+      }));
+    });
+    return;
+  }
+
+  if(pickerKind==='topic'){
+    title.textContent='🏷️ اختر الموضوع';
+    hint.textContent=genre
+      ? 'التقييم بجانب كل موضوع يوضّح مدى توافقه مع '+genre.icon+' '+genre.name+' هذه السنة.'
+      : 'اختر النوع أولاً لترى توافق كل موضوع معه.';
+    const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
+    // Best fits first: the list stops being 15 undifferentiated buttons.
+    const sorted=TOPICS.slice().sort((a,b)=>
+      genre?synergyFor(genre.id,b.id)-synergyFor(genre.id,a.id):0);
+    sorted.forEach(tp=>{
+      const syn=genre?synergyFor(genre.id,tp.id):0;
+      const badge=genre?synergyBadge(syn):null;
+      const name=tp.name+(hot.has(tp.id)?' ⭐ رائج':'')+(S.em==='trend'&&S.tt===tp.id?' 🔥 ترند':'');
+      body.appendChild(chipRow(tp.icon,name,badge,S.topic===tp.id,false,()=>{
+        if(S.topic!==tp.id)clearSequelSetup();
+        S.topic=tp.id;
+        RenderPicker();updateUI();
+      }));
+    });
+    return;
+  }
+
+  if(pickerKind==='platform'){
+    title.textContent='📱 اختر المنصات';
+    hint.textContent=(genre?'الملاءمة محسوبة لـ '+genre.icon+' '+genre.name+'. ':'')
+      +'كل منصة إضافية تصل إلى شريحة أصغر من الجمهور، والتكلفة تتراكم كاملة.';
+    PLATFORMS.forEach(pl=>{
+      const on=S.platforms.includes(pl.id);
+      const aff=genre?platformAffinity(pl.id,genre.id):1;
+      const badge=genre?affinityBadge(aff):{t:'تكلفة ×'+pl.costMult,c:'r2'};
+      body.appendChild(chipRow(pl.icon,pl.name+' — تكلفة ×'+pl.costMult,badge,on,false,()=>{
+        if(on){
+          if(S.platforms.length>1)S.platforms=S.platforms.filter(x=>x!==pl.id);
+          else{showToast('❌ تحتاج منصة واحدة على الأقل');return}
+        }else S.platforms.push(pl.id);
+        RenderPicker();updateUI();
+      }));
+    });
+    const note=document.createElement('p');
+    note.style.cssText='font-size:11px;color:var(--tx3);margin-top:8px;line-height:1.6';
+    const aud=genre?platformAudience(genre.id):0;
+    note.textContent='الوصول الحالي: ×'+aud.toFixed(2)+' • معامل التكلفة: ×'+platformCostMult().toFixed(2);
+    body.appendChild(note);
+    return;
+  }
+
+  if(pickerKind==='scope'){
+    title.textContent='⚙️ توزيع نقاط التطوير';
+    const mx=STG[S.st].maxPts,free=Math.floor(mx*SCOPE_FREE_RATIO);
+    hint.textContent='لديك '+mx+' نقطة. أول '+free+' بلا تكلفة إضافية، وكل نقطة بعدها ترفع الميزانية '
+      +Math.round(SCOPE_SURCHARGE*100)+'%. العلامة الذهبية ⬦ على كل شريط هي النسبة المثالية'
+      +(genre?' لـ '+genre.name:'')+'.';
+    body.appendChild(document.getElementById('scopeRows'));
+    bindSliders();
+    return;
+  }
+
+  if(pickerKind==='name'){
+    title.textContent='✏️ اسم اللعبة';
+    hint.textContent='اتركه فارغاً لاسم عشوائي. وبعض الأسماء المشهورة تخفي مكافأة 🥚';
+    body.appendChild(document.getElementById('nm'));
+    const input=document.getElementById('gni');
+    setTimeout(()=>{try{input.focus()}catch(_){}},60);
+    input.oninput=()=>updateUI();
+    return;
+  }
+}
+
+// Keeps the five summary rows in sync with the state behind them.
+function renderChips(){
+  const genre=GENRES.find(g=>g.id===S.genre),topic=TOPICS.find(t=>t.id===S.topic);
+  const set=(id,chipId,text,empty)=>{
+    document.getElementById(id).textContent=text;
+    document.getElementById(chipId).classList.toggle('empty',!!empty);
+  };
+  set('cvGenre','chipGenre',genre?genre.icon+' '+genre.name:'اختر النوع',!genre);
+
+  let topicTxt='اختر الموضوع';
+  if(topic){
+    topicTxt=topic.icon+' '+topic.name;
+    if(genre)topicTxt+=' · '+synergyBadge(synergyFor(genre.id,topic.id)).t;
+  }
+  set('cvTopic','chipTopic',topicTxt,!topic);
+
+  const plats=S.platforms.map(id=>{
+    const pl=PLATFORMS.find(x=>x.id===id);
+    if(!pl)return '';
+    const aff=genre?platformAffinity(id,genre.id):1;
+    return pl.icon+(genre?(aff>=1.25?'🔥':aff<=0.8?'🔻':''):'');
+  }).join(' ');
+  set('cvPlat','chipPlat',plats||'اختر منصة',!S.platforms.length);
+
+  const mx=STG[S.st].maxPts,used=scopePoints();
+  set('cvScope','chipScope',S.sl.design+' / '+S.sl.code+' / '+S.sl.sound+'  ('+used+'/'+mx+')',false);
+
+  const nm=document.getElementById('gni').value.trim();
+  set('cvName','chipName',nm||'عشوائي',false);
+}
+
+// Kept for the callers that refresh selection state after events, contracts and
+// research unlocks. The chips read straight from S, so this only has to re-render
+// whatever picker happens to be open.
+function buildSelectors(){
+  renderChips();
+  if(pickerKind)RenderPicker();
+}
+function BPlatforms(){renderChips();}
 
 function bindSliders(){
   document.querySelectorAll('.stw').forEach(w=>{
@@ -3545,6 +3957,7 @@ function RenderRivals(){
 // Escape is wired only to informational panels — never to decision modals, where
 // silently picking an outcome for the player would be worse than doing nothing.
 const ESCAPABLE={
+  pickerModal:()=>window.ClosePicker(),
   settingsModal:()=>window.CloseSettings(),
   researchModal:()=>window.CloseResearch(),
   empModal:()=>window.CloseEmps(),
@@ -3633,7 +4046,6 @@ function startGame(fresh){
   _started=true;
   applyTheme();
   buildRoom(S.st);buildSelectors();bindSliders();BPlatforms();
-  document.getElementById('nm').style.display='block';
   openPanel();updateUI();sn('ok');checkAchievements();showTip('panel');saveGame();
 }
 let _hasSave=false;
