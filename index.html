@@ -645,15 +645,15 @@ const TONE_EXPOSURE=1.0;
 // a tier that was demoted stays demoted for the session rather than oscillating
 // across the threshold and making the framerate visibly pulse.
 const QUALITY_TIERS={
-  //          env    bloom   dof    grade  msaa shadow  maxDPR
-  high:   {env:1,bloom:1,dof:1,grade:1,msaa:4,shadow:2048,dpr:2},
+  //          env    bloom   dof    grade  screens  msaa shadow  maxDPR
+  high:   {env:1,bloom:1,dof:1,grade:1,screens:1,msaa:4,shadow:2048,dpr:2},
   // 'medium' is the phone default, so its two cost multipliers are both pulled
   // in: 2× MSAA rather than 4×, and a device-pixel-ratio cap of 1.5. Those two
   // numbers multiply into the fill rate of every pass in the chain, which makes
   // them the cheapest places to buy headroom back.
-  medium: {env:1,bloom:1,dof:1,grade:1,msaa:2,shadow:1024,dpr:1.5},
-  low:    {env:1,bloom:1,dof:0,grade:1,msaa:0,shadow:1024,dpr:1.25},
-  minimal:{env:0,bloom:0,dof:0,grade:0,msaa:0,shadow:512, dpr:1},
+  medium: {env:1,bloom:1,dof:1,grade:1,screens:1,msaa:2,shadow:1024,dpr:1.5},
+  low:    {env:1,bloom:1,dof:0,grade:1,screens:1,msaa:0,shadow:1024,dpr:1.25},
+  minimal:{env:0,bloom:0,dof:0,grade:0,screens:0,msaa:0,shadow:512, dpr:1},
 };
 const TIER_ORDER=['high','medium','low','minimal'];
 let qualityTier='high',QUALITY=QUALITY_TIERS.high;
@@ -1503,10 +1503,123 @@ function spawnConfetti(n,gold){
 // from a handful of repeated box sizes and colours, so both are cached and
 // reused. Cached resources are deliberately NEVER disposed — see clr().
 const GEO_CACHE=new Map(),MAT_CACHE=new Map();
+
+// ---- Chamfered boxes -------------------------------------------------------
+// Every object in this game is a box, and a mathematically perfect box is the one
+// shape that never shows an edge. Two faces meeting at exactly 90° with flat
+// normals produce two flat tones and a hard line between them — no highlight
+// runs along the join, because there is no surface at an intermediate angle for
+// light to catch. That single fact is most of why untouched low-poly reads as
+// "programmer geometry", and why chamfering it reads as "modelled".
+//
+// So each edge is cut back to a narrow 45° face and each corner to a triangle.
+// Those slivers face halfway between their neighbours, so under any light with
+// direction they pick up a bright rim along every silhouette in the room — and
+// under the environment map added earlier they pick up the sky, which is what
+// makes the effect hold up even on surfaces the key light never reaches.
+//
+// Cost is 44 triangles per box against 12. On a scene whose largest room is
+// ~11k triangles that is irrelevant; the draw call count, which is what actually
+// mattered here, is unchanged because the batching runs downstream of this.
+const BEVEL=0.035;
+
+// Chamfering is a prop-scale detail and is skipped for anything architectural.
+// The reason is specific rather than aesthetic: a chamfer works by catching light
+// on a facet angled between two faces, and on the environment-lit floor slab that
+// facet catches sky along the room's entire 24-unit perimeter. One continuous
+// line that bright clears the bloom threshold, so the bloom pass smears it into a
+// glowing outline several pixels wide and the room stops reading as a room and
+// starts reading as a lit platform.
+//
+// Furniture edges are short and curved around in plan, so they read as
+// highlights rather than as a bar of light. The threshold sits between the
+// largest prop (a 4.5-unit bed) and the smallest wall (20 units).
+const BEVEL_MAX_SPAN=8;
+
+// A chamfered box is 6 inset faces + 12 edge slivers + 8 corner triangles — 26
+// pieces, each of which has to be wound counter-clockwise as seen from outside or
+// it vanishes under back-face culling. Hand-deriving 26 winding orders is a
+// reliable way to produce two or three invisible faces that nobody notices until
+// a particular camera angle, so the winding is not hand-derived: each piece is
+// declared with the direction it should face, and emit() reverses it if the
+// vertex order it was given disagrees.
+function chamferBox(w,h,d,bevel){
+  const a=w/2,b=h/2,c=d/2;
+  // The chamfer can never eat more than a third of the smallest dimension, or a
+  // thin object — a monitor panel is 0.03 deep — would be chamfered past its own
+  // centre and turn inside out.
+  const t=Math.min(bevel,Math.min(w,h,d)/3);
+  const A=a-t,B=b-t,C=c-t;
+  const pos=[],nor=[],uv=[];
+
+  // Emits a triangle or quad facing `out`, correcting the winding if needed.
+  // Flat normals throughout: every vertex of a piece gets that piece's own
+  // normal, which is what keeps the facets crisp instead of smoothing the
+  // chamfer into a soft round-over.
+  function emit(verts,out,uvs){
+    const [p,q,r]=verts;
+    const e1=[q[0]-p[0],q[1]-p[1],q[2]-p[2]];
+    const e2=[r[0]-p[0],r[1]-p[1],r[2]-p[2]];
+    const n=[e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]];
+    if(n[0]*out[0]+n[1]*out[1]+n[2]*out[2]<0){
+      verts=verts.slice().reverse();
+      if(uvs)uvs=uvs.slice().reverse();
+    }
+    const fan=verts.length===4?[0,1,2,0,2,3]:[0,1,2];
+    for(const i of fan){
+      const v=verts[i];
+      pos.push(v[0],v[1],v[2]);
+      nor.push(out[0],out[1],out[2]);
+      // UVs only matter on the six main faces — those are the ones a texture is
+      // ever mapped to. The slivers collapse to a single texel so they read as
+      // one flat colour rather than a stretched smear.
+      const u=uvs?uvs[i]:[0,0];
+      uv.push(u[0],u[1]);
+    }
+  }
+
+  const FACE_UV=[[0,0],[1,0],[1,1],[0,1]];
+  for(const s of [1,-1]){
+    // ±X, ±Y, ±Z main faces, each inset by the chamfer on both tangential axes.
+    emit([[s*a,-B,-C],[s*a,-B,C],[s*a,B,C],[s*a,B,-C]],[s,0,0],FACE_UV);
+    emit([[-A,s*b,-C],[A,s*b,-C],[A,s*b,C],[-A,s*b,C]],[0,s,0],FACE_UV);
+    emit([[-A,-B,s*c],[A,-B,s*c],[A,B,s*c],[-A,B,s*c]],[0,0,s],FACE_UV);
+  }
+
+  const k=Math.SQRT1_2;  // a 45° sliver faces halfway between its two neighbours
+  for(const i of [1,-1])for(const j of [1,-1]){
+    // Edges running along Z, X and Y respectively.
+    emit([[i*a,j*B,-C],[i*a,j*B,C],[i*A,j*b,C],[i*A,j*b,-C]],[i*k,j*k,0]);
+    emit([[-A,i*b,j*C],[A,i*b,j*C],[A,i*B,j*c],[-A,i*B,j*c]],[0,i*k,j*k]);
+    emit([[i*a,-B,j*C],[i*a,B,j*C],[i*A,B,j*c],[i*A,-B,j*c]],[i*k,0,j*k]);
+  }
+
+  // 8 corner triangles, each closing the pocket where three slivers meet.
+  const r3=1/Math.sqrt(3);
+  for(const i of [1,-1])for(const j of [1,-1])for(const l of [1,-1]){
+    emit([[i*a,j*B,l*C],[i*A,j*b,l*C],[i*A,j*B,l*c]],[i*r3,j*r3,l*r3]);
+  }
+
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+  g.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(nor),3));
+  g.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(uv),2));
+  g.computeBoundingSphere();
+  return g;
+}
+
 function boxGeo(w,h,d){
   const k=w+'|'+h+'|'+d;
   let g=GEO_CACHE.get(k);
-  if(!g){g=new THREE.BoxGeometry(w,h,d);GEO_CACHE.set(k,g);}
+  if(!g){
+    // Always non-indexed. chamferBox already is, and converting the plain boxes
+    // once here means the batching merge downstream never has to branch on it or
+    // convert the same geometry again on every room rebuild.
+    g=Math.max(w,h,d)>BEVEL_MAX_SPAN
+      ? new THREE.BoxGeometry(w,h,d).toNonIndexed()
+      : chamferBox(w,h,d,BEVEL);
+    GEO_CACHE.set(k,g);
+  }
   return g;
 }
 function stdMat(col,rough){
@@ -1520,6 +1633,185 @@ function emMat(col,em,i,rough){
   let m=MAT_CACHE.get(k);
   if(!m){m=new THREE.MeshStandardMaterial({color:col,emissive:em,emissiveIntensity:i,roughness:rough});MAT_CACHE.set(k,m);}
   return m;
+}
+
+// ---- Live monitor screens --------------------------------------------------
+// The desks used to carry a flat cyan emissive panel. It read as "a screen" only
+// because it was screen-shaped — nothing on it was doing anything, in a game
+// whose entire subject is people making things on screens.
+//
+// Each screen now samples a canvas that is redrawn a few times a second: an
+// editor with code being typed into it, a sprite being blocked in, or a sales
+// chart. There are exactly three canvases, shared by every desk in the building
+// and picked per desk, which is what keeps this from costing anything: three
+// materials means three draw-call buckets, the same batching the room already
+// had, and the whole animation is three small canvas redraws per tick regardless
+// of whether the room holds one desk or twenty-four.
+//
+// They are also deliberately not synchronised to the game's own clock beyond the
+// typing burst — a floor of monitors all updating in lockstep reads as a video
+// wall rather than as people working.
+const SCREEN_W=160,SCREEN_H=112;
+const SCREEN_VARIANTS=3;
+const screens=[];   // {canvas, ctx, tex, draw, state}
+
+// Palette shared by all three, so a floor of mixed screens still looks like one
+// studio's worth of software rather than three unrelated apps.
+//
+// The background is a lit mid-blue rather than the near-black a real editor
+// would use, and that is a deliberate correction for viewing distance. A monitor
+// here is about ten pixels tall; at that size the texture is minified to roughly
+// its own average, so a dark theme with thin bright lines averages to black and
+// the screen reads as switched off. Seen from across a room a real monitor reads
+// as a bright rectangle, not as its colour scheme — so the canvas is drawn to
+// average out bright, and the detail is there for when the player zooms in.
+const SCR_BG='#153a5e',SCR_CHROME='#0d2439';
+const SCR_INK=['#9fe4ff','#ff9fd2','#bdf59f','#ffe08a','#c9b6ff'];
+
+function mulberryFrom(seed){return mulberry32(seed)}
+
+function makeScreen(variant){
+  const canvas=document.createElement('canvas');
+  canvas.width=SCREEN_W;canvas.height=SCREEN_H;
+  const ctx=canvas.getContext('2d');
+  const tex=new THREE.CanvasTexture(canvas);
+  tex.colorSpace=THREE.SRGBColorSpace;
+  // Mipmaps left on. Without them a 3px bright bar minified to a 10px screen is
+  // hit or missed by point sampling depending on the exact camera angle, so the
+  // monitors flicker and crawl as the player orbits. Mipmapping resolves them to
+  // a stable average instead — which is the correct read at that distance, and
+  // why the palette above is tuned so that average lands bright.
+  tex.generateMipmaps=true;
+  const state={t:0,rows:[],caret:0,seed:variant*97+13};
+  const s={canvas,ctx,tex,variant,state};
+  screens.push(s);
+  return s;
+}
+
+// Rows of coloured bars read as code at this size far better than actual glyphs,
+// which turn to mush below about 8px.
+function drawCode(ctx,st){
+  const rnd=mulberryFrom(st.seed+((st.t/6)|0));
+  ctx.fillStyle=SCR_BG;ctx.fillRect(0,0,SCREEN_W,SCREEN_H);
+  ctx.fillStyle=SCR_CHROME;ctx.fillRect(0,0,SCREEN_W,10);
+  for(let i=0;i<3;i++){ctx.fillStyle=['#ff5f57','#febc2e','#28c840'][i];ctx.fillRect(5+i*7,4,3,3);}
+  const lines=12,lh=8;
+  for(let i=0;i<lines;i++){
+    const y=14+i*lh;
+    const indent=4+((rnd()*3)|0)*7;
+    let x=indent;
+    const segs=1+((rnd()*3)|0);
+    for(let sgi=0;sgi<segs;sgi++){
+      const w=6+rnd()*38;
+      if(x+w>SCREEN_W-6)break;
+      ctx.fillStyle=SCR_INK[(rnd()*SCR_INK.length)|0];
+      ctx.globalAlpha=0.75+rnd()*0.25;
+      ctx.fillRect(x,y,w,4);
+      x+=w+4;
+    }
+  }
+  ctx.globalAlpha=1;
+  // Caret: the one element that actually moves every tick, and the reason the
+  // screen reads as being typed into rather than as a static mock-up.
+  if(((st.t/2)|0)%2===0){
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(4+(st.caret%22)*6,14+((st.caret/22|0)%12)*8-1,5,5);
+  }
+}
+
+function drawArt(ctx,st){
+  const rnd=mulberryFrom(st.seed+((st.t/10)|0));
+  ctx.fillStyle=SCR_BG;ctx.fillRect(0,0,SCREEN_W,SCREEN_H);
+  ctx.fillStyle=SCR_CHROME;ctx.fillRect(0,0,SCREEN_W,10);
+  // Checkerboard, the universal "transparent background" of every art tool.
+  const cs=8;
+  for(let y=0;y<(SCREEN_H-14)/cs;y++)for(let x=0;x<SCREEN_W/cs;x++){
+    ctx.fillStyle=(x+y)%2?'#24405c':'#1b3450';
+    ctx.fillRect(x*cs,14+y*cs,cs,cs);
+  }
+  // A sprite being blocked in, growing over time.
+  const cols=10,rows=8,ox=(SCREEN_W-cols*cs)/2,oy=16;
+  const filled=Math.min(cols*rows,8+((st.t/3)|0)%(cols*rows));
+  for(let i=0;i<filled;i++){
+    const cx=i%cols,cy=(i/cols)|0;
+    if(rnd()<0.35)continue;
+    ctx.fillStyle=SCR_INK[(rnd()*SCR_INK.length)|0];
+    ctx.fillRect(ox+cx*cs,oy+cy*cs,cs-1,cs-1);
+  }
+}
+
+function drawChart(ctx,st){
+  const rnd=mulberryFrom(st.seed);
+  ctx.fillStyle=SCR_BG;ctx.fillRect(0,0,SCREEN_W,SCREEN_H);
+  ctx.fillStyle=SCR_CHROME;ctx.fillRect(0,0,SCREEN_W,10);
+  const bars=14,bw=SCREEN_W/bars;
+  for(let i=0;i<bars;i++){
+    // A slow travelling wave plus fixed per-bar noise: the chart animates without
+    // ever redrawing into something implausible.
+    const base=rnd();
+    const h=(0.25+0.75*Math.abs(Math.sin(st.t*0.06+i*0.5)*base))*(SCREEN_H-24);
+    ctx.fillStyle=SCR_INK[i%SCR_INK.length];
+    ctx.globalAlpha=0.85;
+    ctx.fillRect(i*bw+2,SCREEN_H-4-h,bw-4,h);
+  }
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#2c3a4f';ctx.fillRect(0,SCREEN_H-4,SCREEN_W,1);
+}
+
+const SCREEN_DRAW=[drawCode,drawArt,drawChart];
+
+// Redraw rate. Fast enough that a caret blinking or a bar rising is legible,
+// slow enough that three canvas repaints and three texture uploads never show up
+// in a frame budget. Typing bursts push it up because that is exactly the moment
+// the player is meant to look at the desks.
+const SCREEN_FPS=7,SCREEN_FPS_BUSY=14;
+let _screenNext=0,_screensPainted=false;
+function updateScreens(now){
+  if(!screens.length)return;
+  // On the lowest tier the screens are painted once and then left alone. Each
+  // update is a canvas repaint plus a texture upload plus a mipmap regeneration,
+  // and the devices that land on this tier are exactly the ones that cannot spare
+  // that several times a second — on a software rasterizer it was enough
+  // main-thread contention to delay unrelated callbacks by most of a second.
+  if(!QUALITY.screens){
+    if(_screensPainted)return;
+    for(const s of screens){SCREEN_DRAW[s.variant](s.ctx,s.state);s.tex.needsUpdate=true;}
+    _screensPainted=true;
+    return;
+  }
+  _screensPainted=false;
+  const fps=typingActive?SCREEN_FPS_BUSY:SCREEN_FPS;
+  if(now<_screenNext)return;
+  _screenNext=now+1000/fps;
+  for(const s of screens){
+    s.state.t++;
+    s.state.caret=(s.state.caret+1+((Math.random()*3)|0))%264;
+    SCREEN_DRAW[s.variant](s.ctx,s.state);
+    s.tex.needsUpdate=true;
+  }
+}
+
+function screenMat(variant){
+  const k='scr'+variant;
+  let m=MAT_CACHE.get(k);
+  if(!m){
+    const s=makeScreen(variant);
+    // The panel is lit by its own image: emissiveMap carries the picture, and the
+    // near-black base colour stops room light from washing it out. This is the
+    // only material in the game that is meant to be brighter than its
+    // surroundings, which is also what makes it the bloom pass's main subject.
+    m=new THREE.MeshStandardMaterial({
+      color:0x0a0a0f,map:s.tex,emissive:0xffffff,emissiveMap:s.tex,
+      emissiveIntensity:1.45,roughness:.35,
+    });
+    MAT_CACHE.set(k,m);
+  }
+  return m;
+}
+
+function Screen(w,h,d,x,y,z,variant){
+  const m=new THREE.Mesh(boxGeo(w,h,d),screenMat(variant%SCREEN_VARIANTS));
+  m.position.set(x,y,z);m.castShadow=true;return m;
 }
 
 function B(w,h,d,col,x,y,z){
@@ -1541,25 +1833,55 @@ function E(w,h,d,col,em,x,y,z,i){
 let _owned=[]; // per-room resources this module allocated and must dispose
 function own(r){if(r){r.userData=r.userData||{};r.userData.owned=true;_owned.push(r);}return r}
 
+// Transforms each box straight into the output buffers. The previous version
+// cloned every source geometry, called applyMatrix4 on the clone, copied it out
+// and disposed it — three allocations and two full passes per box. Chamfering
+// tripled the vertex count per box and the new furniture added more boxes, which
+// together took this from a few milliseconds to nearly twenty on a skyscraper
+// rebuild, and a rebuild happens on every release and every hire.
+//
+// The matrices here are rigid (translation and Y rotation from the furniture
+// groups), so the upper-left 3×3 transforms normals correctly on its own; a
+// separate inverse-transpose is only needed under non-uniform scale, which no
+// static object in this game has.
 function mergeStatic(entries){
-  const parts=[];let total=0;
-  for(const {geometry,matrix} of entries){
-    const g=geometry.index?geometry.toNonIndexed():geometry.clone();
-    g.applyMatrix4(matrix); // also transforms normals via the normal matrix
-    total+=g.attributes.position.count;
-    parts.push(g);
+  let total=0;
+  const geos=new Array(entries.length);
+  for(let i=0;i<entries.length;i++){
+    const g=entries[i].geometry;
+    // boxGeo caches non-indexed geometry, so this is a safety net rather than a
+    // hot path — but an indexed geometry slipping through would silently merge
+    // garbage, so it is converted rather than assumed.
+    geos[i]=g.index?g.toNonIndexed():g;
+    total+=geos[i].attributes.position.count;
   }
-  const pos=new Float32Array(total*3),nor=new Float32Array(total*3);
+  const pos=new Float32Array(total*3),nor=new Float32Array(total*3),uvs=new Float32Array(total*2);
   let off=0;
-  for(const g of parts){
-    pos.set(g.attributes.position.array,off*3);
-    nor.set(g.attributes.normal.array,off*3);
-    off+=g.attributes.position.count;
-    g.dispose();
+  for(let i=0;i<entries.length;i++){
+    const g=geos[i],n=g.attributes.position.count,m=entries[i].matrix.elements;
+    const gp=g.attributes.position.array,gn=g.attributes.normal.array;
+    for(let v=0;v<n;v++){
+      const t=v*3,s=(off+v)*3;
+      const x=gp[t],y=gp[t+1],z=gp[t+2];
+      pos[s]  =m[0]*x+m[4]*y+m[8] *z+m[12];
+      pos[s+1]=m[1]*x+m[5]*y+m[9] *z+m[13];
+      pos[s+2]=m[2]*x+m[6]*y+m[10]*z+m[14];
+      const nx=gn[t],ny=gn[t+1],nz=gn[t+2];
+      nor[s]  =m[0]*nx+m[4]*ny+m[8] *nz;
+      nor[s+1]=m[1]*nx+m[5]*ny+m[9] *nz;
+      nor[s+2]=m[2]*nx+m[6]*ny+m[10]*nz;
+    }
+    // UVs have to survive the merge now that materials can carry a map — the
+    // animated monitor screens are batched like any other static furniture, and
+    // without this they would sample texel (0,0) across their whole surface.
+    if(g.attributes.uv)uvs.set(g.attributes.uv.array,off*2);
+    if(geos[i]!==entries[i].geometry)geos[i].dispose();  // only the fallback copies
+    off+=n;
   }
   const out=new THREE.BufferGeometry();
   out.setAttribute('position',new THREE.BufferAttribute(pos,3));
   out.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  out.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
   out.computeBoundingSphere();
   return out;
 }
@@ -1642,32 +1964,237 @@ function mkWindow(w,h,x,y,z){
 // Coffee corner spot per stage (idle employees wander here)
 const COFFEE_SPOTS=[null,{x:6.5,z:-6.5},{x:7,z:4},{x:3,z:5},{x:0,z:13},{x:14,z:0}];
 
-function mkPerson(x,z,color){
+// ---- People ----------------------------------------------------------------
+// An employee used to be four boxes: a torso, a head, and two side boxes that the
+// walk cycle swung as if they were legs. There were no legs — the torso simply
+// stopped a unit above the floor — and every person in the building was the same
+// height, the same build and the same colour but for their role tint, so a
+// staffed skyscraper read as one figure stamped twenty-four times.
+//
+// They now have legs that reach the ground, arms that hang from shoulders, hair,
+// and per-person variation in height, build and skin tone. The variation is
+// seeded from the desk slot rather than drawn at random, so a given employee
+// looks like the same person across a hire, a room rebuild and a reload — a
+// character who changes appearance every time the room is rebuilt is worse than
+// no variation at all.
+// FNV-1a over the employee's name. Any stable hash would do; the requirement is
+// only that it depends on the person and not on where they happen to be sitting.
+function strSeed(str){
+  let h=2166136261;
+  const s=String(str||'');
+  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+  return h>>>0;
+}
+
+const SKIN_TONES=[0xffd7b0,0xf0bd93,0xd39b6f,0xa9714a,0x7a4b2c];
+const HAIR_TONES=[0x2b1d16,0x4a2f1e,0x7a4a22,0x1a1a20,0xb08040,0x8a8a95];
+
+// A limb needs to pivot at the shoulder or hip, not through its own middle. The
+// old model rotated the boxes about their centres, which is why a walking
+// employee's arms looked like spinning propellers rather than swinging limbs.
+function limb(w,h,d,col,px,py,pz){
+  const pivot=new THREE.Group();
+  pivot.position.set(px,py,pz);
+  pivot.add(B(w,h,d,col,0,-h/2,0));
+  return pivot;
+}
+
+// People live under a dynamic group, so the room's static batching cannot touch
+// them — every box is its own draw call, twice over once the shadow map is
+// counted. The richer model took an employee from four boxes to roughly nine,
+// which at a staffed skyscraper is over two hundred meshes and undid most of what
+// the batching pass had bought.
+//
+// Only the limbs actually need their own transform. The torso, collar, head and
+// hair all move together as one rigid piece, so they are merged into a single
+// geometry that carries its colours per-vertex instead of per-material. One
+// shared material for every body in the building, one mesh per person, and the
+// count drops back to five meshes per employee.
+const _pc=new THREE.Color();
+let PERSON_MAT=null;
+function personMat(){
+  if(!PERSON_MAT)PERSON_MAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.62});
+  return PERSON_MAT;
+}
+
+// Reads straight out of the cached box geometries and writes the offset in while
+// copying. The obvious implementation — clone the cached geometry, translate the
+// clone, merge, dispose — runs on every hire and every release, and at a staffed
+// skyscraper that is 120 geometry clones and disposals per rebuild for what is
+// ultimately a vector add. Since these parts are only ever translated, never
+// rotated, the normals copy across untouched.
+function mergeColored(parts){
+  let total=0;
+  const geos=new Array(parts.length);
+  for(let i=0;i<parts.length;i++){
+    geos[i]=boxGeo(parts[i].w,parts[i].h,parts[i].d);
+    total+=geos[i].attributes.position.count;
+  }
+  const pos=new Float32Array(total*3),nor=new Float32Array(total*3),col=new Float32Array(total*3);
+  let off=0;
+  for(let i=0;i<parts.length;i++){
+    const p=parts[i],g=geos[i],n=g.attributes.position.count;
+    const gp=g.attributes.position.array,gn=g.attributes.normal.array;
+    // Vertex colours are consumed in linear space; THREE.Color does the sRGB
+    // conversion on assignment, so reading .r/.g/.b back gives the right values.
+    _pc.setHex(p.color);
+    const cr=_pc.r,cg=_pc.g,cb=_pc.b;
+    for(let v=0;v<n;v++){
+      const s=(off+v)*3,t=v*3;
+      pos[s]=gp[t]+p.x;pos[s+1]=gp[t+1]+p.y;pos[s+2]=gp[t+2]+p.z;
+      nor[s]=gn[t];nor[s+1]=gn[t+1];nor[s+2]=gn[t+2];
+      col[s]=cr;col[s+1]=cg;col[s+2]=cb;
+    }
+    off+=n;
+  }
+  const out=new THREE.BufferGeometry();
+  out.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  out.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  out.setAttribute('color',new THREE.BufferAttribute(col,3));
+  out.computeBoundingSphere();
+  out.userData.owned=true;   // rebuilt per room; purge() must dispose it
+  return out;
+}
+
+function mkPerson(x,z,color,seed){
+  const rnd=mulberry32((seed|0)*2654435761+11);
   const g=new THREE.Group();
-  g.add(B(1,1.3,.55,color||0x00aaff,0,1.65,0));
-  g.add(B(.65,.65,.65,0xffccaa,0,2.65,0));
-  g.add(B(.25,.9,.25,color||0x00aaff,-.6,1.65,0));
-  g.add(B(.25,.9,.25,color||0x00aaff,.6,1.65,0));
+  const c=color||0x00aaff;
+  const skin=SKIN_TONES[(rnd()*SKIN_TONES.length)|0];
+  const hair=HAIR_TONES[(rnd()*HAIR_TONES.length)|0];
+  // Build varies independently of height: a short broad figure and a tall narrow
+  // one out of the same two numbers is most of what makes a crowd read as people.
+  const build=0.88+rnd()*0.3;
+  const legLen=0.95+rnd()*0.16;
+  const torso=1.12;
+  const hipY=legLen, chestY=hipY+torso, headY=chestY+0.32;
+
+  const legs=[-1,1].map(s=>{
+    const p=limb(.28*build,legLen,.32,0x2f3444,s*.24*build,hipY,0);
+    g.add(p);return p;
+  });
+  const arms=[-1,1].map(s=>{
+    const p=limb(.22,.88,.26,c,s*(.5*build+.13),chestY-.12,0);
+    g.add(p);return p;
+  });
+  // Everything that does not articulate, in one mesh.
+  const body=[
+    {w:1.0*build,h:torso,d:.55,color:c,x:0,y:hipY+torso/2,z:0},
+    // Collar: a sliver of a lighter tone where the torso meets the head, which
+    // stops the two blocks from reading as one extruded column.
+    {w:.72*build,h:.1,d:.5,color:0xffffff,x:0,y:chestY-.04,z:0},
+    {w:.62,h:.62,d:.62,color:skin,x:0,y:headY,z:0},
+    // Hair as a cap plus, often, a back panel — enough silhouette to tell two
+    // employees apart from behind, the angle this camera spends most of its time at.
+    {w:.66,h:.16,d:.66,color:hair,x:0,y:headY+.33,z:0},
+  ];
+  if(rnd()<0.6)body.push({w:.66,h:.34,d:.14,color:hair,x:0,y:headY+.06,z:-.27});
+  const trunk=new THREE.Mesh(mergeColored(body),personMat());
+  trunk.castShadow=true;trunk.receiveShadow=true;
+  g.add(trunk);
+
   g.position.set(x,0,z);
-  g.userData={baseX:x,baseZ:z};
+  const s=0.96+rnd()*0.12;
+  g.scale.setScalar(s);
+  g.userData={baseX:x,baseZ:z,arms,legs,s};
   gPeople.add(g);employees.push(g);
   return g;
 }
 
-function mkDesk(x,z,angle){
+function mkDesk(x,z,angle,variant){
   const g=new THREE.Group();
   g.add(B(3.2,.12,1.6,0x8B5E3C,0,2.05,0));
   [[-1.3,-.6],[1.3,-.6],[-1.3,.6],[1.3,.6]].forEach(([lx,lz])=>g.add(B(.12,2,.12,0x555,lx,1,lz)));
   g.add(B(1.2,.85,.1,0x222,0,2.75,-.55));
   g.add(B(.08,.35,.08,0x444,0,2.35,-.5));
-  g.add(E(1.1,.75,.03,0x00ccff,0x00ccff,0,2.75,-.49,.5));
+  g.add(Screen(1.1,.75,.03,0,2.75,-.49,variant||0));
   g.add(B(.8,.04,.3,0x333,0,2.15,.15));
-  g.add(B(1,.1,1,0x333,0,1.25,1.3));g.add(B(1,1,.1,0x333,0,1.85,1.8));
+  // Chair, replacing the pair of anonymous slabs that used to stand in for one.
+  // A back and four legs is barely more geometry and it is the difference between
+  // a desk with a chair at it and a desk with two boxes behind it.
+  //
+  // Tucked in against the desk rather than pulled out, for two reasons. It is
+  // where an unoccupied chair actually sits — and the walkable grid is derived
+  // from each furniture group's bounding box, so a chair pushed back toward the
+  // employee would extend the desk's footprint over the very spot that employee
+  // stands on, blocking their own start cell and pushing their route out around
+  // the obstacle before they had taken a step.
+  g.add(B(.95,.09,.9,0x2b3242,0,1.28,.55));
+  g.add(B(.9,.85,.1,0x2b3242,0,1.75,.98));
+  [[-.38,.25],[.38,.25],[-.38,.85],[.38,.85]].forEach(([lx,lz])=>g.add(B(.08,1.24,.08,0x1b2130,lx,.62,lz)));
   g.position.set(x,0,z);if(angle)g.rotation.y=angle;
   rg.add(g);return g;
 }
 
-function mkPlant(x,z){rg.add(B(.45,.55,.45,0xcc6600,x,.28,z));rg.add(B(.8,1.1,.8,0x22aa55,x,1.1,z));}
+// Three plant shapes rather than one. Every plant in the game used to be the
+// identical pot-and-cube, which at the skyscraper meant four copies of the same
+// object in the four corners — the sort of repetition the eye picks up
+// immediately even when it cannot say why the room looks synthetic.
+//
+// The shape is chosen from the plant's own position, so a given corner grows the
+// same plant every time the room is rebuilt.
+function mkPlant(x,z){
+  const rnd=mulberry32(strSeed(x.toFixed(2)+'|'+z.toFixed(2)));
+  const kind=(rnd()*3)|0;
+  rg.add(B(.45,.55,.45,[0xcc6600,0x9a5540,0x6f6357][kind],x,.28,z));
+  if(kind===0){          // broad and bushy
+    rg.add(B(.82,1.05,.82,0x22aa55,x,1.08,z));
+    rg.add(B(.5,.42,.5,0x2fbe66,x+.14,1.72,z-.1));
+  }else if(kind===1){    // tall, thin trunk with a crown
+    rg.add(B(.22,1.55,.22,0x4a6b3a,x,1.33,z));
+    rg.add(B(.78,.5,.78,0x2eb85f,x,2.2,z));
+    rg.add(B(.5,.34,.5,0x35cc6d,x-.1,2.55,z+.08));
+  }else{                 // low and dense
+    rg.add(B(.62,.5,.62,0x37b06a,x,.8,z));
+    rg.add(B(.36,.3,.36,0x49c97d,x+.12,1.12,z+.06));
+  }
+}
+
+// ---- The coffee corner -----------------------------------------------------
+// Employees have always walked to a coffee spot when idle. There has never been
+// anything there — the destination was a bare patch of floor, so the one piece of
+// autonomous behaviour in the game read as staff wandering off and standing in a
+// corner. This puts the thing they are walking to at the end of the walk.
+//
+// Deliberately offset from COFFEE_SPOTS rather than placed on it: the counter is
+// solid, and the walkable grid is derived from the furniture, so standing it on
+// the destination would block the destination.
+const COFFEE_STATION=[null,{x:6.5,z:-8.4},{x:9.4,z:4},{x:3,z:8.8},{x:0,z:15.2},{x:17,z:0}];
+function addCoffeeStation(stage){
+  const p=COFFEE_STATION[stage];if(!p)return;
+  const along=Math.abs(p.x)>Math.abs(p.z);   // counter runs along the nearer wall
+  const w=along?.9:2.2,d=along?2.2:.9;
+  rg.add(B(w,.9,d,0x39415a,p.x,.45,p.z));
+  rg.add(B(w+.1,.09,d+.1,0x5b6483,p.x,.94,p.z));
+  rg.add(B(.62,.85,.55,0x22262f,p.x,1.41,p.z));
+  // The brew light: a small warm emissive that gives the corner a reason to be
+  // somewhere a person would walk to at night.
+  rg.add(E(.34,.14,.05,0xff7a3d,0xff7a3d,p.x+(along?.31:0),1.55,p.z+(along?0:.3),.8));
+  rg.add(B(.16,.2,.16,0xf2f2f5,p.x+(along?.1:.62),1.09,p.z+(along?.7:.1)));
+  rg.add(B(.16,.2,.16,0xf2f2f5,p.x+(along?-.12:.9),1.09,p.z+(along?-.6:-.08)));
+}
+
+// A shelf of books on the back wall. Colour and height per slot come from the
+// slot index, so the shelf is busy without being noise.
+// Only the stages that have a wall to hang it on. The skyscraper floor is open on
+// every side, so a shelf placed by the same rule as the posters — which are
+// positioned off a table that assumes a back wall — hangs unsupported in the sky.
+// Each x is chosen to clear that stage's existing whiteboard, poster run and
+// trophy shelf.
+function addShelf(stage){
+  const spec={2:{x:8,y:3.4,z:-11.6},3:{x:10,y:3.6,z:-13.6},4:{x:12,y:3.8,z:-16.6}}[stage];
+  if(!spec)return;
+  for(let s=0;s<2;s++){
+    const y=spec.y+s*1.15;
+    rg.add(B(3.4,.1,.5,0x5a4632,spec.x,y,spec.z));
+    for(let i=0;i<11;i++){
+      const r=mulberry32(strSeed(stage+'b'+s+'x'+i))();
+      if(r<0.18)continue;
+      const h=.5+r*.34;
+      rg.add(B(.2,h,.34,[0x8c4a4a,0x4a6a8c,0x6a8c4a,0xa08a4a,0x7a5a8c][i%5],spec.x-1.5+i*.3,y+.05+h/2,spec.z));
+    }
+  }
+}
 
 function mkTrophy(x,y,z,col){
   const t=E(.35,.7,.35,col||0xffd700,col||0xffd700,x,y,z,.4);
@@ -1725,7 +2252,10 @@ const POSTER_WALLS=[
 // which is why hiring or firing anyone forced a full room teardown.
 function addDesks(stage){
   const layout=STAGE_LAYOUT[stage];if(!layout)return;
-  layout.desks.forEach(desk=>{if(!desk.ceo)mkDesk(desk.x,desk.z,0)});
+  // Screen variant follows the desk's position in the layout rather than a random
+  // draw, so the mix of code / art / analytics across the floor is stable across
+  // rebuilds instead of reshuffling every time somebody is hired.
+  layout.desks.forEach((desk,i)=>{if(!desk.ceo)mkDesk(desk.x,desk.z,0,i)});
 }
 function placePeople(stage){
   const layout=STAGE_LAYOUT[stage];if(!layout)return;
@@ -1734,12 +2264,16 @@ function placePeople(stage){
     // Slot 0 = self (player). Always present, gold colored.
     // Slots 1+ = hired employees in order. Empty slot = no person (visible empty desk).
     if(i===0){
-      const p=mkPerson(desk.x,desk.z+2,SELF_COLOR);
+      const p=mkPerson(desk.x,desk.z+2,SELF_COLOR,0);
       p.userData.isSelf=true;
     }else if(i-1<emps.length){
       const emp=emps[i-1];
       const color=ROLE_COLORS[emp.role]||0x00aaff;
-      const p=mkPerson(desk.x,desk.z+2,color);
+      // Seeded from the employee's name so their appearance follows them: the
+      // same person keeps their build and colouring across hires, room rebuilds
+      // and reloads, and does not change identity when a colleague quits and
+      // everyone shifts up a desk.
+      const p=mkPerson(desk.x,desk.z+2,color,strSeed(emp.name));
       p.userData.role=emp.role;p.userData.empName=emp.name;
     }
   });
@@ -2030,6 +2564,8 @@ function buildRoom(s){
   addParticles(s);
   addStaffBoard(s);
   addTrophies(s);
+  addCoffeeStation(s);
+  addShelf(s);
   addGroundHaze(s);
   // Derive the walkable grid while the furniture is still individual objects —
   // batchStatic() below merges them into room-spanning meshes.
@@ -2123,7 +2659,9 @@ function buildSkyscraper(){
   }
   // CEO big desk (drawn manually since the layout marks it ceo:true)
   rg.add(B(5,.15,2.5,0x4a2810,0,2.1,-16));
-  rg.add(E(2,1.2,.06,0x00ccff,0x00ccff,0,3.2,-17,.6));
+  // The CEO gets the analytics board — the one screen in the building whose
+  // content matches what the player is actually doing at that desk.
+  rg.add(Screen(2,1.2,.06,0,3.2,-17,2));
   // Lounge sofas
   rg.add(B(4,.6,2,0x333,14,0.3,0));rg.add(B(4,.6,2,0x333,-14,0.3,0));
   // Neon ceiling lights
@@ -2152,25 +2690,33 @@ function animate(){
   const f=_lastFrame?Math.min(3,(now-_lastFrame)/16.6667):1;
   _lastFrame=now;
   const celebrating=now<celebrateUntil&&!prefersReducedMotion();
+  // Limbs are addressed through userData rather than by child index. The old code
+  // reached for children[2] and children[3], which silently meant "whatever the
+  // third and fourth boxes happen to be" — and the moment the model gained legs,
+  // hair and a collar those indices pointed at completely different parts.
+  const swing=(pivots,a,b)=>{if(pivots){pivots[0].rotation.x=a;pivots[1].rotation.x=b===undefined?a:b;}};
   employees.forEach((e,i)=>{
     const u=e.userData||{};
+    const bs=u.s||1;   // the person's own build scale, which breathing multiplies
     if(celebrating){
       // Everyone jumps and spins with arms raised
       if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);}
       e.position.x=u.baseX;e.position.z=u.baseZ;
       e.position.y=Math.abs(Math.sin(t*9+i))*1.2;
       e.rotation.y+=0.15;
-      e.scale.y=1;
-      if(e.children[2])e.children[2].rotation.x=-2.6;
-      if(e.children[3])e.children[3].rotation.x=-2.6;
+      e.scale.y=bs;
+      swing(u.arms,-2.6);
+      // Legs tuck up on the jump instead of staying rigid, which is what makes it
+      // read as leaving the ground rather than being levitated.
+      swing(u.legs,0.5+Math.sin(t*9+i)*0.35);
     }else if(typingActive){
       // Development crunch: everyone back at their desk, hands on keyboard
       if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);}
       e.position.y=Math.abs(Math.sin(t*7+i*.8))*.5;
       e.rotation.y=Math.sin(t*4+i)*.12;
-      e.scale.y=1;
-      if(e.children[2])e.children[2].rotation.x=-0.9+Math.sin(t*11+i)*.3;
-      if(e.children[3])e.children[3].rotation.x=-0.9+Math.sin(t*11+i+1.5)*.3;
+      e.scale.y=bs;
+      swing(u.arms,-0.9+Math.sin(t*11+i)*.3,-0.9+Math.sin(t*11+i+1.5)*.3);
+      swing(u.legs,0);
       if(u.baseX!==undefined){
         e.position.x=u.baseX+Math.sin(t*.6+i*.4)*.15;
         e.position.z=u.baseZ+Math.cos(t*.5+i*.3)*.15;
@@ -2180,9 +2726,10 @@ function animate(){
       if(!u.anim)u.anim='idle';
       if(u.anim==='idle'){
         e.position.y=0;e.rotation.y=0;
-        e.scale.y=1+Math.sin(t*1.2+i*.5)*.012;
-        if(e.children[2])e.children[2].rotation.x=0;
-        if(e.children[3])e.children[3].rotation.x=0;
+        e.scale.y=bs*(1+Math.sin(t*1.2+i*.5)*.012);
+        // Arms hang with a slight idle sway rather than snapping to dead vertical.
+        swing(u.arms,Math.sin(t*0.9+i)*.06,Math.sin(t*0.9+i+2.1)*.06);
+        swing(u.legs,0);
         if(u.baseX!==undefined){e.position.x=u.baseX;e.position.z=u.baseZ;}
         const cc=COFFEE_SPOTS[curStage];
         if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008*f){
@@ -2211,13 +2758,17 @@ function animate(){
             e.position.z+=dz/dist*Math.min(sp,dist);
             turnToward(e,wp.x,wp.z,f);
             e.position.y=Math.abs(Math.sin(t*10+i))*.12;
-            if(e.children[2])e.children[2].rotation.x=Math.sin(t*8+i)*.5;
-            if(e.children[3])e.children[3].rotation.x=Math.sin(t*8+i+Math.PI)*.5;
+            // Legs lead the gait; arms counter-swing at about half the amplitude,
+            // opposite the leg on the same side, as a real walk does.
+            const ph=t*8+i;
+            swing(u.legs,Math.sin(ph)*.62,Math.sin(ph+Math.PI)*.62);
+            swing(u.arms,Math.sin(ph+Math.PI)*.34,Math.sin(ph)*.34);
           }
         }
       }else if(u.anim==='pause'){
         e.position.y=0;
-        e.scale.y=1+Math.sin(t*1.5+i)*.015;
+        e.scale.y=bs*(1+Math.sin(t*1.5+i)*.015);
+        swing(u.legs,0);
         if(Date.now()>u.pauseUntil){
           const back=navPath(e.position.x,e.position.z,u.baseX,u.baseZ);
           // If the way home is somehow blocked, snap back rather than stranding them.
@@ -2277,6 +2828,7 @@ function animate(){
     }
     particleSystem.points.geometry.attributes.position.needsUpdate=true;
   }
+  updateScreens(now);
   if(gradePass)gradePass.uniforms.uTime.value=t;
   if(composer)composer.render();else renderer.render(scene,camera);
   governQuality(now);
