@@ -48,11 +48,23 @@ window.__shot={
       lightShafts.forEach(s=>{s.mesh.material.opacity+=(sh*s.base-s.mesh.material.opacity)*0.2});
       if(scene.background&&scene.background.isColor)scene.background.lerp(new THREE.Color(t.bg),0.2);
       winMeshes.forEach(w=>{w.material.emissive.lerp(new THREE.Color(t.win),0.2);w.material.emissiveIntensity+=(t.winI-w.material.emissiveIntensity)*0.2;});}},
-  info:()=>({revision:(THREE.REVISION||'?'),calls:renderer.info.render.calls,tris:renderer.info.render.triangles,
+  // renderer.info resets on every render() call, and the composer issues one per
+  // pass — so reading it after a composed frame reports the fullscreen quad of
+  // whichever pass happened to run last, which is why this used to say "1
+  // triangle". Taking the numbers from a single direct scene render restores the
+  // scene-level figures the tool is actually there to report.
+  info:()=>{
+    renderer.info.autoReset=false;
+    renderer.info.reset();
+    renderer.render(scene,camera);
+    const calls=renderer.info.render.calls,tris=renderer.info.render.triangles;
+    renderer.info.autoReset=true;
+    return {revision:(THREE.REVISION||'?'),calls,tris,
     colorSpace:renderer.outputColorSpace||renderer.outputEncoding||'n/a',
     colorManaged:(THREE.ColorManagement?THREE.ColorManagement.enabled:'n/a'),
     tier:qualityTier,passes:composer?composer.passes.length:0,
-    toneMapping:renderer.toneMapping}),
+    toneMapping:renderer.toneMapping};
+  },
 };
 </script>
 </body>`);
