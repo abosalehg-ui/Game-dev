@@ -32,6 +32,11 @@ const patched = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(
   /<\/script>\s*<\/body>/,
   `
 window.__shot={
+  // Film grain is per-pixel random noise. It is nearly invisible on screen and it
+  // suppresses banding in the sky gradient, but it defeats PNG's row filters
+  // completely — leaving it on made every committed screenshot roughly ten times
+  // larger. Runtime keeps it; captures do not.
+  degrain:()=>{if(typeof gradePass!=='undefined'&&gradePass)gradePass.uniforms.uGrain.value=0;},
   stage:(s,opts)=>{const o=opts||{};
     S.st=s;
     S.employees=Array.from({length:[0,2,4,8,15,23][s]},(_,i)=>({role:['coder','designer','artist','composer','marketer'][i%5],name:'موظف'+i,level:i%4,exp:0,salary:2000}));
@@ -92,19 +97,33 @@ const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath
 const errors = [];
 const written = [];
 
-async function openPage(viewport, scale) {
+// `quality` pins the renderer tier for this page. The scene shots want the full
+// chain; the UI and mobile shots are about the interface and are captured at 2×
+// device scale, where the full chain on a software rasterizer is slow enough that
+// the page stops responding to input altogether and the harness times out trying
+// to click Start.
+async function openPage(viewport, scale, quality) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: scale });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|net::ERR/i.test(m.text())) errors.push('console: ' + m.text()); });
   await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => localStorage.removeItem('gd_save'));
+  // Pin the top quality tier. Headless Chromium runs on SwiftShader, which the
+  // game correctly detects and answers by dropping to the flat-shaded 'minimal'
+  // tier — so without this the README would advertise the fallback renderer
+  // rather than the one players with a GPU actually see.
+  await page.evaluate(q => { localStorage.removeItem('gd_save'); localStorage.setItem('gd_quality', q); },
+    process.env.SHOT_QUALITY || quality || 'high');
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(1400);
+  // Longer than it looks like it needs to be: the full post-processing chain on a
+  // software rasterizer takes seconds per frame, and a shot taken too early
+  // catches the scene mid-fade into the current day phase.
+  await page.waitForTimeout(3500);
   await page.click('#bst');
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(2500);
   // The first-run hint covers the panel; it has been seen by the time these
   // screenshots are meant to represent.
   await page.evaluate(() => { const x = document.querySelector('#hintPanel .hx'); if (x) x.click(); });
+  await page.evaluate(() => window.__shot.degrain());
   return page;
 }
 async function shot(page, name, opts = {}) {
@@ -137,7 +156,7 @@ const MORNING = 0;
 // at deviceScaleFactor 2 the skyscraper alone came to 1.4 MB. GitHub renders a
 // README image at ~850px wide anyway, so 1200 real pixels is already generous.
 console.log('desktop scenes 1200×720 @1×:');
-const scenes = await openPage({ width: 1200, height: 720 }, 1);
+const scenes = await openPage({ width: 1200, height: 720 }, 1, 'high');
 await scenes.evaluate(() => { if (document.getElementById('mp').classList.contains('open')) window.togglePanel(); });
 await scenes.waitForTimeout(300);
 
@@ -164,7 +183,7 @@ await scenes.close();
 // These are flat panels of text, where PNG is efficient and the extra density is
 // the difference between legible and smeared.
 console.log('desktop UI 1200×720 @2×:');
-const ui = await openPage({ width: 1200, height: 720 }, 2);
+const ui = await openPage({ width: 1200, height: 720 }, 2, 'low');
 await ui.evaluate(() => { if (document.getElementById('mp').classList.contains('open')) window.togglePanel(); });
 await ui.evaluate(m => window.__shot.stage(4, { yaw: 0.45, zoom: 1.4, phase: m }), MORNING);
 await ui.waitForTimeout(700);
@@ -189,7 +208,7 @@ await ui.close();
 
 // ---- Mobile: the dev panel, which is where the game is actually played -----
 console.log('mobile 390×844:');
-const mob = await openPage({ width: 390, height: 844 }, 2);
+const mob = await openPage({ width: 390, height: 844 }, 2, 'low');
 await mob.evaluate(m => window.__shot.stage(3, { yaw: 0.45, zoom: 1.3, phase: m }), MORNING);
 await mob.waitForTimeout(700);
 await mob.evaluate(() => { if (!document.getElementById('mp').classList.contains('open')) window.togglePanel(); });

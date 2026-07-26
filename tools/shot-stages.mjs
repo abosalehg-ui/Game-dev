@@ -26,19 +26,32 @@ const patched = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(
   /<\/script>\s*<\/body>/,
   `
 window.__shot={
+  // Film grain is per-pixel random noise. It is nearly invisible on screen and it
+  // suppresses banding in the sky gradient, but it defeats PNG's row filters
+  // completely — leaving it on made every committed screenshot roughly ten times
+  // larger. Runtime keeps it; captures do not.
+  degrain:()=>{if(typeof gradePass!=='undefined'&&gradePass)gradePass.uniforms.uGrain.value=0;},
   stage:(s)=>{S.st=s;S.employees=Array.from({length:[0,2,4,8,15,23][s]},(_,i)=>({role:['coder','designer','artist','composer','marketer'][i%5],name:'E'+i,level:0,exp:0,salary:2000}));
     S.ips=Array.from({length:6},(_,i)=>({id:'i'+i,name:'IP'+i,genre:['action','rpg','sim','horror','racing','puzzle'][i],topic:'space',bestScore:8,sequels:0,dlcs:0}));
     S.awards=[{year:1,game:'a',score:9},{year:2,game:'b',score:9}];
     S.gamesThisYear=1; buildRoom(s); camCtl.yaw=0; camCtl.zoom=1; setCam(s);},
   daylight:(i)=>{S.gamesThisYear=i;applyDayPhase();
     // snap the lerp instead of waiting ~5s of frames for it to converge
-    for(let k=0;k<400;k++){const t=dayTarget;amb.color.lerp(new THREE.Color(t.amb),0.2);amb.intensity+=(t.ambI*LIGHT_GAIN-amb.intensity)*0.2;
+    for(let k=0;k<400;k++){const t=dayTarget;amb.color.lerp(new THREE.Color(t.amb),0.2);amb.intensity+=(t.ambI*LIGHT_GAIN*AMB_ENV_SCALE-amb.intensity)*0.2;
       dl.color.lerp(new THREE.Color(t.dl),0.2);dl.intensity+=(t.dlI*LIGHT_GAIN-dl.intensity)*0.2;
+      // The sun position has to be snapped too, or the shadows in the shot would
+      // still be pointing wherever the previous phase left them.
+      dl.position.x+=(t.sun[0]-dl.position.x)*0.2;
+      dl.position.y+=(t.sun[1]-dl.position.y)*0.2;
+      dl.position.z+=(t.sun[2]-dl.position.z)*0.2;
+      const sh=lightShaftStrength();
+      lightShafts.forEach(s=>{s.mesh.material.opacity+=(sh*s.base-s.mesh.material.opacity)*0.2});
       if(scene.background&&scene.background.isColor)scene.background.lerp(new THREE.Color(t.bg),0.2);
       winMeshes.forEach(w=>{w.material.emissive.lerp(new THREE.Color(t.win),0.2);w.material.emissiveIntensity+=(t.winI-w.material.emissiveIntensity)*0.2;});}},
   info:()=>({revision:(THREE.REVISION||'?'),calls:renderer.info.render.calls,tris:renderer.info.render.triangles,
     colorSpace:renderer.outputColorSpace||renderer.outputEncoding||'n/a',
     colorManaged:(THREE.ColorManagement?THREE.ColorManagement.enabled:'n/a'),
+    tier:qualityTier,passes:composer?composer.passes.length:0,
     toneMapping:renderer.toneMapping}),
 };
 </script>
@@ -94,21 +107,28 @@ const page = await browser.newPage({ viewport: { width: 900, height: 620 } });
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|net::ERR/i.test(m.text())) errors.push('console: ' + m.text()); });
+// Headless Chromium falls back to SwiftShader, which the game detects and answers
+// by dropping to the 'minimal' tier — correct at runtime (the full chain renders
+// at under 1 fps on a software rasterizer) but useless here, since it would
+// screenshot a pipeline no real player sees. Pinning the tier overrides the
+// detection; the shots take longer to settle in exchange.
+const QUALITY = process.env.SHOT_QUALITY || 'high';
 await page.goto(`http://localhost:${server.address().port}/index.html`, { waitUntil: 'domcontentloaded' });
-await page.evaluate(() => localStorage.removeItem('gd_save'));
+await page.evaluate(q => { localStorage.removeItem('gd_save'); localStorage.setItem('gd_quality', q); }, QUALITY);
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1200);
 await page.click('#bst');
 await page.waitForTimeout(700);
 // Hide the UI so the shots compare rendering only.
 await page.evaluate(() => { document.getElementById('ui').style.display = 'none'; document.getElementById('mp').style.display = 'none'; document.getElementById('pt').style.display = 'none'; });
+await page.evaluate(() => window.__shot.degrain());
 
 const info = await page.evaluate(() => window.__shot.info());
 const rows = [];
 for (const s of [0, 1, 2, 3, 4, 5]) {
   await page.evaluate(st => window.__shot.stage(st), s);
   await page.evaluate(() => window.__shot.daylight(1)); // noon, the reference phase
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(1500);
   const file = path.join(OUT, `${LABEL}-stage${s}.png`);
   const buf = await page.screenshot({ path: file });
   const stats = await page.evaluate(() => window.__shot.info());
@@ -117,7 +137,7 @@ for (const s of [0, 1, 2, 3, 4, 5]) {
 // One night shot: the day/night phase is where emissive + colour management diverge most.
 await page.evaluate(() => window.__shot.stage(5));
 await page.evaluate(() => window.__shot.daylight(3));
-await page.waitForTimeout(350);
+await page.waitForTimeout(1500);
 const nightBuf = await page.screenshot({ path: path.join(OUT, `${LABEL}-night.png`) });
 rows.push({ stage: 'night', mean: meanRGB(nightBuf) });
 
