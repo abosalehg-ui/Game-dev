@@ -68,6 +68,16 @@ async function newPage() {
   page.on('dialog', async d => { page.__dialogs = page.__dialogs || []; page.__dialogs.push(d.message()); await d.dismiss(); });
   return { page, errors };
 }
+// Polls a predicate until it holds or the budget runs out. Returns whether it
+// held, so a timeout reads as a failed assertion rather than a thrown error.
+async function waitFor(pred, budgetMs = 5000, stepMs = 100) {
+  const deadline = Date.now() + budgetMs;
+  for (;;) {
+    if (await pred()) return true;
+    if (Date.now() >= deadline) return false;
+    await new Promise(r => setTimeout(r, stepMs));
+  }
+}
 const read = page => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('gd_save') || 'null'); } catch (e) { return 'UNPARSEABLE'; } });
 const write = (page, obj) => page.evaluate(s => localStorage.setItem('gd_save', s), JSON.stringify(obj));
 function saveFile(name, obj) {
@@ -246,11 +256,17 @@ try {
     const bad = path.join(tmpDir, 'corrupt.txt');
     fs.writeFileSync(bad, 'this is definitely not a save file at all');
     (await chooser).setFiles(bad);
-    await page.waitForTimeout(800);
+    // Wait for the rejection notice rather than for a fixed 800ms. The file is
+    // forty bytes and the parse fails instantly, but the notice is delivered on
+    // the main thread — and this suite runs in a headless browser with no GPU,
+    // where the render loop can hold that thread for most of a second at a time.
+    // The fixed wait was therefore a coin flip on how a frame happened to land,
+    // and it failed roughly one run in three.
+    const sawDialog = await waitFor(() => (page.__dialogs || []).some(m => /تالف|مرفوض|صالح/.test(m)), 8000);
     const stage = await page.locator('#ds').textContent();
     checks['corrupt file leaves the run intact'] = /استوديو/.test(stage);
     note['corrupt file leaves the run intact'] = `stage="${stage.trim()}"`;
-    checks['corrupt file is reported to the player'] = (page.__dialogs || []).some(m => /تالف|مرفوض|صالح/.test(m));
+    checks['corrupt file is reported to the player'] = sawDialog;
     note['corrupt file is reported to the player'] = JSON.stringify(page.__dialogs || []);
     checks['corrupt file raises no JS error'] = errors.length === 0;
     await page.close();

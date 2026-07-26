@@ -11,7 +11,7 @@
  *  - There are no third-party requests left, so no cross-origin caching rules.
  */
 
-const VERSION = 'v1.10.0';
+const VERSION = 'v1.11.0';
 const APP_SHELL = `room-to-top-shell-${VERSION}`;
 const RUNTIME = `room-to-top-runtime-${VERSION}`;
 
