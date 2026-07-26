@@ -101,6 +101,9 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 /* Same green/gold/red the quality preview uses two rows below, so "good" reads the
    same in both places rather than gold meaning two different things. */
 .tpc .tps.good{color:var(--p)}.tpc .tps.mid{color:var(--g)}.tpc .tps.bad{color:var(--d)}
+/* Already shipped in — the ✓ turns the picker into a checklist for 📖 معجم الاستوديو. */
+.tpc.done{border-color:rgba(0,255,136,.28)}
+.tpprog{font-size:11px;font-weight:700;color:var(--p);text-align:center;margin-top:6px}
 .tpwords{margin-top:8px;font-size:11px;color:var(--tx3);text-align:right;line-height:1.7}
 .tpwords summary{cursor:pointer;color:var(--s);font-weight:700;font-size:12px;margin-bottom:6px}
 .tpwords b{color:var(--tx2)}
@@ -534,6 +537,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   <div class="modal">
     <h2>🏷️ اختر الموضوع</h2>
     <p>عادةً يُشتق الموضوع من اسم لعبتك. اختر من هنا لتثبيته يدوياً — وأي تعديل على الاسم بعدها يعيد الاشتقاق. الرقم على كل خانة هو التوافق مع نوعك الحالي.</p>
+    <div id="tpProgress" class="tpprog"></div>
     <div class="tpgrid" id="tpGrid"></div>
     <details class="tpwords"><summary>📖 الكلمات الدالة — اكتب أياً منها في الاسم</summary><div id="tpWords"></div></details>
     <div class="row"><button class="bg" onclick="CloseTopicPicker()">إغلاق</button></div>
@@ -1525,22 +1529,40 @@ const REAL_TOPICS=TOPICS.filter(t=>t.id!=='general');
 // UI now: writing "ملحمة الصحراء" *is* picking 🐪 صحراء. Matching is done on the
 // normalised form (see normAr), so diacritics, hamza spellings and the ال prefix
 // all resolve to the same entry — write these in their plain dictionary form.
+// No word may appear under two topics: detectTopic scores per topic, so a duplicate
+// would make the winner depend on object key order rather than on the name. The
+// collision guard in tests/topic-detect.mjs fails the build if one slips in.
 const TOPIC_WORDS={
-  space:['فضاء','فضائي','كوكب','كواكب','مجرة','مجرات','نجوم','نجم','صاروخ','مدار','نيزك','سديم','مسبار','قمر','رائد','فلك'],
-  war:['حرب','حروب','معركة','معارك','جيش','جيوش','جندي','جنود','قتال','سلاح','مدفع','حصار','غزو','جبهة','دبابة','كتيبة'],
-  fantasy:['خيال','سحر','ساحر','تنين','تنانين','أسطورة','أساطير','جني','طلسم','نبوءة','ملحمة','عوالم','مردة','عفريت'],
-  sports:['رياضة','كرة','هدف','ملعب','بطولة','دوري','مباراة','كأس','لاعب','ركض','سباحة','مضمار'],
-  zombies:['زومبي','موتى','وباء','عدوى','جثة','جثث','مسخ','مسوخ','طاعون','فيروس','قبر'],
-  pirates:['قراصنة','قرصان','سفينة','سفن','كنز','شراع','مرساة','أمواج','ميناء','بحار','بحر','جزيرة'],
-  robots:['روبوت','روبوتات','آلي','آلة','سايبر','أندرويد','معدن','رقائق','ذكاء','خوارزمية','مصنع'],
-  medieval:['فرسان','فارس','قلعة','قلاع','سيف','سيوف','درع','ملوك','ملك','عرش','تاج','رمح','إقطاع','برج'],
-  city:['مدينة','مدن','شارع','ناطحة','حي','مترو','بلدية','عمارة','زحام','ميدان','رصيف'],
-  animals:['حيوان','حيوانات','أسد','ذئب','نمر','طيور','نسر','غابة','مخالب','وحوش','وحش','صقر','ظبي'],
-  heritage:['تراث','أجداد','عراقة','حصن','سوق','نخيل','قهوة','مجلس','طين','قرية','دار','زمان'],
-  desert:['صحراء','صحراوي','رمال','كثبان','سراب','واحة','جمل','بادية','ظمأ','نخلة','هجير'],
-  folklore:['فلكلور','حكاية','حكايات','أهزوجة','عرضة','سامري','ربابة','مثل','جدة','طقوس','ناي'],
-  islamic:['إسلام','إسلامي','خلافة','أندلس','قدس','صحابة','فتوحات','مسجد','هجرة','خليفة','دولة','راية'],
-  bedouin:['بدو','بدوي','خيمة','خيام','إبل','ناقة','ترحال','قافلة','شيخ','مضارب','عزبة','مرعى'],
+  space:['فضاء','فضائي','كوكب','كواكب','مجرة','مجرات','نجوم','نجم','صاروخ','مدار','نيزك','سديم','مسبار','قمر','رائد','فلك',
+    'شهاب','مذنب','كوني','كون','مريخ','زحل','نجمي','فضائيون','مركبة'],
+  war:['حرب','حروب','معركة','معارك','جيش','جيوش','جندي','جنود','قتال','سلاح','مدفع','حصار','غزو','جبهة','دبابة','كتيبة',
+    'ثكنة','بارود','رصاص','هدنة','معسكر','خندق','قنبلة','اشتباك'],
+  fantasy:['خيال','سحر','ساحر','ساحرة','تنين','تنانين','أسطورة','أساطير','جني','طلسم','نبوءة','ملحمة','عوالم','مردة','عفريت',
+    'تعويذة','مسحور','خرافة','قزم','أقزام','مشعوذ','لعنة','بوابة'],
+  sports:['رياضة','رياضي','كرة','هدف','ملعب','ملاعب','بطولة','دوري','مباراة','كأس','لاعب','ركض','سباحة','مضمار',
+    'مرمى','شوط','منتخب','هدّاف','سلة','مضرب','ماراثون'],
+  zombies:['زومبي','موتى','وباء','عدوى','جثة','جثث','مسخ','مسوخ','طاعون','فيروس','قبر','مقبرة','مقابر',
+    'ميت','أموات','جائحة','تحلل','نهش'],
+  pirates:['قراصنة','قرصان','قرصنة','سفينة','سفن','كنز','شراع','مرساة','أمواج','ميناء','بحار','بحر','جزيرة',
+    'مركب','بوصلة','نهب','غنيمة','شاطئ','ساحل','دفة','أعالي'],
+  robots:['روبوت','روبوتات','آلي','آلة','سايبر','أندرويد','معدن','رقائق','ذكاء','خوارزمية','مصنع',
+    'اصطناعي','آليون','نانو','مستقبلي','رقمي','شفرة','تروس','دارة'],
+  medieval:['فرسان','فارس','قلعة','قلاع','سيف','سيوف','درع','دروع','ملوك','ملك','عرش','تاج','رمح','إقطاع','برج',
+    'مملكة','ممالك','أمير','فروسية','منجنيق','سهام','قوس','خنجر','سور','نبلاء'],
+  city:['مدينة','مدن','شارع','شوارع','ناطحة','حي','مترو','بلدية','عمارة','زحام','ميدان','رصيف',
+    'أزقة','زقاق','حارة','ضاحية','عاصمة','جدة','الرياض','ازدحام','مواصلات','عمران'],
+  animals:['حيوان','حيوانات','أسد','ذئب','ذئاب','نمر','طيور','طير','نسر','غابة','مخالب','وحوش','وحش','صقر','ظبي',
+    'فهد','غزال','حصان','خيل','عصفور','فيل','دب','حوت','ثعلب'],
+  heritage:['تراث','أجداد','عراقة','حصن','سوق','نخيل','قهوة','مجلس','طين','قرية','دار','زمان',
+    'غوص','لؤلؤ','نهّام','سدو','فريج','دلة','بخور','أصالة','موروث','تقاليد','درعية','العلا','نجد','حجاز'],
+  desert:['صحراء','صحراوي','رمال','رمل','كثبان','كثيب','سراب','واحة','جمل','بادية','ظمأ','نخلة','هجير',
+    'نفود','دهناء','قيظ','عطش','وادي','صحاري','سموم','تيه'],
+  folklore:['فلكلور','حكاية','حكايات','أهزوجة','أهازيج','عرضة','سامري','ربابة','طقوس','ناي',
+    'عود','دان','مجرور','حكواتي','سيرة','أمثال','رقصة','طبل','مزمار','ليوة'],
+  islamic:['إسلام','إسلامي','خلافة','أندلس','قدس','صحابة','فتوحات','مسجد','هجرة','خليفة','دولة','راية',
+    'سلطان','أموي','عباسي','قرطبة','بغداد','مآذن','مئذنة','فاتح','أندلسي'],
+  bedouin:['بدو','بدوي','خيمة','خيام','إبل','ناقة','نوق','ترحال','قافلة','شيخ','مضارب','عزبة','مرعى',
+    'رحّل','قبيلة','قبائل','مضيف','ضيافة','هجن','مطية','سنام','بعير','وسم'],
 };
 const SYN={
   action:{space:1,war:2,fantasy:1,sports:0,zombies:2,pirates:1,robots:2,medieval:1,city:0,animals:-1,heritage:0,desert:1,folklore:0,islamic:1,bedouin:1},
@@ -1664,6 +1686,11 @@ const ACHS=[
   {id:'goty2',n:'هزمت المنافسين ×2',ch:s=>(s.gotyWins||0)>=2},
   {id:'loan1',n:'سدّدت قرضاً كاملاً',ch:s=>(s.loansRepaid||0)>=1},
   {id:'eng3',n:'محرك ألعاب v3',ch:s=>(s.engineVersion||0)>=3},
+  // The long-tail goal of the topic-in-name system: ship in every topic there is,
+  // which means writing your way into all fifteen. Half-way is its own milestone so
+  // the run has a marker before the final one.
+  {id:'lex8',n:'نصف المعجم (8 مواضيع)',ch:s=>new Set(s.topicsShipped||[]).size>=8},
+  {id:'lex',n:'📖 معجم الاستوديو (كل المواضيع)',ch:s=>new Set(s.topicsShipped||[]).size>=REAL_TOPICS.length},
 ];
 
 const NA=['حرب','مغامرة','أبطال','عالم','ملحمة','أساطير','سقوط','صعود','ظلال','نجوم','فجر','غروب','حصار','ملوك','سيوف','رحلة','بوابة','لهيب','أرض','درب','وحوش','أمواج','رعد','جبال','صحراء','نسر','سحاب','بحر','صدى','تاج','عرش','رمح'];
@@ -1739,16 +1766,36 @@ function detectTopic(name){
 
 // Random names are now generated topic-first, so a name the player never touched
 // still resolves to a real topic instead of falling through to عام.
+// The set of real topics the studio has actually shipped, for the lexicon
+// achievement. 'general' is excluded: it is the absence of a topic, not one of them.
+function recordTopicShipped(id){
+  if(!id||id==='general')return;
+  if(!Array.isArray(S.topicsShipped))S.topicsShipped=[];
+  if(!S.topicsShipped.includes(id))S.topicsShipped.push(id);
+}
+
+// Tails that carry no topic word of their own. NB contains الصحراء / الواحة / السراب,
+// and since a tie is broken in favour of the LATER word, "قرصان الصحراء" would resolve
+// to صحراء — a generated name that misses the topic it was generated for.
+const NB_NEUTRAL=NB.filter(t=>detectTopic(t).id==='general');
+function randomGameNameFor(topicId){
+  const w=TOPIC_WORDS[topicId]||TOPIC_WORDS[REAL_TOPICS[0].id];
+  return w[Math.random()*w.length|0]+' '+NB_NEUTRAL[Math.random()*NB_NEUTRAL.length|0];
+}
 function randomGameName(){
-  const t=REAL_TOPICS[Math.random()*REAL_TOPICS.length|0];
-  const w=TOPIC_WORDS[t.id];
-  return w[Math.random()*w.length|0]+' '+NB[Math.random()*NB.length|0];
+  return randomGameNameFor(REAL_TOPICS[Math.random()*REAL_TOPICS.length|0].id);
 }
 
 // Test surface: tests/topic-detect.mjs drives detectTopic directly, and the
 // playthrough needs a real topic word to type into the name field.
 window.detectTopic=detectTopic;
 window.TOPIC_WORDS=TOPIC_WORDS;
+window.normAr=normAr;
+// tests/topic-flow.mjs asserts that a contract's demanded topic and the name it
+// seeds always agree — the two halves are generated separately, so nothing but a
+// test keeps them in step.
+window.__testMakeContractOffer=()=>MakeContractOffer();
+window.__testRandomGameNameFor=id=>randomGameNameFor(id);
 
 const RESEARCH=[
   {id:'mmo',n:'فتح MMO',cost:5,desc:'يفتح نوع MMO'},
@@ -1898,7 +1945,7 @@ function initState(diff){
     saveVersion:SAVE_VERSION,
     money:DIFFICULTY[d].startMoney,fn:0,gc:0,st:0,bs:0,pm:DIFFICULTY[d].startMoney,hs:5,
     genre:null,topic:null,sl:{design:3,code:4,sound:3},hist:[],ach:[],sk:0,em:null,tt:null,
-    gse:0,dev:false,eggs:0,
+    gse:0,dev:false,eggs:0,topicsShipped:[],
     difficulty:d,
     audio:{volume:0.6,muted:false},
     theme:'dark',
@@ -2001,6 +2048,11 @@ function sanitizeSave(p){
       salary:Math.max(0,num(e.salary,EMP_ROLES.find(r=>r.id===e.role).baseSalary)),
     }));
 
+  // A missing field defaults to an empty set, so saves written before the lexicon
+  // achievement existed load cleanly — no SAVE_VERSION bump needed.
+  p.topicsShipped=[...new Set((Array.isArray(p.topicsShipped)?p.topicsShipped:[])
+    .filter(x=>validTopic.has(x)&&x!=='general'))].slice(0,TOPICS.length);
+
   p.ips=(Array.isArray(p.ips)?p.ips:[])
     .filter(i=>i&&typeof i==='object'&&validGenre.has(i.genre)&&validTopic.has(i.topic))
     .slice(-15)
@@ -2056,7 +2108,10 @@ function sanitizeSave(p){
   if(p.contract&&typeof p.contract==='object'&&validGenre.has(p.contract.genre)){
     p.contract={
       publisher:clampName(p.contract.publisher)||'ناشر',icon:clampName(p.contract.icon).slice(0,4)||'🏢',
-      genre:p.contract.genre,minScore:Math.max(0,Math.min(10,num(p.contract.minScore,7))),
+      genre:p.contract.genre,
+      // Absent or unknown → a genre-only contract, which is what pre-topic saves hold.
+      topic:validTopic.has(p.contract.topic)&&p.contract.topic!=='general'?p.contract.topic:null,
+      minScore:Math.max(0,Math.min(10,num(p.contract.minScore,7))),
       payment:Math.max(0,num(p.contract.payment,0)),bonus:Math.max(0,num(p.contract.bonus,0)),
       penalty:Math.max(0,num(p.contract.penalty,0)),
       gamesLeft:clampInt(p.contract.gamesLeft,2,1,2),active:!!p.contract.active,
@@ -2534,12 +2589,17 @@ window.CloseTopicPicker=function(){
 function RenderTopicPicker(){
   const grid=document.getElementById('tpGrid');grid.innerHTML='';
   const hot=new Set((S.marketTaste&&S.marketTaste.hot)||[]);
+  const shipped=new Set(S.topicsShipped||[]);
   const cur=currentTopicSource().id;
+  // Progress toward 📖 معجم الاستوديو, shown where the player is already choosing.
+  const done=document.getElementById('tpProgress');
+  if(done)done.textContent='📖 معجم الاستوديو: أصدرت في '+shipped.size+' من '+REAL_TOPICS.length+' موضوعاً';
   TOPICS.forEach(t=>{
     const b=document.createElement('button');b.type='button';b.className='tpc';
     if(t.id===cur)b.classList.add('a');
+    if(shipped.has(t.id))b.classList.add('done');
     const syn=S.genre?synergyFor(S.genre,t.id):null;
-    const mark=(S.em==='trend'&&S.tt===t.id?' 🔥':'')+(hot.has(t.id)?' ⭐':'');
+    const mark=(S.em==='trend'&&S.tt===t.id?' 🔥':'')+(hot.has(t.id)?' ⭐':'')+(shipped.has(t.id)?' ✓':'');
     const synTxt=syn===null?'—':(syn>0?'+'+syn:''+syn);
     const synCls=syn===null?'mid':syn>0?'good':syn<0?'bad':'mid';
     b.innerHTML='<span class="tpi">'+t.icon+'</span><span>'+t.name+mark+'</span>'
@@ -2621,10 +2681,18 @@ function updateUI(){
   const cb=document.getElementById('contractBanner');
   if(S.contract&&S.contract.active){
     const g=GENRES.find(x=>x.id===S.contract.genre);
+    const ct=S.contract.topic?TOPICS.find(x=>x.id===S.contract.topic):null;
+    // Both halves of the deal are checked live, so the player is never surprised at
+    // settlement by a name that drifted off the contracted topic.
+    const genreOff=S.genre&&S.genre!==S.contract.genre;
+    const topicOff=ct&&S.topic&&S.topic!==S.contract.topic;
     cb.style.display='block';
     cb.innerHTML='📜 عقد '+S.contract.icon+' '+S.contract.publisher+': لعبة '+(g?g.icon+' '+g.name:'')
+      +(ct?' · '+ct.icon+' '+ct.name:'')
       +' بتقييم ≥ '+S.contract.minScore+' — الدفعة: '+fmt(S.contract.payment)+' 💰 — متبقي '+S.contract.gamesLeft+' إصدار'
-      +(S.genre&&S.genre!==S.contract.genre?'<br>⚠️ نوعك الحالي مختلف عن نوع العقد — إصدارك القادم يستهلك من المهلة بلا دفعة.':'');
+      +(genreOff?'<br>⚠️ نوعك الحالي مختلف عن نوع العقد — إصدارك القادم يستهلك من المهلة بلا دفعة.':'')
+      +(topicOff?'<br>⚠️ اسم لعبتك يدل على '+(TOPICS.find(x=>x.id===S.topic)||{name:'موضوع آخر'}).name
+        +' لا على '+ct.name+' — عدّل الاسم أو تفقد الدفعة.':'');
   }else cb.style.display='none';
 }
 
@@ -3134,7 +3202,10 @@ function computeSales(rel,q){
 // game matches the contracted genre; otherwise the deadline burns down.
 function settleContract(rel,q,out){
   if(!(S.contract&&S.contract.active))return null;
-  if(rel.genre.id===S.contract.genre){
+  // A topic-bearing contract needs both to match; an older save's contract has no
+  // topic field, so `!S.contract.topic` keeps it a genre-only deal as signed.
+  const topicOk=!S.contract.topic||rel.topic.id===S.contract.topic;
+  if(rel.genre.id===S.contract.genre&&topicOk){
     const c=S.contract;
     let pay=c.payment,txt,cls='ps';
     if(q.avg>=c.minScore){pay+=c.bonus;txt='تم التسليم + مكافأة '+fmt(c.bonus)+' 💰';}
@@ -3269,6 +3340,11 @@ function finishDevelopment(){
   S.hist.unshift({name:rel.gameName,genre:rel.genre.name,topic:rel.topic.name,score:q.avg,
     revenue:money.rev,year:relYear,sequel:!!q.sequelInfo,contract:!!q.contractResult});
   if(S.hist.length>100)S.hist.length=100; // bound save size in the long game
+
+  // Tracked separately from S.hist rather than derived from it: history stores the
+  // topic's display name and is capped at 100 entries, so a long run could evict the
+  // only record of an early topic and silently un-earn the lexicon achievement.
+  recordTopicShipped(rel.topic.id);
 
   setTimeout(()=>showRev(rel.gameName,q.scores,q.avg,money.rev,money.fd,q.bugCount,
     paid.salary,paid.loanPay,q.contractResult,q.syn,q.bal),rel.eggKey?2600:100);
@@ -3985,13 +4061,24 @@ window.TakeLoan=function(frac){
 };
 
 // ============ PUBLISHER CONTRACTS ============
+// Roughly half of the offers also name a topic. Now that the topic is something you
+// write rather than click, "لعبة رعب صحراوية" is a naming challenge with money on it
+// — and the extra constraint is paid for, so taking one is a trade and not a tax.
+const CONTRACT_TOPIC_CHANCE=0.55;
+const CONTRACT_TOPIC_PREMIUM=1.3;
 function MakeContractOffer(){
   const pub=PUBLISHERS[Math.random()*PUBLISHERS.length|0];
   const unlocked=GENRES.filter(g=>!g.research||isResearched(g.research));
   const g=unlocked[Math.random()*unlocked.length|0];
-  const payment=Math.floor(STG[S.st].devCost*2.2*DIFFICULTY[S.difficulty].rewardMult);
+  // Only topics that don't actively fight the demanded genre. A -2 pairing against a
+  // 7.5 minimum would be an offer the player cannot fulfil, which is not a challenge.
+  const fits=REAL_TOPICS.filter(t=>(SYN[g.id]?.[t.id]||0)>=0);
+  const wantsTopic=fits.length&&Math.random()<CONTRACT_TOPIC_CHANCE;
+  const topic=wantsTopic?fits[Math.random()*fits.length|0].id:null;
+  const payment=Math.floor(STG[S.st].devCost*2.2*DIFFICULTY[S.difficulty].rewardMult
+    *(topic?CONTRACT_TOPIC_PREMIUM:1));
   return {
-    publisher:pub.n,icon:pub.icon,genre:g.id,
+    publisher:pub.n,icon:pub.icon,genre:g.id,topic,
     minScore:S.st>=3?7.5:7,
     payment,bonus:Math.floor(payment*0.5),penalty:Math.floor(payment*0.35),
     gamesLeft:2,active:false,
@@ -4000,10 +4087,11 @@ function MakeContractOffer(){
 function ShowContractOffer(){
   S._contractOffer=MakeContractOffer();
   const o=S._contractOffer;
-  const g=GENRES.find(x=>x.id===o.genre);
+  const g=GENRES.find(x=>x.id===o.genre),t=o.topic?TOPICS.find(x=>x.id===o.topic):null;
   document.getElementById('contractDesc').textContent=o.icon+' '+o.publisher+' يريد منك تطوير لعبة حصرية. الدفعة ثابتة بدل إيرادات السوق، واللعبة ملك للناشر (بدون IP).';
   document.getElementById('contractTerms').innerHTML=
     '<div class="loanstat">🎮 النوع المطلوب: <b>'+(g?g.icon+' '+g.name:'')+'</b><br>'+
+    (t?'🏷️ الموضوع المطلوب: <b>'+t.icon+' '+t.name+'</b> — سمِّ لعبتك بما يدل عليه<br>':'')+
     '💰 الدفعة: <b style="color:var(--g)">'+fmt(o.payment)+'</b><br>'+
     '⭐ مكافأة (تقييم ≥ '+o.minScore+'): <b style="color:var(--p)">+'+fmt(o.bonus)+'</b><br>'+
     '⚠️ غرامة (تقييم < '+(o.minScore-2)+'): <b style="color:var(--d)">-'+fmt(o.penalty)+'</b><br>'+
@@ -4016,9 +4104,13 @@ window.AcceptContract=function(){
   S.contract={...S._contractOffer,active:true};
   S._contractOffer=null;
   S.contractCooldown=5;
-  // Contracts pin the genre only — the topic is the player's to name.
   S.genre=S.contract.genre;S._topicPick=null;S._topicLock=null;
-  document.getElementById('gni').value=randomGameName();
+  // Seed a name that already satisfies the contracted topic. The player is free to
+  // rewrite it, but the starting point demonstrates what the contract is asking for
+  // instead of leaving them to guess which words count.
+  document.getElementById('gni').value=S.contract.topic
+    ? randomGameNameFor(S.contract.topic)
+    : randomGameName();
   document.getElementById('contractModal').classList.remove('show');
   sn('ok');showToast('📜 وقّعت العقد مع '+S.contract.icon+' '+S.contract.publisher);
   buildSelectors();BPlatforms();saveGame();

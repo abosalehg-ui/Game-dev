@@ -109,6 +109,22 @@ try {
   await page.waitForTimeout(300);
   out.afterAbandon = (await echo()).trim();
   await page.evaluate(() => window.CloseTopicPicker());
+
+  // 7) A topic-bearing contract must seed a name that already satisfies it —
+  //    otherwise the offer teaches nothing about which words count.
+  out.contract = await page.evaluate(() => {
+    const seeded = [];
+    for (let i = 0; i < 40; i++) {
+      const o = window.__testMakeContractOffer();
+      if (!o.topic) continue;
+      const name = window.__testRandomGameNameFor(o.topic);
+      seeded.push({ topic: o.topic, name, got: window.detectTopic(name).id });
+    }
+    return {
+      count: seeded.length,
+      mismatched: seeded.filter(s => s.got !== s.topic).slice(0, 3),
+    };
+  });
 } catch (e) {
   bootError = e.message;
 } finally {
@@ -126,6 +142,8 @@ const checks = {
   'sequel pins the series topic': /🔒/.test(out.sequelEcho || '') && /صحراء/.test(out.sequelEcho || ''),
   'renaming a sequel does not move its topic': /🔒/.test(out.sequelAfterRename || '') && /صحراء/.test(out.sequelAfterRename || ''),
   'picking another topic abandons the sequel': !/🔒/.test(out.afterAbandon || '') && /فضاء/.test(out.afterAbandon || ''),
+  'topic contracts are offered': (out.contract?.count || 0) > 0,
+  'a contract seeds a name that satisfies it': (out.contract?.mismatched || []).length === 0,
   'no JS runtime errors': errors.length === 0,
 };
 
