@@ -482,6 +482,15 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <label>🔊 مستوى الصوت <input type="range" id="volSlider" min="0" max="100" value="60"></label>
     <label>🔇 كتم الصوت <input type="checkbox" id="muteChk"></label>
     <label>🌓 الوضع الفاتح <input type="checkbox" id="lightChk"></label>
+    <label>🎬 جودة الرسوم
+      <select id="qualitySel">
+        <option value="auto">تلقائي</option>
+        <option value="high">عالية</option>
+        <option value="medium">متوسطة</option>
+        <option value="low">منخفضة</option>
+        <option value="minimal">الأدنى</option>
+      </select>
+    </label>
     <label>📊 الصعوبة الحالية <span id="diffShow" style="color:var(--s);font-weight:900">عادي</span></label>
     <label>📅 السنة <span id="yearShow" style="color:var(--g);font-weight:900">1</span></label>
     <label>⭐ Prestige <span id="prShow" style="color:var(--g);font-weight:900">0</span></label>
@@ -600,6 +609,11 @@ function setCam(stage){
   camera.lookAt(0,0,0);
   camera.zoom=camCtl.zoom;
   camera.updateProjectionMatrix();
+  // The backdrop is a child of the camera, so it follows the orbit for free — but
+  // the window it samples and the size it needs both depend on where the camera
+  // ended up, so they are recomputed here rather than per frame.
+  sizeSkyPlane();
+  panSky();
 }
 
 // ---- Colour + lighting model (Three.js r185) ------------------------------
@@ -618,26 +632,312 @@ function setCam(stage){
 const LIGHT_GAIN=2.6;
 const TONE_EXPOSURE=1.0;
 
+// ---- Quality tiers ---------------------------------------------------------
+// The scene is tiny (≈11k triangles at the skyscraper) but the post-processing
+// chain is resolution-bound, not geometry-bound, so its cost is set almost
+// entirely by how many pixels the device has and how fast it can fill them. That
+// makes a phone with a high-DPI screen the worst case by a wide margin — which
+// is exactly the device most likely to be running this.
+//
+// So the effects are grouped into tiers and a tier is picked up front from what
+// the device advertises, then corrected downward by what it actually delivers
+// (see the FPS governor in animate()). Going up is deliberately not automatic:
+// a tier that was demoted stays demoted for the session rather than oscillating
+// across the threshold and making the framerate visibly pulse.
+const QUALITY_TIERS={
+  //          env    bloom   dof    grade  msaa shadow  maxDPR
+  high:   {env:1,bloom:1,dof:1,grade:1,msaa:4,shadow:2048,dpr:2},
+  // 'medium' is the phone default, so its two cost multipliers are both pulled
+  // in: 2× MSAA rather than 4×, and a device-pixel-ratio cap of 1.5. Those two
+  // numbers multiply into the fill rate of every pass in the chain, which makes
+  // them the cheapest places to buy headroom back.
+  medium: {env:1,bloom:1,dof:1,grade:1,msaa:2,shadow:1024,dpr:1.5},
+  low:    {env:1,bloom:1,dof:0,grade:1,msaa:0,shadow:1024,dpr:1.25},
+  minimal:{env:0,bloom:0,dof:0,grade:0,msaa:0,shadow:512, dpr:1},
+};
+const TIER_ORDER=['high','medium','low','minimal'];
+let qualityTier='high',QUALITY=QUALITY_TIERS.high;
+
+// A GPU-less fallback context. Every pass in the chain is fill-rate bound, and a
+// software rasterizer fills roughly three orders of magnitude fewer pixels per
+// second than real hardware, so the same chain that costs a GPU under 2 ms costs
+// SwiftShader more than a second — measured here at 0.9 fps against 46 fps with
+// the chain switched off. No amount of tuning closes that gap; the only correct
+// response is to not run the chain at all.
+//
+// This is not a hypothetical CI-only case: headless browsers, virtual machines,
+// remote desktops and machines with blocklisted drivers all land here.
+function isSoftwareRenderer(){
+  try{
+    const gl=renderer.getContext();
+    const dbg=gl.getExtension('WEBGL_debug_renderer_info');
+    if(!dbg)return false;
+    const s=String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)||'');
+    return /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/i.test(s);
+  }catch(_){return false}
+}
+
+// True when the player has pinned a tier in the settings panel, which switches
+// the automatic governor off for the session.
+function qualityLocked(){
+  try{return !!QUALITY_TIERS[localStorage.getItem('gd_quality')]}catch(_){return false}
+}
+
+// Initial guess. deviceMemory and hardwareConcurrency are absent on Safari, so a
+// missing value must never be read as "weak" — an iPhone would be demoted to the
+// flat-shaded tier on a browser quirk alone. Unknown means assume capable and let
+// the FPS governor be the judge.
+function detectTier(){
+  const saved=(()=>{try{return localStorage.getItem('gd_quality')}catch(_){return null}})();
+  if(saved&&QUALITY_TIERS[saved])return saved;
+  // Checked before anything else, and deliberately not persisted: an explicit
+  // choice still overrides it, which is how tools/shot-stages.mjs is able to
+  // capture the full-quality look in a headless browser.
+  if(isSoftwareRenderer())return 'minimal';
+  const mem=navigator.deviceMemory;      // undefined on Safari/Firefox
+  const cores=navigator.hardwareConcurrency;
+  const coarse=matchMedia('(pointer:coarse)').matches;
+  const pixels=window.innerWidth*window.innerHeight*Math.min(window.devicePixelRatio||1,2);
+  if(mem&&mem<=2)return 'minimal';
+  if(cores&&cores<=2)return 'low';
+  // A phone pushing more than ~2.5 MP through the chain starts from 'medium':
+  // ambient occlusion is the single most expensive pass and the least visible at
+  // that pixel density.
+  if(coarse&&pixels>2500000)return 'medium';
+  if(coarse)return (mem&&mem<=4)?'low':'medium';
+  return 'high';
+}
+
+function setQualityTier(name,persist){
+  if(!QUALITY_TIERS[name])return;
+  qualityTier=name;QUALITY=QUALITY_TIERS[name];
+  if(persist){try{localStorage.setItem('gd_quality',name)}catch(_){}}
+  if(!renderer)return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,QUALITY.dpr));
+  dl.shadow.mapSize.set(QUALITY.shadow,QUALITY.shadow);
+  // The shadow map is allocated lazily on first use; dropping it forces a
+  // re-allocation at the new resolution instead of silently keeping the old one.
+  if(dl.shadow.map){dl.shadow.map.dispose();dl.shadow.map=null;}
+  buildComposer();
+  refreshSky();
+  onResize();
+}
+
+// ---- Post-processing chain -------------------------------------------------
+// Renders no longer go straight to the canvas. The scene is rendered into a
+// half-float buffer so colour stays in linear HDR — values above 1.0 survive
+// instead of clipping — and the passes run on that buffer before OutputPass
+// applies ACES tone mapping and the sRGB encode at the very end.
+//
+// That ordering is what makes bloom look like light rather than like a white
+// smear: the emissive screens and neon are genuinely brighter than 1.0 in the
+// buffer, so thresholding picks them out cleanly, and the tone map then rolls
+// the bloomed highlights down instead of letting them blow out.
+//
+// Note that three skips tone mapping automatically when rendering into a render
+// target rather than the canvas, so RenderPass writes linear values without any
+// special handling here — the renderer's toneMapping setting is read by
+// OutputPass at the end of the chain.
+//
+// The chain is: RenderPass → bloom → tilt-shift (H, then V) → grade → OutputPass.
+// Screen-space ambient occlusion was evaluated for a slot between the render and
+// the bloom and rejected — see the note against GTAOPass in tools/build-three.mjs.
+let composer,renderPass,bloomPass,tiltH,tiltV,gradePass,outputPass;
+
+// Tilt-shift: a separable blur whose radius is driven by vertical distance from a
+// sharp horizontal band. This is the optical signature of a photograph taken with
+// a shifted lens, and the reason it is worth having here is that the brain reads
+// that specific depth-of-field falloff as evidence of a *small* subject. On an
+// isometric scene it turns a flat diagram of a room into a miniature of one.
+const TiltShiftShader={
+  uniforms:{
+    tDiffuse:{value:null},
+    uDir:{value:new THREE.Vector2(1,0)},
+    uTexel:{value:new THREE.Vector2(1/1024,1/1024)},
+    uMaxBlur:{value:1.9},
+    uFocus:{value:0.54},   // screen-space Y of the sharp band's centre
+    // The sharp band is wide and the falloff long. A narrow band gives a stronger
+    // miniature effect on a photograph, where the subject occupies a slice of the
+    // frame — but here the room fills it, so a narrow band defocuses the desks and
+    // staff that are the actual subject. Wide enough to hold the room, tight
+    // enough to soften the sky above and the foreground floor below.
+    uBand:{value:0.22},    // half-height of the fully sharp band
+    uFalloff:{value:0.45},
+  },
+  vertexShader:`
+    varying vec2 vUv;
+    void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader:`
+    uniform sampler2D tDiffuse;
+    uniform vec2 uDir,uTexel;
+    uniform float uMaxBlur,uFocus,uBand,uFalloff;
+    varying vec2 vUv;
+    void main(){
+      float r=smoothstep(uBand,uBand+uFalloff,abs(vUv.y-uFocus))*uMaxBlur;
+      // Below a third of a pixel the nine taps would all land in the same texel;
+      // the whole sharp band takes this branch and costs one fetch.
+      if(r<0.33){gl_FragColor=texture2D(tDiffuse,vUv);return;}
+      vec2 s=uDir*uTexel*r;
+      // Gaussian, sigma = 2 texels, normalised to sum to exactly 1.
+      vec4 c =texture2D(tDiffuse,vUv        )*0.2042;
+      c+=texture2D(tDiffuse,vUv+s     )*0.1802;
+      c+=texture2D(tDiffuse,vUv-s     )*0.1802;
+      c+=texture2D(tDiffuse,vUv+s*2.0)*0.1238;
+      c+=texture2D(tDiffuse,vUv-s*2.0)*0.1238;
+      c+=texture2D(tDiffuse,vUv+s*3.0)*0.0663;
+      c+=texture2D(tDiffuse,vUv-s*3.0)*0.0663;
+      c+=texture2D(tDiffuse,vUv+s*4.0)*0.0276;
+      c+=texture2D(tDiffuse,vUv-s*4.0)*0.0276;
+      gl_FragColor=c;
+    }`,
+};
+
+// Colour grading, run while the image is still linear HDR — the same place a
+// film grade sits, before the tone curve rather than after it. Grading after the
+// tone map can only redistribute what survived it; grading before means the
+// contrast and split-tone are applied to the full range and ACES then rolls the
+// result off smoothly.
+const GradeShader={
+  uniforms:{
+    tDiffuse:{value:null},
+    uVignette:{value:0.30},
+    uSat:{value:1.14},
+    uContrast:{value:1.05},
+    uSplit:{value:0.5},
+    uGrain:{value:0.016},
+    uTime:{value:0},
+  },
+  vertexShader:`
+    varying vec2 vUv;
+    void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader:`
+    uniform sampler2D tDiffuse;
+    uniform float uVignette,uSat,uContrast,uSplit,uGrain,uTime;
+    varying vec2 vUv;
+    void main(){
+      vec4 tex=texture2D(tDiffuse,vUv);
+      vec3 c=tex.rgb;
+      // Contrast pivots on scene-linear mid grey (0.18), not on 0.5 — pivoting on
+      // 0.5 in a linear buffer crushes everything that is not already near-white.
+      c=max(vec3(0.0),(c-0.18)*uContrast+0.18);
+      float l=dot(c,vec3(0.2126,0.7152,0.0722));
+      c=mix(vec3(l),c,uSat);
+      // Split-tone: shadows pushed cool, highlights pushed warm. Cheap, and it is
+      // most of what separates a graded frame from a raw one.
+      vec3 tint=mix(vec3(0.88,0.95,1.14),vec3(1.09,1.02,0.90),clamp(l*1.7,0.0,1.0));
+      c*=mix(vec3(1.0),tint,uSplit);
+      vec2 p=vUv-0.5;
+      c*=clamp(1.0-uVignette*dot(p,p)*2.1,0.0,1.0);
+      // A little grain keeps the large flat colour fields from banding once the
+      // tone map compresses them.
+      float n=fract(sin(dot(vUv+fract(uTime),vec2(12.9898,78.233)))*43758.5453);
+      c+=(n-0.5)*uGrain;
+      gl_FragColor=vec4(max(c,vec3(0.0)),tex.a);
+    }`,
+};
+
+function disposeComposer(){
+  if(!composer)return;
+  composer.passes.forEach(p=>{if(p.dispose)p.dispose()});
+  if(composer.renderTarget1)composer.renderTarget1.dispose();
+  if(composer.renderTarget2)composer.renderTarget2.dispose();
+  composer=renderPass=bloomPass=tiltH=tiltV=gradePass=outputPass=null;
+}
+
+function buildComposer(){
+  disposeComposer();
+  const size=renderer.getDrawingBufferSize(new THREE.Vector2());
+  // MSAA on the composer's own targets. Post-processing normally forfeits the
+  // renderer's antialiasing because the scene lands in a texture rather than the
+  // default framebuffer; a multisampled target restores it, and hard-edged boxes
+  // on an ortho camera are exactly the content that needs it most.
+  const rt=new THREE.WebGLRenderTarget(size.width,size.height,{
+    type:THREE.HalfFloatType,
+    samples:QUALITY.msaa,
+  });
+  composer=new THREE.EffectComposer(renderer,rt);
+  composer.setPixelRatio(renderer.getPixelRatio());
+
+  renderPass=new THREE.RenderPass(scene,camera);
+  composer.addPass(renderPass);
+
+  if(QUALITY.bloom){
+    // Threshold 0.9 in linear HDR: below the emissive screens, neon strips and
+    // trophies, above every lit diffuse surface in the room.
+    //
+    // Built at half resolution. UnrealBloomPass runs five progressively smaller
+    // mip levels with a separable blur on each — eleven fullscreen draws in
+    // total, easily the most fill-rate hungry thing in the chain. Halving the
+    // input quarters all of that, and costs nothing visible: bloom is a purely
+    // low-frequency signal, so the detail being discarded is detail the blur was
+    // about to destroy anyway.
+    bloomPass=new THREE.UnrealBloomPass(new THREE.Vector2(size.width/2,size.height/2),0.62,0.75,0.9);
+    composer.addPass(bloomPass);
+  }
+
+  if(QUALITY.dof){
+    tiltH=new THREE.ShaderPass(TiltShiftShader);
+    tiltV=new THREE.ShaderPass(TiltShiftShader);
+    tiltV.uniforms.uDir.value=new THREE.Vector2(0,1);
+    composer.addPass(tiltH);
+    composer.addPass(tiltV);
+  }
+
+  if(QUALITY.grade){
+    gradePass=new THREE.ShaderPass(GradeShader);
+    composer.addPass(gradePass);
+  }
+
+  // Always last: converts the linear HDR buffer to the tone-mapped sRGB image the
+  // canvas actually displays.
+  outputPass=new THREE.OutputPass();
+  composer.addPass(outputPass);
+  sizeComposer();
+}
+
+// Blur radius is expressed in texels, so it has to scale with resolution or the
+// tilt-shift would be twice as strong on a 2× display as on a 1× one.
+function sizeComposer(){
+  if(!composer)return;
+  const w=window.innerWidth,h=window.innerHeight;
+  composer.setSize(w,h);
+  const size=renderer.getDrawingBufferSize(new THREE.Vector2());
+  [tiltH,tiltV].forEach(p=>{
+    if(!p)return;
+    p.uniforms.uTexel.value.set(1/size.width,1/size.height);
+    p.uniforms.uMaxBlur.value=2.4*Math.max(1,size.height/900);
+  });
+  if(bloomPass)bloomPass.setSize(w/2,h/2);   // matches the half-res construction
+}
+
 function initThree(){
   const c=document.getElementById('gC');
   scene=new THREE.Scene();scene.background=new THREE.Color(0x0c0c14);
   const a=window.innerWidth/window.innerHeight,d=18;
   camera=new THREE.OrthographicCamera(-d*a,d*a,d,-d,1,500);
   camera.position.set(22,22,22);camera.lookAt(0,0,0);
-  renderer=new THREE.WebGLRenderer({antialias:true});
+  // antialias:false because the composer's multisampled target does the job now;
+  // leaving it on would allocate a second MSAA buffer that is never drawn into.
+  renderer=new THREE.WebGLRenderer({antialias:false});
   renderer.setSize(window.innerWidth,window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  // Tier selection has to come after the context exists, because the strongest
+  // signal available — whether this is a software rasterizer — can only be read
+  // off a live GL context.
+  qualityTier=detectTier();QUALITY=QUALITY_TIERS[qualityTier];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,QUALITY.dpr));
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=TONE_EXPOSURE;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   c.appendChild(renderer.domElement);
-  amb=new THREE.AmbientLight(0x556677,0.7*LIGHT_GAIN);
+  // Ambient is scaled back because the environment map now supplies the indirect
+  // term with actual directional variation instead of a constant grey.
+  amb=new THREE.AmbientLight(0x556677,0.7*LIGHT_GAIN*AMB_ENV_SCALE);
   scene.add(amb);
   dl=new THREE.DirectionalLight(0xffeedd,0.9*LIGHT_GAIN);
   dl.position.set(15,25,15);dl.castShadow=true;
-  dl.shadow.mapSize.set(1024,1024);
-  dl.shadow.camera.left=-30;dl.shadow.camera.right=30;dl.shadow.camera.top=30;dl.shadow.camera.bottom=-30;
+  dl.shadow.mapSize.set(QUALITY.shadow,QUALITY.shadow);
+  fitShadowCamera(0);
   scene.add(dl);
   // Cyan fill. Under r128 this was `PointLight(0x00ccff,0.3,30)` left at the
   // origin — i.e. buried in the floor — and with the old decay=1 falloff it read as
@@ -646,6 +946,8 @@ function initThree(){
   fill=new THREE.PointLight(0x00ccff,60,60,2);
   fill.position.set(0,10,0);
   scene.add(fill);
+  buildComposer();
+  refreshSky();
   bindCameraControls();
   animate();
 }
@@ -683,17 +985,489 @@ function bindCameraControls(){
 }
 
 // Day/night cycle: each in-game year (4 games) cycles morning→noon→evening→night
+//
+// Each phase carries three groups of numbers:
+//   * the direct light rig    — amb/dl colour+intensity, and `win` for the glass
+//   * the sun's world position — `sun`, which drives the direction shadows fall in
+//   * the sky                 — `zen`/`hor`/`gnd` build the procedural environment
+//     map, `sunI` is the size/strength of the sun disc in it, and `cityWin` is how
+//     lit the skyline's windows are.
+//
+// The sun arcs east→overhead→west and is replaced by a dim, cold, high moon at
+// night, so shadows sweep across the floor over the in-game year instead of
+// staying pinned to one corner. `bg` survives as the flat-colour fallback used
+// when the environment map is disabled on the lowest quality tier.
 const DAY_PHASES=[
-  {bg:0x1a2238,amb:0x8899bb,ambI:0.65,dl:0xffd9b3,dlI:0.85,win:0xaaddff,winI:0.5},  // morning
-  {bg:0x0c0c14,amb:0x556677,ambI:0.7,dl:0xffeedd,dlI:0.9,win:0x88bbff,winI:0.25},   // noon
-  {bg:0x251a2e,amb:0x997766,ambI:0.6,dl:0xff9966,dlI:0.7,win:0xffaa66,winI:0.6},    // evening
-  {bg:0x05060f,amb:0x334466,ambI:0.45,dl:0x8899ff,dlI:0.35,win:0xffcc66,winI:0.95}, // night
+  // morning — low sun from the east, warm horizon against a still-cool zenith
+  {bg:0x1a2238,amb:0x8899bb,ambI:0.65,dl:0xffd9b3,dlI:0.85,win:0xaaddff,winI:0.5,
+   sun:[34,13,8],  zen:0x2a4a86,hor:0xffb877,gnd:0x141c2e,sunI:1.15,cityWin:0.18},
+  // noon — high sun, clean blue sky, skyline windows read as plain glass
+  {bg:0x0c0c14,amb:0x556677,ambI:0.7,dl:0xffeedd,dlI:0.9,win:0x88bbff,winI:0.25,
+   sun:[16,38,20], zen:0x2f6bb5,hor:0xa8cbe8,gnd:0x1b2230,sunI:0.85,cityWin:0.05},
+  // evening — low sun from the west, the whole sky pushed orange→magenta
+  {bg:0x251a2e,amb:0x997766,ambI:0.6,dl:0xff9966,dlI:0.7,win:0xffaa66,winI:0.6,
+   sun:[-30,10,-14],zen:0x3a2154,hor:0xff7a45,gnd:0x1a1220,sunI:1.4,cityWin:0.45},
+  // night — moonlight, and the city behind the glass finally lights up
+  {bg:0x05060f,amb:0x334466,ambI:0.45,dl:0x8899ff,dlI:0.35,win:0xffcc66,winI:0.95,
+   sun:[-20,30,-22],zen:0x04060f,hor:0x18213c,gnd:0x03040a,sunI:0.35,cityWin:1.0},
 ];
 let dayTarget=DAY_PHASES[1];
 const _dc1=new THREE.Color(),_dc2=new THREE.Color(),_dc3=new THREE.Color(),_dc4=new THREE.Color();
 function applyDayPhase(){
   const idx=Math.max(0,Math.min(3,Math.floor(S.gamesThisYear||0)));
-  dayTarget=DAY_PHASES[idx];
+  const next=DAY_PHASES[idx];
+  const changed=next!==dayTarget;
+  dayTarget=next;
+  // The sky texture and its PMREM convolution are far too expensive to rebuild
+  // per frame, and the phase only changes a handful of times per in-game year —
+  // so it is rebuilt on the transition and cross-faded to via scene.backgroundIntensity.
+  if(changed||!skyTex)refreshSky();
+}
+
+// ---- Procedural sky + image-based lighting ---------------------------------
+// The room used to sit in a flat background colour, lit by three lights and
+// nothing else — which is why every surface facing away from the key light fell
+// to the same dead ambient grey regardless of what it was facing.
+//
+// Instead of shipping an HDR file, the sky is painted into a canvas as an
+// equirectangular panorama and used twice: directly as scene.background, and —
+// after PMREM convolution — as scene.environment. The second use is the
+// important one. It gives every material a direction-dependent ambient term, so
+// upward faces pick up sky, downward faces pick up ground bounce, and the glass
+// and metal in the room finally have something to reflect.
+//
+// Painting it rather than loading it means the sky is free to be a function of
+// game state: the sun sits where the day phase says it does, and the skyline
+// grows denser and its windows light up as the studio climbs from a bedroom to a
+// tower. Total cost is one 1024×512 canvas rebuilt a few times per in-game year.
+// 2048 wide because only about half the panorama is on screen at once, so the
+// skyline is magnified rather than minified — at 1024 the buildings were visibly
+// soft and their windows blurred into smears.
+const SKY_W=2048,SKY_H=1024;
+let skyCanvas=null,skyTex=null,pmrem=null,envRT=null;
+
+// Deterministic PRNG so the skyline is the same city every time the sky is
+// repainted. Seeding from the stage means a day-phase change relights the
+// buildings in place instead of reshuffling the whole horizon.
+function mulberry32(a){
+  return function(){
+    a|=0;a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return((t^t>>>14)>>>0)/4294967296;
+  };
+}
+
+// Mixing happens through THREE.Color so it runs in linear space (the colours are
+// declared as sRGB hex and read back as sRGB CSS, but the interpolation between
+// them is physically correct rather than gamma-skewed).
+const _sc1=new THREE.Color(),_sc2=new THREE.Color();
+function mixHex(a,b,t){return _sc1.setHex(a).lerp(_sc2.setHex(b),t).getStyle()}
+
+// How built-up the horizon is per stage. The bedroom looks out on a low suburb;
+// by the skyscraper the studio is surrounded by towers at its own eye level.
+// Density stays high at every stage and the progression is carried by height
+// alone. Thinning the city out for the early stages seemed like the obvious way
+// to say "you are nobody yet", but a sparse row of silhouettes does not read as a
+// distant suburb — it reads as isolated fence posts, because a real skyline is
+// continuous and only its profile changes.
+const SKYLINE=[
+  {density:0.80,height:0.045,seed:11},
+  {density:0.84,height:0.065,seed:22},
+  {density:0.88,height:0.090,seed:33},
+  {density:0.92,height:0.125,seed:44},
+  {density:0.96,height:0.170,seed:55},
+  {density:1.00,height:0.230,seed:66},
+];
+
+function drawSky(ctx,ph,stage){
+  ctx.clearRect(0,0,SKY_W,SKY_H);
+  // Zenith → horizon → ground. The horizon sits at the vertical midpoint because
+  // three's equirect mapping puts elevation 0 at v=0.5.
+  const g=ctx.createLinearGradient(0,0,0,SKY_H);
+  g.addColorStop(0,mixHex(ph.zen,ph.zen,0));
+  g.addColorStop(0.34,mixHex(ph.zen,ph.hor,0.35));
+  g.addColorStop(0.47,mixHex(ph.zen,ph.hor,0.82));
+  g.addColorStop(0.50,mixHex(ph.hor,ph.hor,0));
+  // Below the horizon the falloff to ground is deliberately abrupt. Roughly half
+  // the frame sits under the horizon line at this camera angle, so a gentle ramp
+  // fills the lower screen with a bright wash that competes with the room and
+  // makes the diorama look like it is sitting in an empty desert.
+  g.addColorStop(0.505,mixHex(ph.gnd,ph.hor,0.30));
+  g.addColorStop(0.55,mixHex(ph.gnd,ph.hor,0.06));
+  g.addColorStop(1,mixHex(ph.gnd,ph.gnd,0));
+  ctx.fillStyle=g;ctx.fillRect(0,0,SKY_W,SKY_H);
+
+  // Sun/moon disc. Its position in the panorama is derived from the same vector
+  // that positions the DirectionalLight, so the bright spot in the reflections
+  // always agrees with the direction the shadows fall.
+  const [sx,sy,sz]=ph.sun;
+  const len=Math.hypot(sx,sy,sz);
+  const su=(Math.atan2(sz/len,sx/len)/(Math.PI*2)+0.5)*SKY_W;
+  const sv=(1-(0.5+Math.asin(sy/len)/Math.PI))*SKY_H;
+  ctx.globalCompositeOperation='lighter';
+  // Drawn three times so a sun near u=0 bleeds across the seam instead of being
+  // sliced in half by it.
+  for(const off of [-SKY_W,0,SKY_W]){
+    const halo=ctx.createRadialGradient(su+off,sv,0,su+off,sv,SKY_W*0.19);
+    halo.addColorStop(0,`rgba(255,246,225,${0.95*ph.sunI})`);
+    halo.addColorStop(0.06,`rgba(255,228,180,${0.55*ph.sunI})`);
+    halo.addColorStop(0.35,`rgba(255,180,120,${0.14*ph.sunI})`);
+    halo.addColorStop(1,'rgba(255,150,90,0)');
+    ctx.fillStyle=halo;ctx.fillRect(su+off-SKY_W*0.2,sv-SKY_W*0.2,SKY_W*0.4,SKY_W*0.4);
+  }
+  ctx.globalCompositeOperation='source-over';
+
+  // City skyline along the horizon.
+  const sk=SKYLINE[stage]||SKYLINE[0];
+  const rnd=mulberry32(sk.seed);
+  const hz=SKY_H*0.5;
+  const silhouette=mixHex(ph.gnd,ph.hor,0.16);
+  const winCol=ph.cityWin>0.5?'255,214,140':'190,220,255';
+  // Two passes: a hazier, shorter row behind a darker, taller one. A single row
+  // of silhouettes reads as a cardboard cutout; overlapping rows at different
+  // tones read as distance.
+  for(const layer of [{scale:0.62,fade:0.45,step:1.0},{scale:1.0,fade:0,step:0.85}]){
+    let x=0;
+    while(x<SKY_W){
+      const w=(16+rnd()*38)*layer.step;
+      if(rnd()>sk.density){x+=w;continue}
+      // Squared random rather than uniform: most buildings low, a few towers.
+      // A uniform distribution gives every building a different random height and
+      // the skyline comes out looking like a bar chart.
+      const r=rnd();
+      const h=(0.30+r*r*0.70)*sk.height*SKY_H*layer.scale;
+      const top=hz-h;
+      // The far layer is washed toward the horizon colour, which is what aerial
+      // perspective actually does to distant buildings.
+      ctx.fillStyle=layer.fade?mixHex(ph.gnd,ph.hor,0.16+layer.fade*0.5):silhouette;
+      ctx.fillRect(x,top,w,hz-top+SKY_H*0.05);
+      // Lit windows. Alpha rides the day phase, so the city is dark at noon and
+      // fully lit at night — the same curve the room's own windows follow.
+      if(ph.cityWin>0.02&&!layer.fade){
+        const cols=Math.max(1,Math.floor((w-5)/6));
+        const rows=Math.max(1,Math.floor(h/8));
+        for(let cx=0;cx<cols;cx++)for(let cy=0;cy<rows;cy++){
+          if(rnd()>0.42)continue;
+          ctx.fillStyle=`rgba(${winCol},${(0.25+rnd()*0.75)*ph.cityWin})`;
+          ctx.fillRect(x+2.5+cx*6,top+3+cy*8,3,4);
+        }
+      }
+      // Advancing by less than the building's width makes neighbours overlap.
+      // Butting them edge to edge leaves a hairline of sky between every pair and
+      // the city comes out looking like a picket fence.
+      x+=w*0.78;
+    }
+  }
+
+  // Haze band: a soft light strip on the horizon line that reads as atmospheric
+  // depth and stops the skyline from looking like a sticker on the gradient.
+  const haze=ctx.createLinearGradient(0,hz-SKY_H*0.07,0,hz+SKY_H*0.03);
+  haze.addColorStop(0,'rgba(255,255,255,0)');
+  haze.addColorStop(0.75,`rgba(255,255,255,${0.05+0.09*ph.sunI})`);
+  haze.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=haze;ctx.fillRect(0,hz-SKY_H*0.07,SKY_W,SKY_H*0.1);
+}
+
+// Ambient light is scaled down when the environment map is carrying the indirect
+// term, because otherwise the two stack and flatten out exactly the shading the
+// environment was added to create.
+const AMB_ENV_SCALE=0.85;
+const ENV_INTENSITY=0.95;
+const BG_INTENSITY=0.85;
+
+let _skyKey='';
+function refreshSky(){
+  if(!scene||!renderer)return;
+  // buildRoom() and applyDayPhase() can both ask for a repaint in the same tick
+  // when a stage change lands on a phase boundary. Painting the canvas is cheap;
+  // the PMREM convolution behind it is not, so identical requests are dropped.
+  const key=curStage+'|'+DAY_PHASES.indexOf(dayTarget)+'|'+(QUALITY.env?1:0);
+  if(key===_skyKey)return;
+  _skyKey=key;
+  if(!skyCanvas){
+    skyCanvas=document.createElement('canvas');
+    skyCanvas.width=SKY_W;skyCanvas.height=SKY_H;
+  }
+  drawSky(skyCanvas.getContext('2d'),dayTarget,curStage);
+  if(!skyTex){
+    skyTex=new THREE.CanvasTexture(skyCanvas);
+    skyTex.mapping=THREE.EquirectangularReflectionMapping;
+    skyTex.colorSpace=THREE.SRGBColorSpace;
+  }else skyTex.needsUpdate=true;
+
+  if(QUALITY.env){
+    if(!pmrem)pmrem=new THREE.PMREMGenerator(renderer);
+    // fromEquirectangular allocates a fresh render target each call, so the
+    // previous one is released only after the new one is live.
+    const prev=envRT;
+    envRT=pmrem.fromEquirectangular(skyTex);
+    scene.environment=envRT.texture;
+    scene.environmentIntensity=ENV_INTENSITY;
+    if(prev)prev.dispose();
+    // scene.background stays a flat colour and the visible sky is drawn by the
+    // backdrop plane instead — see mkSkyPlane() for why neither of three's own
+    // background paths can do this job under an orthographic camera.
+    scene.background=_dc3.setHex(dayTarget.bg);
+    scene.backgroundIntensity=BG_INTENSITY;
+    updateSkyPlane();
+  }else{
+    // Lowest tier: no reflections, no sky — the original flat backdrop.
+    scene.environment=null;
+    scene.background=_dc3.setHex(dayTarget.bg);
+    if(skyPlane)skyPlane.visible=false;
+  }
+}
+
+// ---- The backdrop plane ----------------------------------------------------
+// Neither of three's built-in background paths works for this camera.
+//
+// A cube or PMREM background is drawn as a unit box pinned to the camera's
+// position. Under a perspective camera that box surrounds the viewer and fills
+// the frame; under an orthographic one the projection is parallel, so a one-unit
+// box stays one unit wide on screen — a postage stamp in the middle of a
+// 36-unit-tall frustum. Handing three the equirectangular texture directly is no
+// better: that takes the flat-quad branch, which ignores the camera entirely.
+//
+// The deeper point is that a panorama is not a meaningful thing to project
+// orthographically at all. An ortho camera has no field of view — every ray is
+// parallel — so there is no cone of directions to map a sphere onto. What such a
+// camera can correctly show is a flat backdrop that *pans* as the view rotates,
+// which is exactly what this is: a quad filling the frustum, parented to the
+// camera so it inherits its position and orientation for free, sampling a window
+// onto the panorama whose horizontal offset tracks the orbit angle.
+let skyPlane=null;
+// Fraction of the full 360° panorama visible across the frame. Larger means the
+// city sits further away and pans faster when the camera orbits.
+const SKY_SPAN_X=0.52;
+// Deliberate vertical squash. 1.0 samples the panorama at its true aspect; below
+// that the buildings stand taller and less of the empty upper sky is in frame,
+// which suits a low camera looking across a skyline rather than up at it.
+const SKY_STRETCH=0.52;
+// Where the horizon sits as a fraction of screen height measured from the bottom.
+// Tuned so it passes behind the room rather than under it — below the room's base
+// the whole diorama reads as floating in mid-air.
+const SKY_HORIZON_SCREEN=0.56;
+
+// The backdrop is deliberately held below full brightness. A physically-correct
+// daylight sky is far brighter than a room interior, and rendering it that way is
+// exactly what happened first: the sky was correct, the room was correct, and the
+// result was a dark box against a glare. The scene is the subject, so the sky is
+// dimmed until it sits behind the room rather than competing with it.
+const SKY_PLANE_INTENSITY=0.58;
+
+function mkSkyPlane(){
+  if(skyPlane||!skyTex||!camera)return;
+  const mat=new THREE.MeshBasicMaterial({map:skyTex,depthWrite:false,toneMapped:true});
+  mat.color.setScalar(SKY_PLANE_INTENSITY);
+  skyPlane=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat);
+  // Drawn before everything else and never writing depth, so it can never occlude
+  // the room no matter where the far plane ends up.
+  skyPlane.renderOrder=-1;
+  skyPlane.frustumCulled=false;
+  // Sitting inside the camera's frustum at a fixed distance. The camera has to be
+  // part of the scene graph for its children to be rendered at all.
+  skyPlane.position.set(0,0,-400);
+  camera.add(skyPlane);
+  if(!camera.parent)scene.add(camera);
+}
+
+function updateSkyPlane(){
+  if(!skyTex)return;
+  mkSkyPlane();
+  if(!skyPlane)return;
+  skyPlane.visible=true;
+  skyPlane.material.map=skyTex;
+  // wrapS repeats so the sky keeps panning through a full orbit instead of
+  // clamping to the edge pixel after the first turn.
+  skyTex.wrapS=THREE.RepeatWrapping;
+  skyTex.needsUpdate=true;
+  sizeSkyPlane();
+}
+
+// The quad has to cover the orthographic frustum exactly, and the frustum changes
+// with both the window aspect and the player's zoom.
+//
+// The vertical span is derived from the horizontal one rather than being a
+// constant, so that the panorama is sampled at a fixed pixels-per-pixel ratio.
+// Pinning both spans instead would make the sky stretch and squash as the window
+// changed shape — a tall phone and a wide desktop would show visibly different
+// skylines from the same texture.
+function sizeSkyPlane(){
+  if(!skyPlane||!camera||!skyTex)return;
+  const w=(camera.right-camera.left)/camera.zoom;
+  const h=(camera.top-camera.bottom)/camera.zoom;
+  skyPlane.scale.set(w*1.05,h*1.05,1);
+  const aspect=(camera.right-camera.left)/(camera.top-camera.bottom);
+  // SKY_W/SKY_H is 2 for an equirectangular map; dividing by the screen aspect
+  // converts "same texels per pixel horizontally" into the matching vertical span.
+  const spanY=SKY_SPAN_X*(SKY_W/SKY_H)/aspect*SKY_STRETCH;
+  skyTex.repeat.set(SKY_SPAN_X,spanY);
+  // Solve for the offset that lands the horizon (v=0.5 in the panorama) on the
+  // requested fraction of screen height.
+  skyTex.offset.y=0.5-SKY_HORIZON_SCREEN*spanY;
+}
+
+// Orbiting the camera pans the window across the panorama. Dividing by 2π maps a
+// full revolution to exactly one traverse of the texture, so the sun and the
+// skyline stay locked to their world directions as the player spins the room.
+function panSky(){
+  if(!skyPlane||!skyTex)return;
+  const baseYaw=Math.atan2(camera.position.x,camera.position.z);
+  skyTex.offset.x=-baseYaw/(Math.PI*2)-SKY_SPAN_X/2;
+}
+
+// Shadow coverage has to track the room: the ortho shadow frustum was a fixed
+// ±30 units, which fit the studio but clipped the 40-unit skyscraper floor, and
+// the low morning/evening sun throws shadows well past the walls.
+const SHADOW_EXTENT=[14,18,22,26,32,42];
+function fitShadowCamera(stage){
+  if(!dl)return;
+  const e=(SHADOW_EXTENT[stage]||30)*1.35;
+  const c=dl.shadow.camera;
+  c.left=-e;c.right=e;c.top=e;c.bottom=-e;
+  c.near=1;c.far=e*4;
+  c.updateProjectionMatrix();
+  // Texel size grows with the frustum, so the depth bias has to grow with it too
+  // or the long shadows cast by a low sun stripe themselves with acne.
+  dl.shadow.bias=-0.0006-e*0.00002;
+  dl.shadow.normalBias=0.02+e*0.002;
+}
+
+// ---- Sunlight through the glass --------------------------------------------
+// A DirectionalLight makes a room brighter but never makes the light *visible* —
+// there is no participating medium in the renderer, so nothing shows the beam
+// itself. Volumetric scattering would be the physical answer and is far too
+// expensive for the budget here.
+//
+// The cheap and long-standing alternative is to draw the beam as geometry: an
+// additive quad standing in the window's opening with a soft vertical gradient,
+// plus an elongated pool of light where it lands on the floor. Two extra
+// transparent quads per window, no new passes, and it reads correctly because the
+// eye is judging the gradient's shape rather than measuring the physics.
+let lightShafts=[];
+let _shaftTex=null,_poolTex=null;
+
+// Both gradients are painted once into 128px canvases and shared by every window
+// in every room for the lifetime of the session.
+function shaftTexture(){
+  if(_shaftTex)return _shaftTex;
+  const cv=document.createElement('canvas');cv.width=cv.height=128;
+  const g=cv.getContext('2d');
+  const grad=g.createLinearGradient(0,0,0,128);
+  grad.addColorStop(0,'rgba(255,246,220,0.95)');
+  grad.addColorStop(0.45,'rgba(255,238,200,0.34)');
+  grad.addColorStop(1,'rgba(255,230,190,0)');
+  g.fillStyle=grad;g.fillRect(0,0,128,128);
+  // Feather the vertical edges so the beam has no hard sides.
+  const side=g.createLinearGradient(0,0,128,0);
+  side.addColorStop(0,'rgba(0,0,0,1)');
+  side.addColorStop(0.5,'rgba(0,0,0,0)');
+  side.addColorStop(1,'rgba(0,0,0,1)');
+  g.globalCompositeOperation='destination-out';
+  g.fillStyle=side;g.fillRect(0,0,128,128);
+  _shaftTex=new THREE.CanvasTexture(cv);
+  _shaftTex.colorSpace=THREE.SRGBColorSpace;
+  return _shaftTex;
+}
+function poolTexture(){
+  if(_poolTex)return _poolTex;
+  const cv=document.createElement('canvas');cv.width=cv.height=128;
+  const g=cv.getContext('2d');
+  const grad=g.createRadialGradient(64,64,0,64,64,64);
+  grad.addColorStop(0,'rgba(255,244,214,0.85)');
+  grad.addColorStop(0.55,'rgba(255,232,190,0.30)');
+  grad.addColorStop(1,'rgba(255,225,180,0)');
+  g.fillStyle=grad;g.fillRect(0,0,128,128);
+  _poolTex=new THREE.CanvasTexture(cv);
+  _poolTex.colorSpace=THREE.SRGBColorSpace;
+  return _poolTex;
+}
+
+// Strongest when the sun is low and raking through the glass, weakest at noon
+// when it is overhead and the beam would be near-vertical and invisible anyway.
+// At night the windows glow inward instead, so the effect never switches off
+// entirely — it just changes character.
+function lightShaftStrength(){
+  if(!dayTarget)return 0;
+  const [sx,sy,sz]=dayTarget.sun;
+  const elev=sy/Math.hypot(sx,sy,sz);          // 0 at the horizon, 1 overhead
+  return 0.25+0.75*Math.max(0,1-elev*1.55);
+}
+
+// ---- Grounding the diorama -------------------------------------------------
+// The room has no world below it — it is a floor slab in empty space, which read
+// as floating the moment there was a horizon behind it to float against. Under a
+// black background nothing gave the illusion away.
+//
+// One soft dark ellipse under the slab fixes it. It is the same trick a
+// hand-drawn contact shadow plays: the eye takes a dark smudge beneath an object
+// as proof the object is resting on something, and stops asking what.
+let _hazeTex=null;
+function hazeTexture(){
+  if(_hazeTex)return _hazeTex;
+  const cv=document.createElement('canvas');cv.width=cv.height=256;
+  const g=cv.getContext('2d');
+  const grad=g.createRadialGradient(128,128,0,128,128,128);
+  grad.addColorStop(0,'rgba(0,0,0,0.62)');
+  grad.addColorStop(0.45,'rgba(0,0,0,0.34)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=grad;g.fillRect(0,0,256,256);
+  _hazeTex=new THREE.CanvasTexture(cv);
+  return _hazeTex;
+}
+
+// Sized from the room's own floor slab so it keeps working for a stage that does
+// not exist yet.
+const HAZE_SIZE=[24,30,36,42,54,64];
+function addGroundHaze(stage){
+  if(!QUALITY.env)return;
+  const s=(HAZE_SIZE[stage]||40)*1.5;
+  const mat=new THREE.MeshBasicMaterial({map:hazeTexture(),transparent:true,depthWrite:false,toneMapped:false});
+  mat.userData.owned=true;
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(s,s),mat);
+  m.geometry.userData.owned=true;
+  m.rotation.x=-Math.PI/2;
+  // Just under the floor slab, which sits at y≈-0.3.
+  m.position.y=-0.45;
+  m.renderOrder=-1;
+  gFx.add(m);
+}
+
+// Every window in the game sits on a back wall facing +z (see mkWindow), so the
+// beam always leans inward along +z. Kept as a named constant rather than derived
+// per window, because deriving it from a box's thin axis would silently do the
+// wrong thing the first time a window is put on a side wall.
+function addLightShaft(w,h,x,y,z){
+  if(!QUALITY.env)return;   // the lowest tier has no atmosphere to sell
+  const reach=y+h*0.5;      // beam runs from the window's top edge down to the floor
+  const mat=new THREE.MeshBasicMaterial({
+    map:shaftTexture(),transparent:true,opacity:0,depthWrite:false,
+    blending:THREE.AdditiveBlending,side:THREE.DoubleSide,toneMapped:true,
+  });
+  mat.userData.owned=true;
+  const shaft=new THREE.Mesh(new THREE.PlaneGeometry(w*1.5,reach*1.9),mat);
+  shaft.geometry.userData.owned=true;
+  // Tilted off vertical so it reads as a beam travelling into the room rather
+  // than a curtain hanging flat against the glass.
+  shaft.position.set(x,reach*0.5,z+reach*0.55);
+  shaft.rotation.x=-0.62;
+  shaft.renderOrder=2;
+  gFx.add(shaft);
+  lightShafts.push({mesh:shaft,base:0.55});
+
+  const pmat=new THREE.MeshBasicMaterial({
+    map:poolTexture(),transparent:true,opacity:0,depthWrite:false,
+    blending:THREE.AdditiveBlending,toneMapped:true,
+  });
+  pmat.userData.owned=true;
+  const pool=new THREE.Mesh(new THREE.PlaneGeometry(w*1.9,reach*1.5),pmat);
+  pool.geometry.userData.owned=true;
+  pool.rotation.x=-Math.PI/2;
+  pool.position.set(x,0.06,z+reach*1.0);
+  pool.renderOrder=1;
+  gFx.add(pool);
+  lightShafts.push({mesh:pool,base:0.42});
 }
 
 // Celebration confetti burst (added to scene directly so buildRoom rebuilds can't wipe it)
@@ -847,7 +1621,7 @@ function clr(){
     scene.remove(rg);
   }
   rg=new THREE.Group();scene.add(rg);
-  employees=[];trophies=[];winMeshes=[];walkers=0;particleSystem=null;
+  employees=[];trophies=[];winMeshes=[];walkers=0;particleSystem=null;lightShafts=[];
   gPeople=mkDynGroup();gPosters=mkDynGroup();gTrophies=mkDynGroup();
   gBoard=mkDynGroup();gWindows=mkDynGroup();gFx=mkDynGroup();
 }
@@ -861,6 +1635,7 @@ function mkWindow(w,h,x,y,z){
   const m=new THREE.Mesh(boxGeo(w,h,.06),mat);
   m.position.set(x,y,z);m.castShadow=true;
   winMeshes.push(m);gWindows.add(m);
+  addLightShaft(w,h,x,y,z);
   return m;
 }
 
@@ -1239,10 +2014,15 @@ function turnToward(obj,tx,tz,f){
 function buildRoom(s){
   curStage=s;
   clr();
+  // Shadow coverage and the skyline's density both scale with the room, so they
+  // have to be set before the phase is applied — applyDayPhase() repaints the sky
+  // for the stage that is now current.
+  fitShadowCamera(s);
   if(s===0)buildBedroom();else if(s===1)buildGarage();else if(s===2)buildSmallOffice();
   else if(s===3)buildStudio();else if(s===4)buildCompany();else buildSkyscraper();
   setCam(s);
   applyDayPhase();
+  refreshSky();
   addDesks(s);
   addDeskDecor(s);
   placePeople(s);
@@ -1250,6 +2030,7 @@ function buildRoom(s){
   addParticles(s);
   addStaffBoard(s);
   addTrophies(s);
+  addGroundHaze(s);
   // Derive the walkable grid while the furniture is still individual objects —
   // batchStatic() below merges them into room-spanning meshes.
   buildNav();
@@ -1449,13 +2230,25 @@ function animate(){
   // Day/night lighting: smooth lerp toward current phase targets
   if(amb&&dayTarget){
     const k=Math.min(1,0.02*f);
-    amb.color.lerp(_dc1.set(dayTarget.amb),k);amb.intensity+=(dayTarget.ambI*LIGHT_GAIN-amb.intensity)*k;
+    amb.color.lerp(_dc1.set(dayTarget.amb),k);amb.intensity+=(dayTarget.ambI*LIGHT_GAIN*AMB_ENV_SCALE-amb.intensity)*k;
     dl.color.lerp(_dc2.set(dayTarget.dl),k);dl.intensity+=(dayTarget.dlI*LIGHT_GAIN-dl.intensity)*k;
+    // The sun travels to where the phase says it is, so shadows swing across the
+    // floor over the in-game year rather than sitting in one corner all game.
+    const sp=dayTarget.sun;
+    dl.position.x+=(sp[0]-dl.position.x)*k;
+    dl.position.y+=(sp[1]-dl.position.y)*k;
+    dl.position.z+=(sp[2]-dl.position.z)*k;
     if(scene.background&&scene.background.isColor)scene.background.lerp(_dc3.set(dayTarget.bg),k);
     _dc4.set(dayTarget.win);
     winMeshes.forEach(w=>{
       w.material.emissive.lerp(_dc4,k);
       w.material.emissiveIntensity+=(dayTarget.winI-w.material.emissiveIntensity)*k;
+    });
+    // Sunlight through the glass: the shafts and floor pools brighten as the sun
+    // drops toward the horizon and fade out under a high noon sun.
+    const shaftTarget=lightShaftStrength();
+    lightShafts.forEach(sh=>{
+      sh.mesh.material.opacity+=(shaftTarget*sh.base-sh.mesh.material.opacity)*k;
     });
   }
   // Confetti bursts: outward burst + gravity + fade, auto-dispose
@@ -1484,14 +2277,78 @@ function animate(){
     }
     particleSystem.points.geometry.attributes.position.needsUpdate=true;
   }
-  renderer.render(scene,camera);
+  if(gradePass)gradePass.uniforms.uTime.value=t;
+  if(composer)composer.render();else renderer.render(scene,camera);
+  governQuality(now);
 }
 
-window.addEventListener('resize',()=>{
+// ---- Adaptive quality governor ---------------------------------------------
+// Device capability sniffing gets the starting tier roughly right; only measuring
+// the actual frame time can get it actually right. Frames are averaged over a
+// window rather than judged individually, because a single long frame is far more
+// likely to be a garbage collection or a room rebuild than a device that cannot
+// keep up.
+//
+// Demotion is one-way within a session. Promoting back up on a good average would
+// put the framerate straight back into the condition that triggered the demotion,
+// and the visible result is a scene that pulses between two looks.
+const FPS_WINDOW=90;          // frames per verdict, ~1.5s at 60fps
+const FPS_DEMOTE_BELOW=42;    // sustained average that means the tier is too rich
+// A separate, much faster trigger for the case the averaging window handles
+// badly. Averaging over 90 frames is the right way to judge a device sitting at
+// 35 fps, but on a device managing 2 fps those 90 frames take three quarters of a
+// minute — the player would stare at a slideshow for the entire diagnosis. Three
+// consecutive frames this slow is not a hitch, and needs no further evidence.
+const FRAME_PANIC_MS=180;
+const FRAME_PANIC_RUN=3;
+let _fpsAcc=0,_fpsCount=0,_fpsGraceUntil=0,_lastFrameForFps=0,_panicRun=0;
+function governQuality(now){
+  if(!_fpsGraceUntil)_fpsGraceUntil=now+3000; // ignore startup and shader compiles
+  if(now<_fpsGraceUntil)return;
+  if(anyModalOpen()){_lastFrameForFps=0;return}  // deliberately throttled; not a capability signal
+  // First measured frame after startup or a gap only establishes the reference
+  // point — differencing against a stale timestamp would bill one frame for the
+  // entire pause that preceded it.
+  if(!_lastFrameForFps){_lastFrameForFps=now;return}
+  const dt=now-_lastFrameForFps;
+  _fpsAcc+=dt;_fpsCount++;
+  _lastFrameForFps=now;
+  _panicRun=dt>FRAME_PANIC_MS?_panicRun+1:0;
+  if(_panicRun>=FRAME_PANIC_RUN){_panicRun=0;demoteTier();return}
+  if(_fpsCount<FPS_WINDOW)return;
+  const avgFps=1000/(_fpsAcc/_fpsCount);
+  _fpsAcc=0;_fpsCount=0;
+  if(avgFps>=FPS_DEMOTE_BELOW)return;
+  demoteTier();
+}
+
+function demoteTier(){
+  // A tier the player picked by hand is a decision, not a guess to be corrected.
+  // Overriding it would also make the setting look broken — pick "عالية", watch it
+  // silently fall back to "منخفضة" — and it is what made tools/shot-stages.mjs
+  // quietly capture the wrong pipeline.
+  if(qualityLocked())return;
+  const i=TIER_ORDER.indexOf(qualityTier);
+  if(i<0||i>=TIER_ORDER.length-1)return;
+  const next=TIER_ORDER[i+1];
+  // Not persisted: this is a measurement of the current conditions (a big room, a
+  // busy tab, a throttled battery-saver GPU), not a permanent verdict on the
+  // device. An explicit choice from the settings panel is what gets remembered.
+  setQualityTier(next,false);
+  _fpsGraceUntil=Date.now()+3000;
+  _lastFrameForFps=0;
+}
+
+function onResize(){
+  if(!camera||!renderer)return;
   const a=window.innerWidth/window.innerHeight,d=18;
   camera.left=-d*a;camera.right=d*a;camera.top=d;camera.bottom=-d;
-  camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);
-});
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  sizeComposer();
+  sizeSkyPlane();
+}
+window.addEventListener('resize',onResize);
 
 // ============ GAME DATA ============
 const GENRES=[
@@ -3709,6 +4566,11 @@ window.OpenSettings=function(){
   document.getElementById('volSlider').value=Math.round((S.audio?.volume??0.6)*100);
   document.getElementById('muteChk').checked=S.audio?.muted||false;
   document.getElementById('lightChk').checked=S.theme==='light';
+  // Quality lives in its own localStorage key rather than in the save: it
+  // describes the device the game is being played on, not the run in progress,
+  // so it must survive "clear save" and must not travel with an exported one.
+  let q='auto';try{q=localStorage.getItem('gd_quality')||'auto'}catch(_){}
+  document.getElementById('qualitySel').value=q;
   document.getElementById('diffShow').textContent=DIFFICULTY[S.difficulty].name;
   document.getElementById('yearShow').textContent=S.year||1;
   document.getElementById('prShow').textContent=S.prestige?.level||0;
@@ -4222,6 +5084,19 @@ function bindSettings(){
   });
   document.getElementById('lightChk').addEventListener('change',e=>{
     S.theme=e.target.checked?'light':'dark';applyTheme();saveGame();
+  });
+  document.getElementById('qualitySel').addEventListener('change',e=>{
+    const v=e.target.value;
+    if(v==='auto'){
+      try{localStorage.removeItem('gd_quality')}catch(_){}
+      setQualityTier(detectTier(),false);
+    }else{
+      setQualityTier(v,true);
+    }
+    // An explicit choice outranks the governor: reset its window so the tier the
+    // player just picked is not immediately demoted by frames measured under the
+    // previous one.
+    _fpsAcc=0;_fpsCount=0;_lastFrameForFps=0;_fpsGraceUntil=Date.now()+3000;
   });
 }
 
