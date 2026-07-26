@@ -2122,6 +2122,23 @@ function strSeed(str){
 const SKIN_TONES=[0xffd7b0,0xf0bd93,0xd39b6f,0xa9714a,0x7a4b2c];
 const HAIR_TONES=[0x2b1d16,0x4a2f1e,0x7a4a22,0x1a1a20,0xb08040,0x8a8a95];
 
+// How far behind their desk a person parks. This is their walk-cycle home, so it
+// has to clear the chair's footprint (the chair back reaches 1.03 units out) —
+// standing inside it would block their own start cell in the nav grid.
+const DESK_STAND_OFF=2;
+// ...which leaves them too far back to reach the keyboard: the arm is 0.88 long
+// and the keyboard sits 1.85 units away. So while a build is running they step in
+// by this much. Squeezed from both sides: any less and the outstretched hand stops
+// short of the desktop's near edge (0.8), any more and the tallest build (scale
+// 1.08) clips the CEO desk, which is 2.5 deep where an ordinary desk is 1.6 and so
+// reaches out to 1.25. 0.42 satisfies both with the chair back cleared by 0.25.
+const DESK_LEAN_IN=0.42;
+// Arm angles, radians about X at the shoulder. Negative swings the limb forward
+// (toward the person's own +Z), so -1.75 is very slightly above horizontal —
+// measured to land the hand at y=2.11, which is exactly the height of the desktop.
+const ARM_TYPING=-1.75;
+const ARM_TYPING_JITTER=0.05;
+
 // A limb needs to pivot at the shoulder or hip, not through its own middle. The
 // old model rotated the boxes about their centres, which is why a walking
 // employee's arms looked like spinning propellers rather than swinging limbs.
@@ -2288,7 +2305,13 @@ function mergeColored(parts){
   return out;
 }
 
-function mkPerson(x,z,color,seed){
+// faceY is the heading the person holds whenever they are at their own desk, in
+// the same convention turnToward uses: local +Z is the direction they face, so
+// rotation.y = atan2(deskX - personX, deskZ - personZ) points them at the desk.
+// It used to be left at zero, which meant everybody stood facing +Z — and since
+// people are spawned two units on the +Z side of their desk, that is the one
+// direction guaranteed to have their back to their own monitor.
+function mkPerson(x,z,color,seed,faceY){
   const rnd=mulberry32((seed|0)*2654435761+11);
   const g=new THREE.Group();
   const c=color||0x00aaff;
@@ -2328,7 +2351,11 @@ function mkPerson(x,z,color,seed){
   g.position.set(x,0,z);
   const s=0.96+rnd()*0.12;
   g.scale.setScalar(s);
-  g.userData={baseX:x,baseZ:z,arms,legs,s};
+  const fy=faceY||0;
+  g.rotation.y=fy;
+  // Unit vector along the person's facing, cached because the typing pose steps
+  // them toward the desk along it every frame.
+  g.userData={baseX:x,baseZ:z,arms,legs,s,faceY:fy,fwdX:Math.sin(fy),fwdZ:Math.cos(fy)};
   gPeople.add(g);employees.push(g);
   return g;
 }
@@ -2495,8 +2522,13 @@ function placePeople(stage){
   layout.desks.forEach((desk,i)=>{
     // Slot 0 = self (player). Always present, gold colored.
     // Slots 1+ = hired employees in order. Empty slot = no person (visible empty desk).
+    // People stand on the +Z side of their desk, which is the side the chair and
+    // keyboard are on. Derived from the two positions rather than hard-coded to
+    // pi, so moving a desk or changing DESK_STAND_OFF keeps them facing it.
+    const px=desk.x,pz=desk.z+DESK_STAND_OFF;
+    const faceY=Math.atan2(desk.x-px,desk.z-pz);
     if(i===0){
-      const p=mkPerson(desk.x,desk.z+2,SELF_COLOR,0);
+      const p=mkPerson(px,pz,SELF_COLOR,0,faceY);
       p.userData.isSelf=true;
     }else if(i-1<emps.length){
       const emp=emps[i-1];
@@ -2505,7 +2537,7 @@ function placePeople(stage){
       // same person keeps their build and colouring across hires, room rebuilds
       // and reloads, and does not change identity when a colleague quits and
       // everyone shifts up a desk.
-      const p=mkPerson(desk.x,desk.z+2,color,strSeed(emp.name));
+      const p=mkPerson(px,pz,color,strSeed(emp.name),faceY);
       p.userData.role=emp.role;p.userData.empName=emp.name;
     }
   });
@@ -2769,12 +2801,16 @@ function navPath(fromX,fromZ,toX,toZ){
 }
 
 // Smooth heading change instead of snapping the body to the new direction.
-function turnToward(obj,tx,tz,f){
-  const want=Math.atan2(tx-obj.position.x,tz-obj.position.z);
+// Takes the short way round: without the wrap a walker crossing the -pi/+pi
+// seam spins most of a full turn to reach a heading a few degrees away.
+function turnTo(obj,want,f,rate){
   let d=want-obj.rotation.y;
   while(d>Math.PI)d-=Math.PI*2;
   while(d<-Math.PI)d+=Math.PI*2;
-  obj.rotation.y+=d*Math.min(1,0.2*f);
+  obj.rotation.y+=d*Math.min(1,(rate||0.2)*f);
+}
+function turnToward(obj,tx,tz,f){
+  turnTo(obj,Math.atan2(tx-obj.position.x,tz-obj.position.z),f);
 }
 
 function buildRoom(s,cinematic){
@@ -2933,7 +2969,7 @@ function animate(){
     if(celebrating){
       // Everyone jumps and spins with arms raised
       if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);detachCup(e);}
-      e.position.x=u.baseX;e.position.z=u.baseZ;
+      e.position.x=u.baseX;e.position.z=u.baseZ;u.lean=0;
       e.position.y=Math.abs(Math.sin(t*9+i))*1.2;
       e.rotation.y+=0.15;
       e.scale.y=bs;
@@ -2942,16 +2978,35 @@ function animate(){
       // read as leaving the ground rather than being levitated.
       swing(u.legs,0.5+Math.sin(t*9+i)*0.35);
     }else if(typingActive){
-      // Development crunch: everyone back at their desk, hands on keyboard
+      // Development crunch: everyone back at their desk, hands on the keyboard.
+      //
+      // This pose used to read as marching on the spot, for three reasons that
+      // all had to go. The body bobbed half a unit vertically — a hop, not a
+      // person working. The arms sat at -0.9, which hangs the hands at y=1.40
+      // when the desktop is at 2.11, so they dangled well below the desk. And
+      // they alternated +-0.3 radians a third of a second out of phase with each
+      // other, which is a gait: the exact shape of the walk cycle below, only
+      // slower. Now the arms hold out level with the desktop and only flutter,
+      // and the motion that sells the effort is in the shoulders, not the feet.
       if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);detachCup(e);}
-      e.position.y=Math.abs(Math.sin(t*7+i*.8))*.5;
-      e.rotation.y=Math.sin(t*4+i)*.12;
-      e.scale.y=bs;
-      swing(u.arms,-0.9+Math.sin(t*11+i)*.3,-0.9+Math.sin(t*11+i+1.5)*.3);
+      turnTo(e,u.faceY||0,f,0.25);
+      swing(u.arms,
+        ARM_TYPING+Math.sin(t*14+i)*ARM_TYPING_JITTER,
+        ARM_TYPING+Math.sin(t*14+i*1.7+2.3)*ARM_TYPING_JITTER);
       swing(u.legs,0);
+      // Working the shoulders instead of the whole body: a small vertical bob
+      // plus a hunch, which at this camera distance is all that is needed to say
+      // somebody is leaning into a keyboard.
+      e.position.y=Math.abs(Math.sin(t*7+i*.8))*.04;
+      e.scale.y=bs*(1-Math.abs(Math.sin(t*7+i*.8))*.012);
       if(u.baseX!==undefined){
-        e.position.x=u.baseX+Math.sin(t*.6+i*.4)*.15;
-        e.position.z=u.baseZ+Math.cos(t*.5+i*.3)*.15;
+        // Step in toward the desk, because the walk-cycle home position is a
+        // full 1.85 units from the keyboard and no 0.88-unit arm reaches that.
+        // Eased rather than set, so the step in at the start of a build and the
+        // step back at the end are both walks rather than teleports.
+        u.lean=(u.lean||0)+(1-(u.lean||0))*Math.min(1,0.06*f);
+        e.position.x=u.baseX+(u.fwdX||0)*DESK_LEAN_IN*u.lean;
+        e.position.z=u.baseZ+(u.fwdZ||0)*DESK_LEAN_IN*u.lean;
       }
     }else{
       // Idle state machine: breathe at desk, occasionally walk to coffee corner
@@ -2967,13 +3022,21 @@ function animate(){
         // in chorus, and the burst is brief relative to its period.
         const st=(t*0.16+i*0.37)%1;
         const stretch=st<0.13?Math.sin(st/0.13*Math.PI):0;
-        // A slow drift of attention, rather than facing exactly forward forever.
-        e.rotation.y=Math.sin(t*0.31+i*1.7)*0.13;
+        // A slow drift of attention, rather than facing exactly forward forever
+        // — but around the heading that points at their own desk, and eased into
+        // rather than assigned, so somebody arriving back from the coffee corner
+        // turns to their monitor instead of snapping to it on the first frame.
+        turnTo(e,(u.faceY||0)+Math.sin(t*0.31+i*1.7)*0.13,f,0.12);
         swing(u.arms,
           Math.sin(t*0.9+i)*.06-stretch*2.5,
           Math.sin(t*0.9+i+2.1)*.06-stretch*2.5);
         swing(u.legs,0);
-        if(u.baseX!==undefined){e.position.x=u.baseX;e.position.z=u.baseZ;}
+        if(u.baseX!==undefined){
+          // Unwinds whatever step-in the last build left them holding.
+          u.lean=(u.lean||0)*(1-Math.min(1,0.06*f));
+          e.position.x=u.baseX+(u.fwdX||0)*DESK_LEAN_IN*u.lean;
+          e.position.z=u.baseZ+(u.fwdZ||0)*DESK_LEAN_IN*u.lean;
+        }
         // Strike up a conversation with whoever is standing nearby. Rare per
         // frame per person, which across a floor works out to one exchange every
         // few seconds rather than a constant babble.
@@ -2992,7 +3055,9 @@ function animate(){
           const path=navPath(e.position.x,e.position.z,tx,tz);
           // No route (a blocked-in layout, or the grid failed to build) means stay
           // put. Better a stationary employee than one strolling through a desk.
-          if(path){u.anim='walk';u.path=path;u.pi=0;walkers++;}
+          // Clear the desk lean on departure: the path drives position from here,
+          // so a stale lean would be re-applied as a jump on arriving back.
+          if(path){u.anim='walk';u.path=path;u.pi=0;u.lean=0;walkers++;}
         }
       }else if(u.anim==='walk'||u.anim==='return'){
         const wp=u.path&&u.path[u.pi];
