@@ -57,6 +57,17 @@ const CASES = [
   ['رحلة الأمل',       'general',  'no topic word → neutral fallback'],
   ['',                 'general',  'empty name → neutral fallback'],
   ['<img src=x>',      'general',  'markup is not a topic'],
+  // Dialect, place names and synonyms added when the dictionary was widened.
+  ['ليالي الدرعية',    'heritage', 'Gulf place name'],
+  ['غوص اللؤلؤ',       'heritage', 'pearl diving reads as heritage, not piracy'],
+  ['شوارع جدة',        'city',     'city name, not the grandmother sense of جدة'],
+  ['نفود الظلام',      'desert',   'named sand sea'],
+  ['قرطبة الخالدة',    'islamic',  'Andalusian city'],
+  ['هجن الشمال',       'bedouin',  'racing camels'],
+  ['ليوة الفجر',       'folklore', 'Gulf dance form'],
+  ['مذنب الشتاء',      'space',    'comet'],
+  ['منجنيق الحصار',    'war',      'siege engine is a weapon; حصار decides it'],
+  ['تعويذة الملك',     'medieval', 'إضافة: ملك decides over تعويذة'],
 ];
 
 const results = [];
@@ -86,6 +97,24 @@ try {
     return out;
   });
   results.generalCount = generated.filter(id => id === 'general').length;
+
+  // Collision guard. detectTopic scores per topic, so a word listed under two of
+  // them would make the winner depend on object key order instead of on the name —
+  // a silent, position-dependent bug. Cheaper to forbid than to debug.
+  results.collisions = await page.evaluate(() => {
+    const seen = new Map(), bad = [];
+    for (const [id, ws] of Object.entries(window.TOPIC_WORDS)) {
+      const local = new Set();
+      for (const w of ws) {
+        const n = window.normAr(w);
+        if (local.has(n)) bad.push(`"${w}" listed twice under ${id}`);
+        local.add(n);
+        if (seen.has(n) && seen.get(n) !== id) bad.push(`"${w}" in both ${seen.get(n)} and ${id}`);
+        else seen.set(n, id);
+      }
+    }
+    return bad;
+  });
 } catch (e) {
   bootError = e.message;
 } finally {
@@ -103,6 +132,10 @@ for (const r of results) {
 const genOk = results.generalCount === 0;
 if (!genOk) failed++;
 console.log(`${genOk ? '✓' : '✗'} every keyword-built name resolves to a real topic${genOk ? '' : ` — ${results.generalCount}/60 fell back to عام`}`);
+
+const collisions = results.collisions || [];
+if (collisions.length) failed++;
+console.log(`${collisions.length ? '✗' : '✓'} no word appears under two topics${collisions.length ? ':\n    ' + collisions.join('\n    ') : ''}`);
 
 console.log(failed ? `\n${failed} topic-detection check(s) failed` : '\nAll topic-detection checks passed');
 process.exit(failed ? 1 : 0);

@@ -1,6 +1,6 @@
 {
   "name": "room-to-top",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "من الغرفة للقمة — محاكي تطوير ألعاب ثلاثي الأبعاد في ملف HTML واحد",
   "private": true,
   "type": "module",

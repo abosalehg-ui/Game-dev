@@ -55,6 +55,9 @@ window.__shot={
       {name:'حصار المجرة',genre:'استراتيجية',topic:'فضاء',score:8.5,revenue:920000,year:Math.max(1,S.year-1)},
       {name:'أساطير الأندلس',genre:'RPG',topic:'تاريخ إسلامي',score:9.5,revenue:2400000,year:Math.max(1,S.year-1)}].slice(0,s+1);
     S.engineVersion=Math.min(4,s);
+    // Part-way through 📖 معجم الاستوديو, so the picker screenshot shows the ✓ marks
+    // and the progress line doing their job instead of an empty checklist.
+    S.topicsShipped=['desert','space','islamic','bedouin','animals','sports','city'].slice(0,Math.min(7,s+2));
     S.gamesThisYear=o.phase===undefined?1:o.phase;
     buildRoom(s);camCtl.yaw=o.yaw===undefined?0.35:o.yaw;camCtl.zoom=o.zoom||1;setCam(s);
     applyDayPhase();
