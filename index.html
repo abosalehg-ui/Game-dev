@@ -601,19 +601,112 @@ let amb,dl,fill,winMeshes=[],confettiBursts=[],celebrateUntil=0,walkers=0,curSta
 // Camera base positions per stage + interactive orbit/zoom state
 const CAM_POS=[[20,20,20],[22,22,22],[26,26,26],[30,28,30],[36,34,36],[42,40,42]];
 let camCtl={yaw:0,zoom:1};
-function setCam(stage){
-  if(!camera)return;
+// ---- Camera motion ---------------------------------------------------------
+// The camera used to be written straight from input: a drag added to yaw and
+// immediately rewrote the transform, and an office upgrade cut instantly from one
+// distance to the next. Both are correct and both feel like a diagram rather than
+// a camera.
+//
+// So input now moves a *goal* and the camera eases toward it. That one change
+// buys three things at once: a drag that settles instead of stopping dead, an
+// upgrade that pulls back to reveal the bigger room, and a place to put a zoom
+// punch on a big release — because "shove the goal and let the easing resolve it"
+// is all a punch is.
+//
+// The rates differ on purpose. Orbit is nearly direct, because lag between a
+// finger and the scene reads as the game being slow rather than as weight.
+// Distance and height are slow, because that is the axis a stage change moves
+// along and the whole point there is that the move is seen.
+const CAM_EASE_YAW=0.34;
+const CAM_EASE_ZOOM=0.16;
+const CAM_EASE_DOLLY=0.055;
+// Flick momentum: how much of the last frame's rotation carries on after release,
+// and how fast that decays. Tuned so a hard flick coasts for roughly a second.
+const CAM_SPIN_DECAY=0.93;
+const CAM_SPIN_MIN=0.00016;
+
+let camNow=null,camDragging=false,camSpin=0;
+const camGoal={yaw:0,zoom:1,r:0,h:0,baseYaw:0};
+
+function camGoalFor(stage){
   const p=CAM_POS[stage]||CAM_POS[0];
-  const r=Math.hypot(p[0],p[2]),baseYaw=Math.atan2(p[0],p[2]);
-  camera.position.set(Math.sin(baseYaw+camCtl.yaw)*r,p[1],Math.cos(baseYaw+camCtl.yaw)*r);
+  return {r:Math.hypot(p[0],p[2]),h:p[1],baseYaw:Math.atan2(p[0],p[2])};
+}
+
+// `cinematic` is opt-in rather than the default, and only the office upgrade asks
+// for it. Everywhere else — first load, restoring a save, a prestige reset — the
+// player is arriving at a room rather than watching it change, so there is nothing
+// to show them and a slow glide in from the previous stage's framing is just a
+// delay. It also keeps the screenshot tools and the test suite deterministic:
+// they drive buildRoom() directly and would otherwise capture the camera
+// mid-transit.
+function setCam(stage,cinematic){
+  if(!camera)return;
+  const g=camGoalFor(stage);
+  camGoal.r=g.r;camGoal.h=g.h;camGoal.baseYaw=g.baseYaw;
+  camGoal.yaw=camCtl.yaw;camGoal.zoom=camCtl.zoom;
+  // The very first placement has nothing to ease from, and would otherwise fly in
+  // from the origin on load.
+  //
+  // A camera that moves on its own is also precisely what "reduce motion" is
+  // asking about — of everything added here it is the one thing most likely to
+  // provoke someone with vestibular sensitivity, so that setting turns the reveal
+  // back into a cut.
+  if(!camNow||!cinematic||prefersReducedMotion())snapCam();
+}
+
+function snapCam(){
+  camNow={yaw:camGoal.yaw,zoom:camGoal.zoom,r:camGoal.r,h:camGoal.h,baseYaw:camGoal.baseYaw};
+  camSpin=0;
+  applyCam();
+}
+
+function applyCam(){
+  const a=camNow.baseYaw+camNow.yaw;
+  camera.position.set(Math.sin(a)*camNow.r,camNow.h,Math.cos(a)*camNow.r);
   camera.lookAt(0,0,0);
-  camera.zoom=camCtl.zoom;
+  camera.zoom=camNow.zoom;
   camera.updateProjectionMatrix();
   // The backdrop is a child of the camera, so it follows the orbit for free — but
   // the window it samples and the size it needs both depend on where the camera
   // ended up, so they are recomputed here rather than per frame.
   sizeSkyPlane();
   panSky();
+}
+
+function updateCamera(f){
+  if(!camNow||!camera)return;
+  // Coast after a flick. Held drags set the yaw directly, so this only runs once
+  // the finger is off.
+  if(!camDragging&&camSpin){
+    camCtl.yaw+=camSpin*f;
+    camSpin*=Math.pow(CAM_SPIN_DECAY,f);
+    if(Math.abs(camSpin)<CAM_SPIN_MIN)camSpin=0;
+  }
+  camGoal.yaw=camCtl.yaw;camGoal.zoom=camCtl.zoom;
+  const ky=Math.min(1,CAM_EASE_YAW*f),kz=Math.min(1,CAM_EASE_ZOOM*f),kd=Math.min(1,CAM_EASE_DOLLY*f);
+  const dy=camGoal.yaw-camNow.yaw,dz=camGoal.zoom-camNow.zoom;
+  const dr=camGoal.r-camNow.r,dh=camGoal.h-camNow.h,db=camGoal.baseYaw-camNow.baseYaw;
+  // Below these thresholds the move is under a tenth of a pixel on screen. Bailing
+  // out keeps a resting camera from rewriting the projection matrix and the sky
+  // plane's UVs on every one of sixty frames a second for nothing.
+  if(Math.abs(dy)<1e-5&&Math.abs(dz)<1e-5&&Math.abs(dr)<1e-4&&Math.abs(dh)<1e-4&&Math.abs(db)<1e-5)return;
+  camNow.yaw+=dy*ky;
+  camNow.zoom+=dz*kz;
+  camNow.r+=dr*kd;
+  camNow.h+=dh*kd;
+  camNow.baseYaw+=db*kd;
+  applyCam();
+}
+
+// A shove to the zoom that the easing then resolves — the camera equivalent of a
+// flinch. Used when a release lands well, where the confetti alone leaves the
+// framing completely static at the one moment the player is meant to feel
+// something.
+function camPunch(amount){
+  if(!camNow||prefersReducedMotion())return;
+  camNow.zoom=Math.max(0.5,Math.min(2.5,camNow.zoom*(1+amount)));
+  applyCam();
 }
 
 // ---- Colour + lighting model (Three.js r185) ------------------------------
@@ -957,13 +1050,22 @@ function bindCameraControls(){
   const cv=renderer.domElement;
   cv.style.touchAction='none';
   const ptrs=new Map();let lastPinch=0;
-  cv.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+  cv.addEventListener('pointerdown',e=>{
+    ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    // Grabbing the scene stops it dead, the way putting a hand on a spinning globe
+    // does. Letting the old coast continue under a new drag fights the player.
+    camDragging=true;camSpin=0;
+    try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  });
   cv.addEventListener('pointermove',e=>{
     if(!ptrs.has(e.pointerId))return;
     const p=ptrs.get(e.pointerId);
     if(ptrs.size===1){
-      camCtl.yaw+=(e.clientX-p.x)*0.005;
-      setCam(curStage);
+      const d=(e.clientX-p.x)*0.005;
+      camCtl.yaw+=d;
+      // Remembered so the release has something to coast on. Blended rather than
+      // replaced so one stuttering final event cannot decide the whole flick.
+      camSpin=camSpin*0.6+d*0.4;
     }
     p.x=e.clientX;p.y=e.clientY;
     if(ptrs.size===2){
@@ -971,16 +1073,20 @@ function bindCameraControls(){
       const dPin=Math.hypot(a.x-b.x,a.y-b.y);
       if(lastPinch)camCtl.zoom=Math.max(0.5,Math.min(2.5,camCtl.zoom*dPin/lastPinch));
       lastPinch=dPin;
-      setCam(curStage);
+      // A pinch is a two-finger gesture; any yaw picked up during it is incidental.
+      camSpin=0;
     }
   });
-  const end=e=>{ptrs.delete(e.pointerId);lastPinch=0;};
+  const end=e=>{
+    ptrs.delete(e.pointerId);lastPinch=0;
+    if(!ptrs.size)camDragging=false;
+    if(prefersReducedMotion())camSpin=0;
+  };
   cv.addEventListener('pointerup',end);
   cv.addEventListener('pointercancel',end);
   cv.addEventListener('wheel',e=>{
     e.preventDefault();
     camCtl.zoom=Math.max(0.5,Math.min(2.5,camCtl.zoom*(e.deltaY<0?1.1:0.9)));
-    setCam(curStage);
   },{passive:false});
 }
 
@@ -1470,6 +1576,33 @@ function addLightShaft(w,h,x,y,z){
   lightShafts.push({mesh:pool,base:0.42});
 }
 
+// ---- Release flash ---------------------------------------------------------
+// A good review dropped confetti behind a modal and changed nothing else — the
+// room itself stayed exactly as lit as it had been a second earlier. This lifts
+// the whole rig briefly and lets it fall back, so the moment registers even
+// through the card covering most of the screen.
+//
+// Driven through the tone mapping exposure rather than the light intensities.
+// Adding to the lights looks like the obvious approach and is a trap: the
+// day/night lerp only pulls intensity 2% of the way to its target per frame, so
+// a per-frame addition is reabsorbed far too slowly and compounds into a blown
+// out room within a dozen frames. Exposure is recomputed from scratch every
+// frame, cannot accumulate, and is read straight off the renderer by OutputPass.
+let flashLevel=0;
+function flashRoom(strength){
+  if(prefersReducedMotion())return;
+  flashLevel=Math.max(flashLevel,strength||0.6);
+}
+function updateFlash(f){
+  if(!renderer)return;
+  if(flashLevel<=0.004){
+    if(flashLevel){flashLevel=0;renderer.toneMappingExposure=TONE_EXPOSURE;}
+    return;
+  }
+  renderer.toneMappingExposure=TONE_EXPOSURE*(1+flashLevel*0.5);
+  flashLevel*=Math.pow(0.90,f);
+}
+
 // Celebration confetti burst (added to scene directly so buildRoom rebuilds can't wipe it)
 function spawnConfetti(n,gold){
   if(!scene)return;
@@ -1943,7 +2076,7 @@ function clr(){
     scene.remove(rg);
   }
   rg=new THREE.Group();scene.add(rg);
-  employees=[];trophies=[];winMeshes=[];walkers=0;particleSystem=null;lightShafts=[];
+  employees=[];trophies=[];winMeshes=[];walkers=0;particleSystem=null;lightShafts=[];chats=[];
   gPeople=mkDynGroup();gPosters=mkDynGroup();gTrophies=mkDynGroup();
   gBoard=mkDynGroup();gWindows=mkDynGroup();gFx=mkDynGroup();
 }
@@ -1997,6 +2130,105 @@ function limb(w,h,d,col,px,py,pz){
   pivot.position.set(px,py,pz);
   pivot.add(B(w,h,d,col,0,-h/2,0));
   return pivot;
+}
+
+// ---- Carried coffee --------------------------------------------------------
+// Employees have always walked to the coffee corner and walked back with nothing
+// to show for it, which made the trip read as pacing rather than as a break. A cup
+// in the hand on the way back is the smallest possible change that turns the
+// round trip into an errand with a result.
+//
+// Created on the return leg and destroyed on arrival rather than kept on every
+// employee: at most two people are ever walking at once, so this is two meshes
+// live instead of twenty-four permanently parked inside torsos.
+function attachCup(e){
+  const u=e.userData;
+  if(u.cup||!u.arms)return;
+  const g=new THREE.Group();
+  g.add(B(.17,.2,.17,0xf4f4f7,0,0,0));
+  g.add(E(.14,.03,.14,0x4a2818,0x4a2818,0,.1,0,.12));
+  // Parented to the hand end of the arm, so it swings with the walk cycle for free.
+  g.position.set(0,-.86,.12);
+  u.arms[1].add(g);
+  u.cup=g;
+}
+function detachCup(e){
+  const u=e.userData;
+  if(!u.cup)return;
+  // Detach only. The cup is built from boxGeo/stdMat, which are the session-wide
+  // shared caches — disposing either would blank out every other object using
+  // that size or colour.
+  if(u.cup.parent)u.cup.parent.remove(u.cup);
+  u.cup=null;
+}
+
+// ---- Chatter ---------------------------------------------------------------
+// Employees stand at their own desks and never acknowledge each other. A speech
+// bubble popping up between two people who happen to be standing near one another
+// costs almost nothing and turns a room of parallel workers into a room of
+// colleagues.
+//
+// Capped at two at a time and pooled, because the point is to catch the eye
+// occasionally — a floor where every pair is talking at once reads as noise, and
+// stops meaning anything.
+const CHAT_MAX=2,CHAT_LIFE=2600,CHAT_RANGE=5.5;
+let chats=[],_chatTex=null;
+
+function chatTexture(){
+  if(_chatTex)return _chatTex;
+  const cv=document.createElement('canvas');cv.width=64;cv.height=48;
+  const g=cv.getContext('2d');
+  g.fillStyle='#f4f6fb';
+  // Rounded body plus a tail, drawn rather than modelled — at this size the whole
+  // bubble is a dozen pixels on screen.
+  g.beginPath();
+  if(g.roundRect)g.roundRect(4,4,56,30,9);else g.rect(4,4,56,30);
+  g.fill();
+  g.beginPath();g.moveTo(20,32);g.lineTo(30,32);g.lineTo(21,44);g.closePath();g.fill();
+  g.fillStyle='#5a6579';
+  for(let i=0;i<3;i++){g.beginPath();g.arc(20+i*12,19,3.4,0,Math.PI*2);g.fill();}
+  _chatTex=new THREE.CanvasTexture(cv);
+  _chatTex.colorSpace=THREE.SRGBColorSpace;
+  return _chatTex;
+}
+
+function spawnChat(person){
+  if(chats.length>=CHAT_MAX||prefersReducedMotion())return;
+  const mat=new THREE.MeshBasicMaterial({map:chatTexture(),transparent:true,depthWrite:false});
+  // Pushed above 1.0 on purpose. The bubble is drawn into the same linear HDR
+  // buffer as everything else and then rolled off by the ACES curve at the end of
+  // the chain, so a nominally white bubble lands somewhere around mid grey and
+  // reads as a dirty smudge. Overdriving the colour lets the tone map bring it
+  // back to white instead of down to grey.
+  mat.color.setScalar(1.9);
+  mat.userData.owned=true;
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.12),mat);
+  m.geometry.userData.owned=true;
+  m.renderOrder=3;
+  m.frustumCulled=false;
+  gFx.add(m);
+  chats.push({mesh:m,person,born:Date.now()});
+}
+
+function updateChats(now){
+  for(let i=chats.length-1;i>=0;i--){
+    const c=chats[i];
+    const age=now-c.born;
+    // Follows its owner, so a bubble that appears just as somebody wanders off to
+    // the coffee corner travels with them instead of hanging over an empty desk.
+    if(age>CHAT_LIFE||!c.person.parent){
+      c.mesh.geometry.dispose();c.mesh.material.dispose();
+      if(c.mesh.parent)c.mesh.parent.remove(c.mesh);
+      chats.splice(i,1);continue;
+    }
+    c.mesh.position.set(c.person.position.x+.62,3.72+Math.sin(age*0.004)*.07,c.person.position.z);
+    // Billboarded against the camera, which for an orthographic camera means
+    // simply copying its orientation.
+    c.mesh.quaternion.copy(camera.quaternion);
+    const t=age/CHAT_LIFE;
+    c.mesh.material.opacity=t<0.12?t/0.12:t>0.78?(1-t)/0.22:1;
+    c.mesh.scale.setScalar(t<0.12?0.7+0.3*(t/0.12):1);
+  }
 }
 
 // People live under a dynamic group, so the room's static batching cannot touch
@@ -2545,7 +2777,7 @@ function turnToward(obj,tx,tz,f){
   obj.rotation.y+=d*Math.min(1,0.2*f);
 }
 
-function buildRoom(s){
+function buildRoom(s,cinematic){
   curStage=s;
   clr();
   // Shadow coverage and the skyline's density both scale with the room, so they
@@ -2554,7 +2786,7 @@ function buildRoom(s){
   fitShadowCamera(s);
   if(s===0)buildBedroom();else if(s===1)buildGarage();else if(s===2)buildSmallOffice();
   else if(s===3)buildStudio();else if(s===4)buildCompany();else buildSkyscraper();
-  setCam(s);
+  setCam(s,cinematic);
   applyDayPhase();
   refreshSky();
   addDesks(s);
@@ -2700,7 +2932,7 @@ function animate(){
     const bs=u.s||1;   // the person's own build scale, which breathing multiplies
     if(celebrating){
       // Everyone jumps and spins with arms raised
-      if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);}
+      if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);detachCup(e);}
       e.position.x=u.baseX;e.position.z=u.baseZ;
       e.position.y=Math.abs(Math.sin(t*9+i))*1.2;
       e.rotation.y+=0.15;
@@ -2711,7 +2943,7 @@ function animate(){
       swing(u.legs,0.5+Math.sin(t*9+i)*0.35);
     }else if(typingActive){
       // Development crunch: everyone back at their desk, hands on keyboard
-      if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);}
+      if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);detachCup(e);}
       e.position.y=Math.abs(Math.sin(t*7+i*.8))*.5;
       e.rotation.y=Math.sin(t*4+i)*.12;
       e.scale.y=bs;
@@ -2725,12 +2957,35 @@ function animate(){
       // Idle state machine: breathe at desk, occasionally walk to coffee corner
       if(!u.anim)u.anim='idle';
       if(u.anim==='idle'){
-        e.position.y=0;e.rotation.y=0;
+        e.position.y=0;
         e.scale.y=bs*(1+Math.sin(t*1.2+i*.5)*.012);
-        // Arms hang with a slight idle sway rather than snapping to dead vertical.
-        swing(u.arms,Math.sin(t*0.9+i)*.06,Math.sin(t*0.9+i+2.1)*.06);
+        // A stretch every so often. Twenty-four people breathing in unison at their
+        // desks is a screensaver; one person occasionally reaching over their head
+        // is what makes the other twenty-three read as also being alive.
+        //
+        // The phase comes from the employee's index, so the floor never stretches
+        // in chorus, and the burst is brief relative to its period.
+        const st=(t*0.16+i*0.37)%1;
+        const stretch=st<0.13?Math.sin(st/0.13*Math.PI):0;
+        // A slow drift of attention, rather than facing exactly forward forever.
+        e.rotation.y=Math.sin(t*0.31+i*1.7)*0.13;
+        swing(u.arms,
+          Math.sin(t*0.9+i)*.06-stretch*2.5,
+          Math.sin(t*0.9+i+2.1)*.06-stretch*2.5);
         swing(u.legs,0);
         if(u.baseX!==undefined){e.position.x=u.baseX;e.position.z=u.baseZ;}
+        // Strike up a conversation with whoever is standing nearby. Rare per
+        // frame per person, which across a floor works out to one exchange every
+        // few seconds rather than a constant babble.
+        if(chats.length<CHAT_MAX&&Math.random()<0.00035*f){
+          for(let j=0;j<employees.length;j++){
+            if(j===i)continue;
+            const o=employees[j];
+            if(Math.hypot(o.position.x-e.position.x,o.position.z-e.position.z)<CHAT_RANGE){
+              spawnChat(e);break;
+            }
+          }
+        }
         const cc=COFFEE_SPOTS[curStage];
         if(cc&&!u.isSelf&&walkers<2&&Math.random()<0.0008*f){
           const tx=cc.x+(Math.random()-.5)*1.5,tz=cc.z+(Math.random()-.5)*1.5;
@@ -2744,7 +2999,7 @@ function animate(){
         if(!wp){
           // Path exhausted: arrive.
           if(u.anim==='walk'){u.anim='pause';u.pauseUntil=Date.now()+2000+Math.random()*2000;}
-          else{u.anim='idle';walkers=Math.max(0,walkers-1);}
+          else{u.anim='idle';walkers=Math.max(0,walkers-1);detachCup(e);}
           u.path=null;
         }else{
           const dx=wp.x-e.position.x,dz=wp.z-e.position.z;
@@ -2772,7 +3027,7 @@ function animate(){
         if(Date.now()>u.pauseUntil){
           const back=navPath(e.position.x,e.position.z,u.baseX,u.baseZ);
           // If the way home is somehow blocked, snap back rather than stranding them.
-          if(back){u.anim='return';u.path=back;u.pi=0;}
+          if(back){u.anim='return';u.path=back;u.pi=0;attachCup(e);}
           else{u.anim='idle';e.position.x=u.baseX;e.position.z=u.baseZ;walkers=Math.max(0,walkers-1);}
         }
       }
@@ -2828,6 +3083,9 @@ function animate(){
     }
     particleSystem.points.geometry.attributes.position.needsUpdate=true;
   }
+  updateCamera(f);
+  updateFlash(f);
+  updateChats(now);
   updateScreens(now);
   if(gradePass)gradePass.uniforms.uTime.value=t;
   if(composer)composer.render();else renderer.render(scene,camera);
@@ -4823,7 +5081,7 @@ function CheckGOTY(){
     document.getElementById('evd').textContent='لعبة "'+playerBest.name+'" فازت بجائزة أفضل لعبة لسنة '+(S.year-1)+beat+'! +'+fmt(reward)+' مكافأة + 2K معجب';
     S._flowStep='tryGOTY';
     document.getElementById('se').classList.add('show');sn('egg');
-    spawnConfetti(500,true);celebrateUntil=Date.now()+4000;
+    spawnConfetti(500,true);celebrateUntil=Date.now()+4000;flashRoom(1.0);camPunch(0.09);
     refreshTrophies(); // was a second full buildRoom() in the same release
     shown=true;
   }else if(rScore>=8.5){
@@ -4859,7 +5117,7 @@ function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,s
   if(loanPay>0)loanLine.innerHTML='🏦 قسط القرض: <span class="ng">-'+fmt(loanPay)+'</span>';else loanLine.innerHTML='';
   const conLine=document.getElementById('rvk');
   if(contractResult)conLine.innerHTML='📜 '+contractResult.icon+' '+contractResult.pub+': <span class="'+contractResult.cls+'">'+contractResult.txt+'</span>';else conLine.innerHTML='';
-  if(avg>=8){spawnConfetti(250);celebrateUntil=Date.now()+4000;}
+  if(avg>=8){spawnConfetti(250);celebrateUntil=Date.now()+4000;flashRoom(avg>=9?0.8:0.5);camPunch(0.055);}
   const cd=document.getElementById('rvc');cd.innerHTML='';
   scores.forEach((sc,i)=>{
     const c=document.createElement('div');c.className='sc '+(sc>=8?'gr':sc>=5?'gd':'bd2');c.textContent=sc.toFixed(1);
@@ -5043,7 +5301,9 @@ function showUpgrade(){
 window.doUpgrade=function(){
   S.money-=STG[S.st].upgCost;S.st++;
   camCtl.yaw=0;camCtl.zoom=1; // fresh camera reveal for the new office
-  buildRoom(S.st);
+  // The one place the camera move is the point: the room has just got bigger, so
+  // the camera pulls back to show it instead of cutting to the new framing.
+  buildRoom(S.st,true);
   const mx=STG[S.st].maxPts,old=S.sl.design+S.sl.code+S.sl.sound||1,r=mx/(old);
   S.sl.design=Math.floor(S.sl.design*r*.9);S.sl.code=Math.floor(S.sl.code*r*.9);
   S.sl.sound=Math.max(0,mx-S.sl.design-S.sl.code);
