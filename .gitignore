@@ -1,6 +1,4 @@
 node_modules/
-dist/
-dist-single/
+package-lock.json
 *.log
 .DS_Store
-shot-*.png
