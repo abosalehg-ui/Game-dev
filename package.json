@@ -1,24 +1,25 @@
 {
   "name": "room-to-top",
-  "version": "1.11.1",
-  "description": "من الغرفة للقمة — محاكي تطوير ألعاب ثلاثي الأبعاد في ملف HTML واحد",
+  "version": "2.0.0",
+  "description": "من الغرفة للقمة — محاكي تطوير ألعاب عربي للجوال (إعادة بناء حديثة)",
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node tools/check-syntax.mjs",
-    "test": "node tests/smoke.mjs && node tests/topic-detect.mjs && node tests/topic-flow.mjs && node tests/save-integrity.mjs && node tests/pathfinding.mjs && node tests/playthrough.mjs",
-    "test:smoke": "node tests/smoke.mjs",
-    "test:topic": "node tests/topic-detect.mjs && node tests/topic-flow.mjs",
-    "test:save": "node tests/save-integrity.mjs",
-    "balance": "node tools/balance-sim.mjs",
-    "icons": "python3 scripts/make_icons.py",
-    "test:play": "node tests/playthrough.mjs",
-    "shots": "node tools/shot-stages.mjs",
-    "shots:readme": "node tools/shot-readme.mjs",
-    "three": "node tools/build-three.mjs",
-    "test:path": "node tests/pathfinding.mjs"
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
-    "playwright": "^1.48.0"
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "playwright": "^1.62.0",
+    "svelte": "^5.19.0",
+    "svelte-check": "^4.1.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "vite-plugin-singlefile": "^2.1.0",
+    "vitest": "^3.0.4"
   }
 }

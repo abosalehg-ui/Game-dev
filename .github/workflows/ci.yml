@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,51 +18,41 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
-      # 1) Fast syntax gate — parses the inline game script and the service worker.
-      - name: Syntax check
+      - name: Install
+        run: npm ci
+
+      # فحص الأنواع على كامل المشروع (TS + Svelte)
+      - name: Type check
         run: npm run check
 
-      # 2) Browser smoke test — boots the game and drives one full develop loop.
-      - name: Install Playwright + Chromium
-        run: |
-          npm install
-          npx playwright install --with-deps chromium
+      # اختبارات الوحدة: اشتقاق الموضوع، معادلات المحاكاة، سلامة الحفظ
+      - name: Unit tests
+        run: npm test
 
-      - name: Smoke test (boots the game, drives a full develop loop)
-        run: npm run test:smoke
+      - name: Build
+        run: npm run build
 
-      # The topic is derived from the game's name now, so the derivation is game
-      # logic: this pins the Arabic matching rules and the manual-override /
-      # sequel-lock flows built on top of them.
-      - name: Topic derivation suite
-        run: npm run test:topic
+      # نسخة الملف الواحد المستخدمة للتجربة على الجوال يجب أن تبقى قابلة للبناء
+      - name: Build (single-file)
+        run: npm run build:single
 
-      # Pins the save/import regressions: the start-screen reload that used to wipe
-      # progress, the reset that used to resurrect it, and the hostile save files
-      # that used to execute script or freeze the panel.
-      - name: Save integrity suite
-        run: npm run test:save
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
 
-      # Asserts employees route around furniture on all six stage layouts instead of
-      # walking through it, and that every seat can still reach the coffee corner.
-      - name: Pathfinding suite
-        run: npm run test:path
-
-      # Walks ~26 consecutive releases through the post-release pipeline, which a
-      # one-release smoke test cannot cover: a mis-ordered flow step only shows up
-      # as a dead end after a year rollover or an award ceremony.
-      - name: Long-run playthrough
-        run: npm run test:play
-
-      # Reports pacing from the stage table it parses out of index.html. Not a gate,
-      # but the numbers land in the build log next to the diff that changed them.
-      - name: Balance simulation (informational)
-        run: npm run balance
-
-      # 3) Guard: the service worker VERSION must be bumped whenever index.html
-      #    changes, or returning players stay stuck on a stale cached build.
-      - name: Service worker version bump check
-        if: github.event_name == 'pull_request'
-        run: node tools/check-sw-version.mjs origin/${{ github.base_ref }}
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
