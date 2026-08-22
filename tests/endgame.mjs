@@ -128,8 +128,8 @@ summary.push(`win condition: top stage + ${WIN_STREAK} consecutive Game of the Y
   await page.waitForTimeout(300);
   const st = await state();
   checks['a third straight award at the top stage triggers the ending'] =
-    st.won === true && st.streak >= WIN_STREAK && st.modal === 'vicModal';
-  note['a third straight award at the top stage triggers the ending'] = `won=${st.won} streak=${st.streak}, on screen: ${st.modal}`;
+    st.met === true && st.streak >= WIN_STREAK && st.modal === 'vicModal';
+  note['a third straight award at the top stage triggers the ending'] = `condition met=${st.met} streak=${st.streak}, on screen: ${st.modal}`;
   await clearModals();
 }
 
@@ -168,6 +168,26 @@ summary.push(`win condition: top stage + ${WIN_STREAK} consecutive Game of the Y
   const after = await state();
   checks['the ending fires once per run'] = before.won === true && after.modal !== 'vicModal';
   note['the ending fires once per run'] = `streak now ${after.streak}, modal ${after.modal}`;
+  await clearModals();
+}
+
+// 4b. Showing the screen must not spend the ending — only answering it does.
+//     Otherwise closing the tab at the victory screen burns the run's one prestige
+//     offer, and _pendingPrestige is session-only so it cannot be recovered.
+{
+  await arm({ st: 5, streak: 2, winner: true });
+  await runYear();
+  await page.waitForTimeout(250);
+  const shown = await state();
+  await clearModals();                       // stand-in for "player never answered"
+  const ignored = await state();
+  await page.evaluate(() => window.continueAfterWin());
+  await page.waitForTimeout(250);
+  const answered = await state();
+  checks['the ending is spent by answering it, not by showing it'] =
+    shown.modal === 'vicModal' && shown.won === false && ignored.won === false && answered.won === true;
+  note['the ending is spent by answering it, not by showing it'] =
+    `on screen won=${shown.won}, dismissed won=${ignored.won}, answered won=${answered.won}`;
   await clearModals();
 }
 

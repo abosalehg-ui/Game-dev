@@ -5588,8 +5588,17 @@ const WIN_STREAK=3;
 function winConditionMet(){
   return S.st>=5&&(S.gotyStreak||0)>=WIN_STREAK;
 }
+// Note what this does NOT do: mark the run as won. That happens when the player
+// answers the screen, not when it appears.
+//
+// The prestige offer is session-only (_pendingPrestige, underscore = never
+// persisted) and this is the only place in the game that offers it outside
+// bankruptcy. Spending the ending on merely SHOWING it would mean a player who
+// closed the tab at the victory screen came back to a run that had used up its
+// ending and could no longer be prestiged from. Leaving `won` false costs one
+// re-showing after a reload — which is the forgiving failure — and choosing
+// "keep playing" is what actually spends it.
 function showVictory(){
-  S.won=true;
   document.getElementById('vcGames').textContent=S.gc;
   document.getElementById('vcYears').textContent=S.year;
   document.getElementById('vcAwards').textContent=(S.awards||[]).length;
@@ -5605,12 +5614,16 @@ function showVictory(){
   spawnConfetti(700,true);celebrateUntil=Date.now()+4000;flashRoom(1.0);camPunch(0.12);
   saveGame();
 }
-// Keep playing: the studio, the money and the history all stay. Only the ending
-// is spent, so it cannot fire a second time in the same run.
+// Keep playing: the studio, the money and the history all stay. The ending is
+// spent here, so it cannot fire a second time in the same run.
 window.continueAfterWin=function(){
+  S.won=true;
   document.getElementById('vicModal').classList.remove('show');
+  saveGame();
   advance(stepAfter('tryVictory'));
 };
+// The other exit resets the run outright, so `won` goes with it — initState()
+// clears it, and setting it here first would only be writing to a doomed object.
 window.prestigeFromWin=function(){
   document.getElementById('vicModal').classList.remove('show');
   window.DoPrestige();
