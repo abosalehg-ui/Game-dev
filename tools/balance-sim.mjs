@@ -98,15 +98,28 @@ function tickRivals(rivals, year, playerShare, playerFans) {
   });
 }
 
+// How many games to play at the skyscraper before stopping. The loop used to end
+// the moment the player upgraded INTO the final stage, so the tool reported
+// "skyscraper 0.0 games, 0 revenue, 0% of run" — the endgame's economy (devCost
+// 420K, maxPts 24, a x6.5 revenue multiplier) was the one thing it never modelled,
+// and the "no stage exceeds ~30% of the run" goal below was never applied to it.
+// It is the stage a committed player spends the most time in, so it is the last
+// one that should have been invisible here.
+const TOP_STAGE_GAMES = 15;
+
 function simulate({ upgCosts = null } = {}) {
   const stages = STG.map((s, i) => ({ ...s, upgCost: upgCosts ? upgCosts[i] : s.upgCost }));
   let money = 10000, fn = 0, st = 0, year = 1, gamesThisYear = 0, gameCount = 0;
   const rivals = initRivals();
   const perStage = stages.map(() => ({ games: 0, revenue: 0 }));
   const shareTrace = [];
+  // Games spent climbing, i.e. before the skyscraper. The pacing goal is about
+  // the climb; the endgame is reported on its own terms below.
+  let climbGames = null;
+  let finalShare = 0;
 
   const maxGames = 300;
-  while (st < 5 && gameCount < maxGames) {
+  while (gameCount < maxGames && (st < 5 || perStage[5].games < TOP_STAGE_GAMES)) {
     const share = (() => {
       const pw = Math.max(100, fn * 1.2 + 100);
       const tot = pw + rivals.reduce((a, r) => a + r.fans, 0);
@@ -131,34 +144,52 @@ function simulate({ upgCosts = null } = {}) {
 
     tickRivals(rivals, year, share, Math.max(100, fn * 1.2 + 100));
     if (gameCount % 4 === 0) shareTrace.push({ game: gameCount, share: +(share * 100).toFixed(1), fans: Math.floor(fn) });
+    finalShare = share;
 
     // Upgrade as soon as affordable (competent player reinvests immediately).
-    if (money >= stages[st].upgCost) { money -= stages[st].upgCost; st++; }
+    // upgCost is Infinity at the skyscraper, so this never fires there.
+    if (money >= stages[st].upgCost) {
+      money -= stages[st].upgCost;
+      st++;
+      if (st === 5) climbGames = gameCount;
+    }
   }
 
-  return { perStage, shareTrace, reachedSkyscraper: st >= 5, totalGames: gameCount };
+  return {
+    perStage, shareTrace,
+    reachedSkyscraper: st >= 5,
+    totalGames: gameCount,
+    climbGames: climbGames ?? gameCount,
+    finalShare,
+  };
 }
 
 function report(label, opts) {
   // Average over several runs to smooth RNG.
   const RUNS = 40;
   const agg = STG.map(() => ({ games: 0, revenue: 0 }));
-  let reached = 0, totalGames = 0;
+  let reached = 0, climbTotal = 0, shareTotal = 0;
   let lastTrace = [];
   for (let i = 0; i < RUNS; i++) {
     const r = simulate(opts);
     r.perStage.forEach((s, i2) => { agg[i2].games += s.games; agg[i2].revenue += s.revenue; });
     if (r.reachedSkyscraper) reached++;
-    totalGames += r.totalGames;
+    climbTotal += r.climbGames;
+    shareTotal += r.finalShare;
     if (i === 0) lastTrace = r.shareTrace;
   }
   console.log(`\n=== ${label} ===`);
-  console.log('stage        avg games   avg rev/game   upgrade cost   share of run');
-  const total = agg.reduce((a, s) => a + s.games, 0) / RUNS;
+  console.log('stage        avg games   avg rev/game   upgrade cost   share of climb');
+  // The percentage column measures the CLIMB (bedroom through company), because
+  // that is what the pacing goal is about and what upgCost tuning moves. The
+  // skyscraper's game count is a fixed sample, not a pace, so a share for it
+  // would be an artefact of TOP_STAGE_GAMES rather than a fact about the curve.
+  const climb = agg.slice(0, 5).reduce((a, s) => a + s.games, 0) / RUNS;
   agg.forEach((s, i) => {
     const g = s.games / RUNS;
     const rpg = s.games ? s.revenue / s.games : 0;
     const uc = (opts.upgCosts ? opts.upgCosts[i] : STG[i].upgCost);
+    const isTop = i === 5;
     console.log(
       (LABELS[i] || STG[i].name).padEnd(12),
       g.toFixed(1).padStart(6),
@@ -167,10 +198,19 @@ function report(label, opts) {
       '   ',
       (uc === Infinity ? '—' : uc.toLocaleString('en-US')).padStart(12),
       '   ',
-      (total ? (g / total * 100).toFixed(0) + '%' : '—').padStart(5)
+      (isTop ? 'endgame' : climb ? (g / climb * 100).toFixed(0) + '%' : '—').padStart(7)
     );
   });
-  console.log(`reached skyscraper: ${reached}/${RUNS} runs, avg total games ${total.toFixed(0)}`);
+  console.log(`reached skyscraper: ${reached}/${RUNS} runs, avg games to get there ${(climbTotal / RUNS).toFixed(0)}`);
+  console.log(`endgame sampled at ${TOP_STAGE_GAMES} games/run; final market share ${(shareTotal / RUNS * 100).toFixed(1)}%`);
+  // The share figure is what ACHS 'mkt40' is checked against — it wants 25%.
+  const finalPct = shareTotal / RUNS * 100;
+  if (finalPct < 25) {
+    console.log(`  NOTE: base games alone plateau at ${finalPct.toFixed(1)}%, below the 25% متصدر السوق threshold.`);
+    console.log('        This is a FLOOR, not a verdict: marketing, contracts, conventions and the +2,000 fans');
+    console.log('        a GOTY win pays are all unmodelled here. Measured on the real game, competent play');
+    console.log('        crosses 25% by the fifth release — run `node tools/share-probe.mjs` to re-check.');
+  }
   console.log('player market share % over time (one run):');
   console.log('  ' + lastTrace.filter((_, i) => i % 3 === 0).map(t => `g${t.game}:${t.share}%`).join('  '));
 }
@@ -179,8 +219,14 @@ function report(label, opts) {
 // GOTY awards, publisher contracts and conventions, so real games-per-stage runs
 // ~30-40% below these figures. We therefore target a slightly-loose sim pace.
 //
-// The pacing goal is that no single stage exceeds ~30% of the run. The previous
+// The pacing goal is that no single stage exceeds ~30% of the CLIMB. The previous
 // curve put 28% in the studio and 56% in the company.
+//
+// The skyscraper is reported separately: it has no upgrade to save for, so it has
+// no natural length, and TOP_STAGE_GAMES is a sample size rather than a pace. What
+// its row is for is the revenue-per-game figure and the market share the run ends
+// on — neither of which the tool could see at all until it stopped quitting the
+// moment the player arrived.
 console.log(`stage revenue slope: ×${REV.base} + ${REV.perStage}/stage (from BALANCE.sales.stageRevenue)`);
 report('SHIPPED curve (parsed from index.html)', {});
 if (upgCostOverride) report('PROPOSED curve (from argv)', { upgCosts: upgCostOverride });

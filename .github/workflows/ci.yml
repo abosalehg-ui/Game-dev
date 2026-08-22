@@ -20,9 +20,14 @@ jobs:
         run: npm run check
 
       # 2) Browser smoke test — boots the game and drives one full develop loop.
+      # `npm ci` rather than `npm install`: the lockfile is committed now, so CI
+      # resolves the exact tree the change was validated against. Without it every
+      # run re-resolved playwright's dependency graph from the network, which made
+      # a red build ambiguous (your change, or a transitive release?) and left the
+      # job installing whatever the registry served that minute.
       - name: Install Playwright + Chromium
         run: |
-          npm install
+          npm ci
           npx playwright install --with-deps chromium
 
       - name: Smoke test (boots the game, drives a full develop loop)
@@ -62,6 +67,12 @@ jobs:
       # aria-modal="true" while letting Tab walk out onto the page behind it.
       - name: Focus containment suite
         run: npm run test:focus
+
+      # The skyscraper used to be the end of the content rather than the end of the
+      # game. This pins the finish line: the streak must count consecutive years,
+      # the ending must need the top stage too, and it must fire exactly once.
+      - name: Endgame suite
+        run: npm run test:endgame
 
       # Walks ~26 consecutive releases through the post-release pipeline, which a
       # one-release smoke test cannot cover: a mis-ordered flow step only shows up

@@ -1,0 +1,32 @@
+جميع الحقوق محفوظة © 2026 abosalehg-ui
+All Rights Reserved
+
+"من الغرفة للقمة" (Room to Top)
+
+هذا المستودع منشور للاطّلاع واللعب فقط. لا يُمنح بموجبه أي ترخيص —
+صريح أو ضمني — لنسخ الكود أو تعديله أو دمجه أو نشره أو توزيعه أو
+ترخيصه من الباطن أو بيعه أو اشتقاق أعمال منه، كليًا أو جزئيًا، دون
+إذن كتابي مسبق من صاحب الحقوق.
+
+This repository is published for viewing and play only. No licence is
+granted, express or implied, to copy, modify, merge, publish, distribute,
+sublicense, sell, or create derivative works from this software or any
+portion of it, without the prior written permission of the copyright
+holder.
+
+--------------------------------------------------------------------------
+مكوّنات الطرف الثالث · Third-party components
+--------------------------------------------------------------------------
+
+الملفات التالية ليست جزءًا من العمل أعلاه وتخضع لتراخيصها الأصلية.
+The following files are not part of the work above and remain under their
+own licences.
+
+  vendor/three.module.js
+    Three.js — Copyright © 2010-2025 three.js authors
+    MIT License · https://github.com/mrdoob/three.js
+    (a tree-shaken build; see tools/build-three.mjs)
+
+  vendor/fonts/cairo-*.woff2
+    Cairo — Copyright © The Cairo Project Authors
+    SIL Open Font License 1.1 · https://openfontlicense.org

@@ -45,7 +45,10 @@ const launchOpts = process.env.CHROME_PATH ? { executablePath: process.env.CHROM
 const browser = await chromium.launch(launchOpts);
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gd-save-'));
 
-// A realistic mid-game save at the current schema version.
+// A realistic mid-game save. Deliberately written at v5 rather than "whatever is
+// current": it doubles as the fixture that proves a one-version-old save still
+// loads and plays. The assertions below read the current version off the page
+// instead of restating it here.
 const REAL_SAVE = {
   saveVersion: 5, money: 1234567, fn: 9000, gc: 42, st: 3, bs: 9.5, pm: 2000000, hs: 8,
   genre: null, topic: null, sl: { design: 5, code: 7, sound: 5 },
@@ -158,7 +161,9 @@ try {
     await page.evaluate(() => window.CloseSettings());
     await page.waitForTimeout(300);
     const after = await read(page);
-    checks['in-session changes are persisted'] = !!after && after.gc === 42 && after.saveVersion === 5;
+    const CURRENT = await page.evaluate(() => window.SAVE_VERSION);
+    checks['in-session changes are persisted'] = !!after && after.gc === 42 && after.saveVersion === CURRENT;
+    note['in-session changes are persisted'] = `gc=${after && after.gc}, written at v${after && after.saveVersion} (current v${CURRENT})`;
     await page.close();
   }
 
@@ -233,13 +238,15 @@ try {
     await page.close();
   }
 
-  // ---- 9. A pre-versioning (v1) save must migrate all the way to v5 ----
+  // ---- 9. A pre-versioning (v1) save must migrate to whatever is current ----
   {
     const { page, errors } = await boot({ save: null });
     await importInto(page, { money: 40000, fn: 300, gc: 6, st: 1, bs: 7.5, pm: 40000, hs: 6,
       sl: { design: 4, code: 4, sound: 4 }, hist: [{ name: 'قديمة', score: 7 }], ach: ['f'] });
     const migrated = await read(page);
-    checks['v1 save migrates to the current version'] = !!migrated && migrated.saveVersion === 5;
+    const CURRENT = await page.evaluate(() => window.SAVE_VERSION);
+    checks['v1 save migrates to the current version'] = !!migrated && migrated.saveVersion === CURRENT;
+    note['v1 save migrates to the current version'] = migrated ? `v1 -> v${migrated.saveVersion} (current v${CURRENT})` : 'null';
     checks['v1 migration fills in the new fields'] =
       !!migrated && !!migrated.marketTaste && Array.isArray(migrated.tips) && Array.isArray(migrated.rivals) && migrated.rivals.length === 4;
     note['v1 migration fills in the new fields'] = migrated ? `taste=${!!migrated.marketTaste} tips=${JSON.stringify(migrated.tips)} rivals=${migrated.rivals.length}` : 'null';

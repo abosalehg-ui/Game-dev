@@ -151,9 +151,32 @@ try {
     };
   });
 
+  // The room tone is a new always-on sound, so the off switch is part of the
+  // contract: it must exist, take effect, and survive a reload.
+  await page.evaluate(() => window.OpenSettings());
+  await page.waitForTimeout(200);
+  results.ambience = await (async () => {
+    const box = page.locator('#ambChk');
+    if (!(await box.count())) return { present: false };
+    const onByDefault = await box.isChecked();
+    await box.uncheck();
+    await page.waitForTimeout(250);
+    const off = await page.evaluate(() => JSON.parse(localStorage.getItem('gd_save') || '{}').audio?.ambient);
+    await box.check();
+    await page.waitForTimeout(250);
+    const on = await page.evaluate(() => JSON.parse(localStorage.getItem('gd_save') || '{}').audio?.ambient);
+    return { present: true, onByDefault, persistsOff: off === false, persistsOn: on === true };
+  })();
+  await page.evaluate(() => window.CloseSettings());
+  await page.waitForTimeout(200);
+
   results.save = await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('gd_save') || '{}');
-    return { savedDev: 'dev' in s ? s.dev : null, hasUnderscore: Object.keys(s).some(k => k[0] === '_'), saveVersion: s.saveVersion, gc: s.gc };
+    // The expected version is read from the game rather than restated here: a test
+    // that hard-codes it has to be edited on every schema bump, which is exactly
+    // the moment you want it asserting something.
+    return { savedDev: 'dev' in s ? s.dev : null, hasUnderscore: Object.keys(s).some(k => k[0] === '_'),
+             saveVersion: s.saveVersion, current: window.SAVE_VERSION, gc: s.gc };
   });
 } finally {
   await browser.close();
@@ -183,9 +206,13 @@ const checks = {
   'Escape closes an info panel': results.escapeClosesPanel === true,
   'sliders respond to keyboard': results.sliderKeys?.wired === true,
   'arrow keys move the thumb the way they point': results.sliderKeys?.tracksThumb === true,
+  'room tone is on by default and can be switched off': results.ambience?.present === true
+    && results.ambience?.onByDefault === true
+    && results.ambience?.persistsOff === true
+    && results.ambience?.persistsOn === true,
   'save never persists dev flag': s.savedDev === false,
   'save has no session-only fields': s.hasUnderscore === false,
-  'save at current schema version': s.saveVersion === 5,
+  'save at current schema version': s.saveVersion === s.current,
   'a game was recorded': s.gc >= 1,
   'no JS runtime errors': errors.length === 0,
 };

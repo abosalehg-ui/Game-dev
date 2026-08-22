@@ -267,6 +267,16 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .hintbar{display:flex;gap:8px;align-items:flex-start;font-size:11px;line-height:1.55;margin-bottom:6px;padding:7px 9px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.22);border-radius:6px;color:var(--tx2)}
 .hintbar .hx{flex:0 0 auto;background:none;border:none;color:var(--g);font-family:'Cairo';font-size:15px;font-weight:900;cursor:pointer;line-height:1;padding:0 2px}
 
+/* ---- Victory screen + the goal it counts down to ---- */
+.vct{font-size:26px;font-weight:900;margin-bottom:6px;background:linear-gradient(135deg,var(--p),var(--g));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.vcs{font-size:12px;color:var(--tx2);line-height:1.7;margin-bottom:10px}
+/* Only shown once the player reaches the skyscraper, where the ending becomes the
+   only thing left to aim at. Before that it would be noise about a stage they
+   cannot see yet. */
+#goalBar{display:none;font-size:11px;line-height:1.6;margin-bottom:8px;padding:6px 8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.22);border-radius:6px;color:var(--tx2)}
+#goalBar b{color:var(--g)}
+#goalBar .pips{letter-spacing:3px;font-size:13px}
+
 /* ---- Target marker on the point sliders, at the genre's ideal share ---- */
 .stt{position:absolute;top:50%;width:2px;height:14px;margin-top:-7px;background:var(--g);opacity:.75;border-radius:1px;pointer-events:none;z-index:1}
 
@@ -337,6 +347,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   <div id="df2">
     <div id="contractBanner"></div>
     <div id="tasteBar"></div>
+    <div id="goalBar"></div>
     <div id="hintPanel"></div>
     <div class="sg"><div class="sl">📂 النوع</div><div class="sr" id="gr" role="group" aria-label="نوع اللعبة"></div></div>
     <div class="sg">
@@ -430,6 +441,25 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
   </div>
 </div>
 
+<div class="os dim" id="vicModal" role="dialog" aria-modal="true" aria-label="فزت بالقمة">
+  <div class="modal">
+    <div class="ei">🏆</div>
+    <div class="vct">أنت على القمة!</div>
+    <p class="vcs">ناطحة سحاب، وثلاث جوائز «لعبة العام» على التوالي. ما أحد في هذي الصناعة يقدر يقول إنه فوقك.</p>
+    <div class="gs">🎮 الألعاب: <span id="vcGames">0</span></div>
+    <div class="gs">📅 السنوات: <span id="vcYears">0</span></div>
+    <div class="gs">🏆 الجوائز: <span id="vcAwards">0</span></div>
+    <div class="gs">💰 أعلى رصيد: <span id="vcMoney">0</span></div>
+    <div id="vcPrestigeBox" style="display:none;margin-top:10px">
+      <p class="vcs">تقدر تبدأ جولة جديدة بـ <b style="color:var(--g)"><span id="vcPrestige">0</span></b> مستوى Prestige — أو تكمل باستوديوك كما هو.</p>
+    </div>
+    <div class="row">
+      <button class="bg gl" onclick="continueAfterWin()">▶ أكمل اللعب</button>
+      <button class="bg" onclick="prestigeFromWin()">⭐ ابدأ جولة جديدة</button>
+    </div>
+  </div>
+</div>
+
 <div class="os dim" id="qaModal" role="dialog" aria-modal="true" aria-label="ضمان الجودة">
   <div class="modal">
     <h2>🔍 ضمان الجودة</h2>
@@ -481,6 +511,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <h2>⚙️ الإعدادات</h2>
     <label>🔊 مستوى الصوت <input type="range" id="volSlider" min="0" max="100" value="60"></label>
     <label>🔇 كتم الصوت <input type="checkbox" id="muteChk"></label>
+    <label>🏢 صوت المكتب <input type="checkbox" id="ambChk" checked></label>
     <label>🌓 الوضع الفاتح <input type="checkbox" id="lightChk"></label>
     <label>🎬 جودة الرسوم
       <select id="qualitySel">
@@ -2078,7 +2109,8 @@ function clr(){
     scene.remove(rg);
   }
   rg=new THREE.Group();scene.add(rg);
-  employees=[];trophies=[];winMeshes=[];walkers=0;particleSystem=null;lightShafts=[];chats=[];
+  releaseChats();
+  employees=[];trophies=[];winMeshes=[];walkers=0;particleSystem=null;lightShafts=[];
   gPeople=mkDynGroup();gPosters=mkDynGroup();gTrophies=mkDynGroup();
   gBoard=mkDynGroup();gWindows=mkDynGroup();gFx=mkDynGroup();
 }
@@ -2192,6 +2224,13 @@ function detachCup(e){
 // stops meaning anything.
 const CHAT_MAX=2,CHAT_LIFE=2600,CHAT_RANGE=5.5;
 let chats=[],_chatTex=null;
+// The comment above used to say "pooled" while spawnChat() built a fresh
+// PlaneGeometry and MeshBasicMaterial on every bubble and updateChats() disposed
+// both when it expired. At one bubble every few seconds that costs nothing
+// measurable — but this file's comments are its only documentation, and a comment
+// that describes code which does not exist is worse than a slow implementation.
+// So: an actual pool, CHAT_MAX meshes deep, built once and hidden between uses.
+const _chatPool=[];
 
 function chatTexture(){
   if(_chatTex)return _chatTex;
@@ -2211,8 +2250,12 @@ function chatTexture(){
   return _chatTex;
 }
 
-function spawnChat(person){
-  if(chats.length>=CHAT_MAX||prefersReducedMotion())return;
+// Builds a bubble mesh, or hands back one the pool already owns. Pool entries are
+// never disposed: they outlive individual bubbles by design, and there are at
+// most CHAT_MAX of them for the whole session.
+function chatMesh(){
+  const spare=_chatPool.find(m=>!m.visible);
+  if(spare)return spare;
   const mat=new THREE.MeshBasicMaterial({map:chatTexture(),transparent:true,depthWrite:false});
   // Pushed above 1.0 on purpose. The bubble is drawn into the same linear HDR
   // buffer as everything else and then rolled off by the ACES curve at the end of
@@ -2220,13 +2263,37 @@ function spawnChat(person){
   // reads as a dirty smudge. Overdriving the colour lets the tone map bring it
   // back to white instead of down to grey.
   mat.color.setScalar(1.9);
-  mat.userData.owned=true;
   const m=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.12),mat);
-  m.geometry.userData.owned=true;
   m.renderOrder=3;
   m.frustumCulled=false;
+  // Deliberately NOT flagged userData.owned: purge() must leave these alone, and
+  // releaseChats() below is what detaches them when a room is torn down.
+  _chatPool.push(m);
+  return m;
+}
+
+function spawnChat(person){
+  if(chats.length>=CHAT_MAX||prefersReducedMotion()||!gFx)return;
+  const m=chatMesh();
+  m.visible=true;
+  m.material.opacity=0;
   gFx.add(m);
   chats.push({mesh:m,person,born:Date.now()});
+}
+
+// Return a bubble to the pool: hidden, detached from the (about to be purged)
+// effects group, but still allocated.
+function retireChat(c){
+  c.mesh.visible=false;
+  if(c.mesh.parent)c.mesh.parent.remove(c.mesh);
+}
+
+// Called when the room is rebuilt. gFx is purged wholesale, and a pooled mesh
+// still parented to it would be removed from the scene graph while the pool went
+// on believing it was in use.
+function releaseChats(){
+  chats.forEach(retireChat);
+  chats.length=0;
 }
 
 function updateChats(now){
@@ -2236,8 +2303,7 @@ function updateChats(now){
     // Follows its owner, so a bubble that appears just as somebody wanders off to
     // the coffee corner travels with them instead of hanging over an empty desk.
     if(age>CHAT_LIFE||!c.person.parent){
-      c.mesh.geometry.dispose();c.mesh.material.dispose();
-      if(c.mesh.parent)c.mesh.parent.remove(c.mesh);
+      retireChat(c);
       chats.splice(i,1);continue;
     }
     c.mesh.position.set(c.person.position.x+.62,3.72+Math.sin(age*0.004)*.07,c.person.position.z);
@@ -3478,9 +3544,19 @@ const ACHS=[
   {id:'emp5',n:'مدير ناجح (5 موظفين)',ch:s=>(s.employees||[]).length>=5},
   {id:'pr1',n:'⭐ Prestige أول!',ch:s=>(s.prestige?.level||0)>=1},
   {id:'award3',n:'3 جوائز سنوية',ch:s=>(s.awards||[]).length>=3},
-  // Threshold was 40%, which the shipped rival growth curve never reaches: the
-  // balance simulation plateaus the player around 19% share over 60 games. 25% is
-  // demanding but attainable through sustained quality plus convention/GOTY fans.
+  // Threshold was 40%, which the shipped rival growth curve never reaches.
+  //
+  // 25% was then set from tools/balance-sim.mjs, which plateaus the player around
+  // 17-21% — close enough to the threshold to look like a coin flip, and the
+  // reason this comment used to hedge with "demanding but attainable". The sim is
+  // the wrong instrument for the question: it models base releases only and says
+  // so, leaving out marketing, contracts, conventions and the 2,000 fans a GOTY
+  // win pays, which are precisely the fan sources that decide it.
+  //
+  // Measured on the real game instead, with tools/share-probe.mjs: competent play
+  // crosses 25% by the fifth release and settles around 55%. The threshold is
+  // comfortable, not marginal. Re-run that probe rather than the sim before
+  // touching this number.
   {id:'mkt40',n:'متصدر السوق (25%)',ch:s=>{const r=s.rivals||[];if(!r.length||(s.gc||0)<5)return false;const pw=Math.max(100,(s.fn||0)*1.2+100);return pw/(pw+r.reduce((a,x)=>a+x.fans,0))>=0.25}},
   {id:'goty2',n:'هزمت المنافسين ×2',ch:s=>(s.gotyWins||0)>=2},
   {id:'loan1',n:'سدّدت قرضاً كاملاً',ch:s=>(s.loansRepaid||0)>=1},
@@ -3732,7 +3808,12 @@ function synergyFor(genreId,topicId){
 
 // ============ STATE ============
 let S={};
-const SAVE_VERSION=5;
+const SAVE_VERSION=6;
+// Exposed for the test suites, which assert "the save is at the current version"
+// and must not carry their own copy of the number — a hard-coded expectation has
+// to be edited on every schema bump, i.e. at exactly the moment it should be
+// doing its job.
+window.SAVE_VERSION=SAVE_VERSION;
 
 // True only once a real play session has begun. Everything that writes to
 // localStorage checks it first — see the comment on saveGame().
@@ -3746,7 +3827,7 @@ function initState(diff){
     genre:null,topic:null,sl:{design:3,code:4,sound:3},hist:[],ach:[],sk:0,em:null,tt:null,
     gse:0,dev:false,eggs:0,topicsShipped:[],
     difficulty:d,
-    audio:{volume:0.6,muted:false},
+    audio:{volume:0.6,muted:false,ambient:true},
     theme:'dark',
     platforms:['pc'],
     research:{points:0,unlocked:[]},
@@ -3768,6 +3849,8 @@ function initState(diff){
     contractCooldown:0,
     loansRepaid:0,
     gotyWins:0,
+    gotyStreak:0,
+    won:false,
     partyUsed:false,
     pendingDevCost:0,
     marketTaste:rollMarketTaste(1),
@@ -3802,11 +3885,16 @@ function sanitizeSave(p){
   p.contractCooldown=Math.max(0,num(p.contractCooldown,0)|0);
   p.loansRepaid=Math.max(0,num(p.loansRepaid,0)|0);
   p.gotyWins=Math.max(0,num(p.gotyWins,0)|0);
+  p.gotyStreak=Math.max(0,num(p.gotyStreak,0)|0);
+  p.won=!!p.won;
 
   if(!DIFFICULTY[p.difficulty])p.difficulty='normal';
   if(p.theme!=='light')p.theme='dark';
   const vol=num(p.audio&&p.audio.volume,0.6);
-  p.audio={volume:Math.max(0,Math.min(1,vol)),muted:!!(p.audio&&p.audio.muted)};
+  // `ambient` defaults on rather than off: a save from before the room tone
+  // existed simply has no opinion, and silence is not the intended default.
+  p.audio={volume:Math.max(0,Math.min(1,vol)),muted:!!(p.audio&&p.audio.muted),
+    ambient:(p.audio&&p.audio.ambient)!==false};
   p.prestige={level:Math.max(0,num(p.prestige&&p.prestige.level,0)|0)};
 
   // Point allocation must exist and must never exceed the stage cap.
@@ -3969,6 +4057,15 @@ function migrateSave(p){
     p.saveVersion=5;
     if(!p.marketTaste)p.marketTaste=rollMarketTaste(Math.max(1,+p.year||1));
     if(!Array.isArray(p.tips))p.tips=(+p.gc>0)?TIP_IDS.slice():[];
+  }
+  if(p.saveVersion<6){
+    // v6 adds the endgame goal. An existing run keeps its GOTY total but starts
+    // the consecutive-years streak from zero: there is no way to reconstruct
+    // which of those wins were back-to-back, and crediting a streak the player
+    // did not visibly earn would hand them the ending on the next release.
+    p.saveVersion=6;
+    if(p.gotyStreak===undefined)p.gotyStreak=0;
+    if(p.won===undefined)p.won=false;
   }
   return sanitizeSave(p);
 }
@@ -4239,11 +4336,15 @@ function effectiveAxes(bonus){
   return {d,c,s:so,tot:(d+c+so)||1};
 }
 // 0..1 — how closely the effective split matches this year's ideal for the genre.
+// The tolerance is read from BALANCE rather than written here: the constant
+// existed and was named, but nothing referenced it, so a designer who opened the
+// balance table and changed it got no effect at all — worse than no constant,
+// because it looked like a tuning knob and was not wired to anything.
 function axisBalance(genre,bonus){
   const a=effectiveAxes(bonus);
   const ideal=idealFor(genre);
   const diff=Math.abs(a.d/a.tot*100-ideal[0])+Math.abs(a.c/a.tot*100-ideal[1])+Math.abs(a.s/a.tot*100-ideal[2]);
-  return Math.max(0,1-diff/120);
+  return Math.max(0,1-diff/BALANCE.score.balanceTolerance);
 }
 
 function renderTasteBar(){
@@ -4260,6 +4361,24 @@ function renderTasteBar(){
   bar.innerHTML='📈 سنة '+(S.year||1)+': '
     +(lean.length?'السوق يقدّر <b>'+lean.join(' و')+'</b> أكثر هذه السنة. ':'أذواق السوق متوازنة هذه السنة. ')
     +(hot.length?'<br>🔥 مواضيع رائجة: <b>'+hot.join(' · ')+'</b>':'');
+}
+
+// The endgame goal, shown only at the top stage. Pips rather than a number
+// because the streak is the whole point: seeing ●●○ makes the year you are about
+// to play feel like the last one, which "2/3" does not.
+function renderGoalBar(){
+  const bar=document.getElementById('goalBar');
+  if(!bar)return;
+  if(S.st<5){bar.style.display='none';return}
+  bar.style.display='block';
+  const streak=Math.min(WIN_STREAK,S.gotyStreak||0);
+  const pips='<span class="pips">'+'●'.repeat(streak)+'○'.repeat(WIN_STREAK-streak)+'</span>';
+  if(S.won){
+    bar.innerHTML='🏆 <b>توّجت على القمة</b> — تلعب الآن بلا سقف. جوائزك: '+((S.awards||[]).length);
+    return;
+  }
+  bar.innerHTML='🎯 <b>الهدف الأخير:</b> جائزة لعبة العام '+WIN_STREAK+' سنوات متتالية '+pips
+    +(streak?'':'<br><span style="color:var(--tx3)">تقييم 8.5+ وتتفوّق على كل منافس في نفس السنة</span>');
 }
 
 function renderQualityPreview(){
@@ -4441,6 +4560,7 @@ function updateUI(){
   renderTopicEcho();
   renderQualityPreview();
   renderTasteBar();
+  renderGoalBar();
   // S.topic is no longer a gate: it always resolves (to عام at worst), so the genre
   // and the platforms are the only two things the player still has to choose.
   document.getElementById('bdev').disabled=!(S.genre&&S.money>=cost&&!S.dev&&S.platforms.length>0);
@@ -4632,6 +4752,7 @@ function ensureAC(){
 function sn(t){
   if(S.audio&&S.audio.muted)return;
   ensureAC();
+  startAmbience(); // any sound at all means the context is unlocked
   const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);const n=ac.currentTime;
   const v=(S.audio?.volume??0.6);
   if(t==='c'){o.frequency.value=900;g.gain.setValueAtTime(.06*v,n);g.gain.exponentialRampToValueAtTime(.001,n+.06);o.start();o.stop(n+.06)}
@@ -4641,6 +4762,137 @@ function sn(t){
   else if(t==='ev'){o.type='triangle';o.frequency.value=440;g.gain.setValueAtTime(.08*v,n);g.gain.exponentialRampToValueAtTime(.001,n+.2);o.start();o.frequency.setValueAtTime(550,n+.07);o.frequency.setValueAtTime(660,n+.14);o.stop(n+.2)}
   else if(t==='egg'){o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(.12*v,n);g.gain.exponentialRampToValueAtTime(.001,n+.5);o.start();o.frequency.setValueAtTime(1100,n+.1);o.frequency.setValueAtTime(1320,n+.2);o.frequency.setValueAtTime(1760,n+.3);o.stop(n+.5)}
 }
+
+// ---- Room tone -------------------------------------------------------------
+// The game built a floor of people who walk, stretch, drink coffee and type at
+// screens that are actually drawing — and then played it in silence, broken only
+// by six synthesised blips at 30-500ms each. In a simulation played in long
+// sittings, that silence undoes most of what the diorama buys: the room looks
+// alive and sounds abandoned.
+//
+// This is a room, not a soundtrack. Two ingredients, both generated:
+//
+//   * A hum. One noise buffer through a low-pass, which is what an air handler
+//     and a floor of machines actually sound like from across a room. No
+//     oscillator, because a tone has a pitch and a pitch becomes a note, and a
+//     note held for an hour is torture.
+//   * Keystrokes. Short band-passed noise bursts at a rate that follows what the
+//     room is doing: near-silent in an empty bedroom, busier as the floor fills,
+//     and a proper clatter while a build is running.
+//
+// It scales with the studio and ducks at night, so it reads as this room at this
+// hour rather than as a loop.
+const AMB={
+  hum:{gain:0.030,cut:340},   // the bed: barely audible on its own, felt when it stops
+  keyGain:0.020,              // one keystroke, before the volume setting
+  tickMs:220,                 // scheduler period; keystrokes are decided per tick
+  idleRate:0.16,              // P(keystroke per tick) per employee at rest
+  busyRate:0.85,              // ...while a build is running
+  nightDuck:0.55,             // the floor empties out; the hum stays, quieter
+  rampMs:1.2,                 // fade in/out, long enough that nothing clicks
+};
+let _ambNoise=null,_ambHum=null,_ambBus=null,_ambTimer=null,_ambOn=false;
+
+// One second of white noise, generated once and looped. Cheaper than any
+// oscillator bank and it is the correct source for both ingredients.
+function noiseBuffer(){
+  if(_ambNoise)return _ambNoise;
+  const len=ac.sampleRate|0;
+  _ambNoise=ac.createBuffer(1,len,ac.sampleRate);
+  const d=_ambNoise.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  return _ambNoise;
+}
+
+function ambienceWanted(){
+  return !!(S.audio&&S.audio.ambient!==false&&!S.audio.muted)&&(S.audio?.volume??0.6)>0
+    &&_started&&!document.hidden;
+}
+
+// Target loudness for the bed right now: the studio's size sets it, night ducks
+// it, and the volume slider scales all of it.
+function ambienceLevel(){
+  const staff=(S.employees||[]).length;
+  const fill=Math.min(1,0.35+staff/18);               // a solo bedroom still has a room tone
+  const night=(S.gamesThisYear|0)===3?AMB.nightDuck:1;
+  return AMB.hum.gain*fill*night*(S.audio?.volume??0.6);
+}
+
+function startAmbience(){
+  if(_ambOn||!ambienceWanted())return;
+  ensureAC();
+  _ambBus=ac.createGain();_ambBus.gain.value=0;_ambBus.connect(ac.destination);
+  const src=ac.createBufferSource();
+  src.buffer=noiseBuffer();src.loop=true;
+  const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=AMB.hum.cut;
+  src.connect(lp);lp.connect(_ambBus);
+  src.start();
+  _ambHum=src;
+  _ambOn=true;
+  _ambBus.gain.linearRampToValueAtTime(ambienceLevel(),ac.currentTime+AMB.rampMs);
+  _ambTimer=setInterval(ambienceTick,AMB.tickMs);
+}
+
+function stopAmbience(){
+  if(!_ambOn)return;
+  _ambOn=false;
+  clearInterval(_ambTimer);_ambTimer=null;
+  const bus=_ambBus,src=_ambHum;
+  _ambBus=null;_ambHum=null;
+  try{
+    bus.gain.cancelScheduledValues(ac.currentTime);
+    bus.gain.setValueAtTime(bus.gain.value,ac.currentTime);
+    bus.gain.linearRampToValueAtTime(0,ac.currentTime+0.25);
+    // Torn down after the fade rather than on the spot, so stopping does not click.
+    setTimeout(()=>{try{src.stop();src.disconnect();bus.disconnect()}catch(_){}},400);
+  }catch(_){}
+}
+
+// One keystroke: a band-passed noise burst with a very fast decay. Pitch and
+// length vary per hit, because a key that sounds identical every time is a
+// metronome rather than a person.
+function keyClack(v){
+  const n=ac.currentTime;
+  const src=ac.createBufferSource();
+  src.buffer=noiseBuffer();
+  // Start somewhere random in the buffer so consecutive hits are not the same
+  // slice of noise.
+  const off=Math.random()*(noiseBuffer().duration-0.05);
+  const bp=ac.createBiquadFilter();bp.type='bandpass';
+  bp.frequency.value=1500+Math.random()*1700;bp.Q.value=1.1+Math.random();
+  const g=ac.createGain();
+  const peak=v*(0.6+Math.random()*0.7);
+  g.gain.setValueAtTime(peak,n);
+  g.gain.exponentialRampToValueAtTime(0.0001,n+0.028+Math.random()*0.022);
+  src.connect(bp);bp.connect(g);g.connect(ac.destination);
+  src.start(n,off,0.09);
+  src.stop(n+0.09);
+}
+
+function ambienceTick(){
+  if(!ambienceWanted()){stopAmbience();return}
+  const lvl=ambienceLevel();
+  // Followed rather than set, so hiring someone or nightfall is a drift in the
+  // room rather than a step.
+  try{_ambBus.gain.linearRampToValueAtTime(lvl,ac.currentTime+AMB.rampMs)}catch(_){}
+  // The player's own desk counts, which is what gives the bedroom stage any
+  // keyboard at all.
+  const desks=1+(S.employees||[]).length;
+  const per=typingActive?AMB.busyRate:AMB.idleRate;
+  // Expected hits this tick, capped so a full skyscraper mid-build is a busy
+  // office and not static.
+  const expect=Math.min(3.2,desks*per*(typingActive?0.5:0.12));
+  const vol=AMB.keyGain*(S.audio?.volume??0.6)*((S.gamesThisYear|0)===3?AMB.nightDuck:1);
+  for(let i=0;i<4;i++){
+    if(Math.random()<expect/4)keyClack(vol);
+  }
+}
+
+// The room stops when the tab does — a game left in a background tab must not
+// keep humming, and the scheduler must not keep waking the CPU.
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)stopAmbience();else startAmbience();
+});
 
 // ============ THEME ============
 function applyTheme(){
@@ -4867,7 +5119,7 @@ const BALANCE={
     crossPlatform:0.15,marketerCampaign:0.12,marketerWordOfMouth:0.05,
   },
   fans:{
-    great:[200,300],good:[50,100],ok:[-10,30],bad:[-50,-100],
+    great:[200,300],good:[50,100],ok:[-10,30],bad:[-149,100],
     hypePerPoint:2,communityMult:1.5,moddingMult:1.3,
   },
   dlc:{
@@ -5066,10 +5318,15 @@ function computeSales(rel,q){
 
   let rev=Math.floor(sales*C.stageRevenue(S.st));
 
+  // [base, spread]: base plus a random amount up to spread. The flop case used to
+  // bypass this entirely with its own inline -(50 + rand(100)), leaving
+  // BALANCE.fans.bad defined and unread — and written as [-50,-100], i.e. in a
+  // sign convention the helper does not use. It is now [-50,100] like the rest and
+  // goes through the same path, so the table is the only place the numbers live.
   const pick=r=>r[0]+(Math.random()*r[1]|0);
   let fd;
   if(q.avg>=9)fd=pick(F.great);else if(q.avg>=7)fd=pick(F.good);
-  else if(q.avg>=5)fd=pick(F.ok);else fd=-(50+(Math.random()*100|0));
+  else if(q.avg>=5)fd=pick(F.ok);else fd=pick(F.bad);
   if(S.marketing.hype)fd+=Math.floor(S.marketing.hype*F.hypePerPoint*(1+mktSkill*C.marketerCampaign));
   if(isResearched('community')&&fd>0)fd=Math.floor(fd*F.communityMult);
   if(isResearched('modding')&&(rel.genre.id==='rpg'||rel.genre.id==='sim')&&fd>0)fd=Math.floor(fd*F.moddingMult);
@@ -5283,6 +5540,7 @@ function CheckGOTY(){
   const rScore=rivalBest?rivalBest.bestThisYear:0;
   if(pScore>=8.5&&pScore>=rScore){
     S.awards.push({year:S.year-1,game:playerBest.name,score:pScore});
+    S.gotyStreak=(S.gotyStreak||0)+1;
     const reward=Math.floor(100000*DIFFICULTY[S.difficulty].rewardMult*(1+S.st*0.5));
     S.money+=reward;
     S.fn+=2000;
@@ -5297,6 +5555,7 @@ function CheckGOTY(){
     refreshTrophies(); // was a second full buildRoom() in the same release
     shown=true;
   }else if(rScore>=8.5){
+    S.gotyStreak=0;
     rivalBest.fans+=2000;
     const def=RIVAL_DEFS.find(d=>d.id===rivalBest.id)||{name:'منافس',icon:'🏢'};
     document.getElementById('evi').textContent='🏆';
@@ -5306,10 +5565,56 @@ function CheckGOTY(){
     document.getElementById('se').classList.add('show');sn('f');
     shown=true;
   }
+  // A year that produced no award at all also breaks the run. Without this the
+  // "three in a row" goal would quietly mean "three, eventually" — the streak
+  // would sit at 2 across a decade of mediocrity and finish on a single good year.
+  if(pScore<8.5)S.gotyStreak=0;
   (S.rivals||[]).forEach(r=>{r.bestThisYear=0;r.bestName=null;});
   updateUI();saveGame();checkAchievements();
   return shown;
 }
+
+// ============ ENDGAME ============
+// The skyscraper had nothing after it: upgCost is Infinity, the numbers keep
+// growing, and that was the whole ending. A run needs a finish line, and the one
+// that fits a game about reputation is holding the top of the industry — not a
+// money figure, which compounds on its own, and not market share, which a
+// competent studio passes early (tools/share-probe.mjs measures ~55%).
+//
+// So: run the biggest studio in the business AND take Game of the Year three
+// years running. It cannot be bought and it cannot be reached by one lucky hit,
+// because the streak resets on any year that does not win.
+const WIN_STREAK=3;
+function winConditionMet(){
+  return S.st>=5&&(S.gotyStreak||0)>=WIN_STREAK;
+}
+function showVictory(){
+  S.won=true;
+  document.getElementById('vcGames').textContent=S.gc;
+  document.getElementById('vcYears').textContent=S.year;
+  document.getElementById('vcAwards').textContent=(S.awards||[]).length;
+  document.getElementById('vcMoney').textContent=fmt(S.pm);
+  // Prestige is offered here as a choice rather than forced, because a player who
+  // wants to keep running the studio they just won with should be able to.
+  const gain=Math.floor(S.gc/10)+Math.floor(S.pm/1000000)+((S.awards||[]).length);
+  S._pendingPrestige=gain;
+  document.getElementById('vcPrestige').textContent=gain;
+  document.getElementById('vcPrestigeBox').style.display=gain>0?'block':'none';
+  document.getElementById('vicModal').classList.add('show');
+  sn('egg');
+  spawnConfetti(700,true);celebrateUntil=Date.now()+4000;flashRoom(1.0);camPunch(0.12);
+  saveGame();
+}
+// Keep playing: the studio, the money and the history all stay. Only the ending
+// is spent, so it cannot fire a second time in the same run.
+window.continueAfterWin=function(){
+  document.getElementById('vicModal').classList.remove('show');
+  advance(stepAfter('tryVictory'));
+};
+window.prestigeFromWin=function(){
+  document.getElementById('vicModal').classList.remove('show');
+  window.DoPrestige();
+};
 
 function showRev(name,scores,avg,rev,fd,bugCount,salary,loanPay,contractResult,syn,bal){
   document.getElementById('sr2').classList.add('show');
@@ -5349,6 +5654,12 @@ const POST_GAME=[
     if(!S._pendingGOTY)return false;
     S._pendingGOTY=false;
     return CheckGOTY();
+  },
+  // Directly after the award ceremony, so the third win and the ending land in
+  // one beat rather than with a year's worth of modals between them.
+  function tryVictory(){
+    if(S.won||!winConditionMet())return false;
+    showVictory();return true;
   },
   function tryTasteChange(){
     if(!S._tasteChanged)return false;
@@ -5602,6 +5913,7 @@ window.toggleHistory=function(){
 window.OpenSettings=function(){
   document.getElementById('volSlider').value=Math.round((S.audio?.volume??0.6)*100);
   document.getElementById('muteChk').checked=S.audio?.muted||false;
+  document.getElementById('ambChk').checked=(S.audio?.ambient)!==false;
   document.getElementById('lightChk').checked=S.theme==='light';
   // Quality lives in its own localStorage key rather than in the save: it
   // describes the device the game is being played on, not the run in progress,
@@ -6185,13 +6497,21 @@ function bindModalFocus(){
 
 // ============ SETTINGS BINDINGS ============
 function bindSettings(){
+  // Each of these three changes what the room tone should be doing this instant,
+  // so each one re-evaluates it instead of waiting for the next scheduler tick.
+  const audioDefaults=()=>{if(!S.audio)S.audio={volume:0.6,muted:false,ambient:true}};
+  const syncAmbience=()=>{if(ambienceWanted())_ambOn?ambienceTick():startAmbience();else stopAmbience();};
   document.getElementById('volSlider').addEventListener('input',e=>{
-    if(!S.audio)S.audio={volume:0.6,muted:false};
-    S.audio.volume=e.target.value/100;saveGame();
+    audioDefaults();
+    S.audio.volume=e.target.value/100;syncAmbience();saveGame();
   });
   document.getElementById('muteChk').addEventListener('change',e=>{
-    if(!S.audio)S.audio={volume:0.6,muted:false};
-    S.audio.muted=e.target.checked;saveGame();
+    audioDefaults();
+    S.audio.muted=e.target.checked;syncAmbience();saveGame();
+  });
+  document.getElementById('ambChk').addEventListener('change',e=>{
+    audioDefaults();
+    S.audio.ambient=e.target.checked;syncAmbience();saveGame();
   });
   document.getElementById('lightChk').addEventListener('change',e=>{
     S.theme=e.target.checked?'light':'dark';applyTheme();saveGame();
@@ -6270,8 +6590,17 @@ if('serviceWorker' in navigator){
       reg.addEventListener('updatefound',()=>{
         const nw=reg.installing;if(!nw)return;
         nw.addEventListener('statechange',()=>{
+          // A controller already exists, so this is an UPDATE rather than a first
+          // install. The new worker has taken over (install() skips waiting), but
+          // this tab is still running the HTML it loaded, so the player only gets
+          // the new build on their next visit or reload.
+          //
+          // This used to be a 300ms chime and nothing else: a sound with no
+          // message, for an event the player has no way to interpret. The toast
+          // says what happened and what to do about it.
           if(nw.state==='installed'&&navigator.serviceWorker.controller){
             try{sn&&sn('ok')}catch(e){}
+            try{showToast('✨ نسخة جديدة جاهزة — أعد التحميل')}catch(e){}
           }
         });
       });
