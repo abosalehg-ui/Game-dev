@@ -1006,7 +1006,9 @@ function sizeComposer(){
 function initThree(){
   const c=document.getElementById('gC');
   scene=new THREE.Scene();scene.background=new THREE.Color(0x0c0c14);
-  const a=window.innerWidth/window.innerHeight,d=18;
+  // No room exists yet, so roomFitRadius is still at its base and this matches
+  // what onResize() will compute on the first frame.
+  const a=window.innerWidth/window.innerHeight,d=CAM_BASE_HALF_H;
   camera=new THREE.OrthographicCamera(-d*a,d*a,d,-d,1,500);
   camera.position.set(22,22,22);camera.lookAt(0,0,0);
   // antialias:false because the composer's multisampled target does the job now;
@@ -2841,6 +2843,10 @@ function buildRoom(s,cinematic){
   // Fold all the static furniture into a handful of merged meshes. Must run last,
   // after every static mesh exists and before the first frame renders it.
   batchStatic();
+  // Now that the room is whole, re-derive how much frustum it needs. On a narrow
+  // screen this is what keeps a bigger office from spilling past the bezel.
+  measureRoomFit();
+  onResize();
 }
 
 // ---- Targeted refreshes ----------------------------------------------------
@@ -3214,9 +3220,59 @@ function demoteTier(){
   _lastFrameForFps=0;
 }
 
+// ---- Fitting the room to the screen ----------------------------------------
+// The orthographic frustum used to pin its half-HEIGHT at 18 and derive the
+// half-width from the window aspect. On a desktop that is right. On a portrait
+// phone it is not: at 390×844 the aspect is 0.46, which leaves a half-width of
+// 8.3 world units — against a skyscraper floor whose corner-to-centre radius is
+// 28.4. Two thirds of the room sat off-screen, and the pinch-zoom floor of 0.5
+// could not recover it, so the player had no way at all to see the studio they
+// had spent the whole game building. It got worse the further they got: the
+// bedroom fits, the studio starts losing its edges, the skyscraper shows a third.
+//
+// The frustum now fits whichever axis is actually binding. On a wide screen the
+// height still wins and nothing changes; on a narrow one the width takes over.
+const CAM_BASE_HALF_H=18;
+const CAM_FIT_MARGIN=1.06;  // a little air so furniture never touches the bezel
+const _fitBox=new THREE.Box3();
+let roomFitRadius=CAM_BASE_HALF_H;
+
+// Worst-case projected half-width, over every yaw the player can orbit to.
+// A point at (x,z) has |horizontal view coordinate| <= hypot(x,z) whatever the
+// azimuth, so the corner-to-centre radius bounds all of them — which also means
+// the framing does not pump in and out as the room spins.
+//
+// Measured off the built room rather than tabulated per stage: a room that grows
+// a wing should not be able to outgrow its framing silently, and the project
+// already learned this lesson once with tools/balance-sim.mjs.
+//
+// Only the static room counts. The dynamic groups hold the drifting dust motes,
+// which wrap around above head height by design, and the speech bubbles, which
+// float; letting either into the measurement would pull the camera back to frame
+// decoration that is meant to leave the frame.
+function measureRoomFit(){
+  roomFitRadius=CAM_BASE_HALF_H;
+  if(!rg)return;
+  let r=0;
+  for(const child of rg.children){
+    if(child.userData&&child.userData.dyn)continue;
+    _fitBox.setFromObject(child);
+    const b=_fitBox;
+    if(!Number.isFinite(b.min.x))continue;
+    r=Math.max(r,
+      Math.hypot(b.min.x,b.min.z),Math.hypot(b.min.x,b.max.z),
+      Math.hypot(b.max.x,b.min.z),Math.hypot(b.max.x,b.max.z));
+  }
+  if(r>0)roomFitRadius=r*CAM_FIT_MARGIN;
+}
+
 function onResize(){
   if(!camera||!renderer)return;
-  const a=window.innerWidth/window.innerHeight,d=18;
+  const a=window.innerWidth/window.innerHeight;
+  // d*a is the half-width, so d >= roomFitRadius/a is what it takes to hold the
+  // room. On anything wider than about 3:2 that term is below CAM_BASE_HALF_H and
+  // this is a no-op.
+  const d=Math.max(CAM_BASE_HALF_H,roomFitRadius/a);
   camera.left=-d*a;camera.right=d*a;camera.top=d;camera.bottom=-d;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth,window.innerHeight);
@@ -3346,31 +3402,42 @@ const DIFFICULTY={
   hard:{name:'صعب',costMult:1.3,rewardMult:0.75,startMoney:7000},
 };
 
+// Every number in these strings is a PLACEHOLDER filled at display time from the
+// same constant the effect is applied from — see EVENT_FX and describeEvent().
+//
+// They used to be written by hand, and four of them had drifted from what the
+// shared `type` actually does: موسم رمضان promised -30% and applied -40%, موسم
+// الرياض promised +60% and applied +50%, استراحة قهوة promised +1.5 review points
+// and applied +1, and مشكلة سيرفر promised to cost 15% of the balance and took
+// 20%. In a game where every screen is a budgeting decision, a lie in the event
+// text is a lie in the player's arithmetic. Tokens make the drift impossible
+// rather than merely fixed — the same reasoning that made tools/balance-sim.mjs
+// parse the stage table instead of keeping a copy of it.
 const EVENTS=[
-  {icon:'📈',title:'ترند ساخن!',desc:'ألعاب {topic} رائجة! المبيعات ×2',good:true,type:'trend'},
-  {icon:'📉',title:'أزمة اقتصادية!',desc:'الركود يضرب السوق. المبيعات -40%',good:false,type:'recession'},
-  {icon:'😂',title:'تعليق فيروسي!',desc:'مسوي نفسه EA 😂 -40%',good:false,type:'recession'},
-  {icon:'🎪',title:'مهرجان الألعاب!',desc:'تقييم إضافي +1 للعبتك القادمة.',good:true,type:'festival'},
-  {icon:'😡',title:'منافس شرس!',desc:'منافسك أصدر لعبة ضخمة! -15% معجبين.',good:false,type:'competitor'},
-  {icon:'📦',title:'عرض ناشر!',desc:'ناشر كبير يعرض صفقة! مبيعات +50%',good:true,type:'publisher'},
-  {icon:'🏆',title:'جائزة أفضل مطور!',desc:'+500 معجب جديد!',good:true,type:'award'},
-  {icon:'🔓',title:'اختراق أمني!',desc:'هاكر اخترق خوادمك! تكلفة إصلاح 20% من رصيدك.',good:false,type:'hack'},
+  {icon:'📈',title:'ترند ساخن!',desc:'ألعاب {topic} رائجة! المبيعات {sales}',good:true,type:'trend'},
+  {icon:'📉',title:'أزمة اقتصادية!',desc:'الركود يضرب السوق. المبيعات {sales}',good:false,type:'recession'},
+  {icon:'😂',title:'تعليق فيروسي!',desc:'مسوي نفسه EA 😂 {sales}',good:false,type:'recession'},
+  {icon:'🎪',title:'مهرجان الألعاب!',desc:'تقييم إضافي {score} للعبتك القادمة.',good:true,type:'festival'},
+  {icon:'😡',title:'منافس شرس!',desc:'{rival} أصدر لعبة ضخمة! {fansPct} معجبين.',good:false,type:'competitor'},
+  {icon:'📦',title:'عرض ناشر!',desc:'ناشر كبير يعرض صفقة! مبيعات {sales}',good:true,type:'publisher'},
+  {icon:'🏆',title:'جائزة أفضل مطور!',desc:'{fans} معجب جديد!',good:true,type:'award'},
+  {icon:'🔓',title:'اختراق أمني!',desc:'هاكر اخترق خوادمك! تكلفة إصلاح {costPct} من رصيدك.',good:false,type:'hack'},
   {icon:'💼',title:'عرض استحواذ!',desc:'شركة كبيرة تعرض شراء لعبتك الأخيرة! +مكافأة مالية.',good:true,type:'buyout'},
-  {icon:'🚪',title:'موظف يستقيل!',desc:'أحد المطورين رحل! التقييم القادم -0.5',good:false,type:'quit'},
-  {icon:'🏴‍☠️',title:'قرصنة!',desc:'لعبتك الأخيرة انتشرت مقرصنة! المبيعات القادمة -30%',good:false,type:'piracy'},
-  {icon:'🎁',title:'هدية من معجب!',desc:'معجب أرسل تبرع! +15,000 💰',good:true,type:'gift'},
-  {icon:'📱',title:'انتشار فيروسي!',desc:'لعبتك أصبحت ترند! +800 معجب',good:true,type:'viral'},
-  {icon:'🎥',title:'يوتيوبر مشهور!',desc:'يوتيوبر لعب لعبتك على الهواء! +1,200 معجب',good:true,type:'youtuber'},
-  {icon:'🔥',title:'احترق الكمبيوتر!',desc:'احتراق كروت الشاشة بسبب الكيبل. تكلفة لعبتك القادمة مضاعفة ×2!',good:false,type:'strike'},
+  {icon:'🚪',title:'موظف يستقيل!',desc:'أحد المطورين رحل! التقييم القادم {score}',good:false,type:'quit'},
+  {icon:'🏴‍☠️',title:'قرصنة!',desc:'لعبتك الأخيرة انتشرت مقرصنة! المبيعات القادمة {sales}',good:false,type:'piracy'},
+  {icon:'🎁',title:'هدية من معجب!',desc:'معجب أرسل تبرع! {money} 💰',good:true,type:'gift'},
+  {icon:'📱',title:'انتشار فيروسي!',desc:'لعبتك أصبحت ترند! {fans} معجب',good:true,type:'viral'},
+  {icon:'🎥',title:'يوتيوبر مشهور!',desc:'يوتيوبر لعب لعبتك على الهواء! {fans} معجب',good:true,type:'youtuber'},
+  {icon:'🔥',title:'احترق الكمبيوتر!',desc:'احتراق كروت الشاشة بسبب الكيبل. تكلفة لعبتك القادمة {cost}!',good:false,type:'strike'},
   // Arabic flavor events
-  {icon:'🌙',title:'موسم رمضان!',desc:'الناس مشغولين بالعبادة. المبيعات -30%',good:false,type:'recession'},
-  {icon:'🎉',title:'موسم الرياض!',desc:'موسم الرياض رفع الحماس! المبيعات +60%',good:true,type:'publisher'},
-  {icon:'🕌',title:'احتفال العيد!',desc:'العيد كرم! +500 معجب جديد',good:true,type:'award'},
-  {icon:'💻',title:'انقطاع كهرباء!',desc:'انقطع الكهرباء أسبوع كامل. تكلفة الإصلاح',good:false,type:'hack'},
-  {icon:'☕',title:'استراحة قهوة!',desc:'فريقك مرتاح وأبدع! +1.5 تقييم',good:true,type:'festival'},
-  {icon:'📡',title:'مشكلة سيرفر!',desc:'تكلفة استعادة 15% من الرصيد',good:false,type:'hack'},
-  {icon:'😤',title:'إحباط في الفريق!',desc:'ضغط العمل أرهق الفريق. المعنويات -12',good:false,type:'moraleDown'},
-  {icon:'🎂',title:'عيد ميلاد في المكتب!',desc:'كيكة وقهوة للجميع! المعنويات +10',good:true,type:'moraleUp'},
+  {icon:'🌙',title:'موسم رمضان!',desc:'الناس مشغولين بالعبادة. المبيعات {sales}',good:false,type:'recession'},
+  {icon:'🎉',title:'موسم الرياض!',desc:'موسم الرياض رفع الحماس! المبيعات {sales}',good:true,type:'publisher'},
+  {icon:'🕌',title:'احتفال العيد!',desc:'العيد كرم! {fans} معجب جديد',good:true,type:'award'},
+  {icon:'💻',title:'انقطاع كهرباء!',desc:'انقطع الكهرباء أسبوع كامل. تكلفة الإصلاح {costPct} من رصيدك.',good:false,type:'hack'},
+  {icon:'☕',title:'استراحة قهوة!',desc:'فريقك مرتاح وأبدع! {score} تقييم',good:true,type:'festival'},
+  {icon:'📡',title:'مشكلة سيرفر!',desc:'تكلفة استعادة {costPct} من الرصيد',good:false,type:'hack'},
+  {icon:'😤',title:'إحباط في الفريق!',desc:'ضغط العمل أرهق الفريق. المعنويات {morale}',good:false,type:'moraleDown'},
+  {icon:'🎂',title:'عيد ميلاد في المكتب!',desc:'كيكة وقهوة للجميع! المعنويات {morale}',good:true,type:'moraleUp'},
 ];
 
 // `topic` outranks TOPIC_WORDS in detectTopic: an egg name is a deliberate homage,
@@ -4072,7 +4139,7 @@ function getDevCost(opts){
   let cost=base*platformCostMult()*engineDisc*aiDisc;
   if(!o.ignoreScope)cost*=scopeSurcharge(o.points!==undefined?o.points:scopePoints());
   if(S._sequelMode)cost*=0.5;
-  if(S.em==='strike')cost*=2; // burned PCs event: next game costs double
+  if(S.em==='strike')cost*=BALANCE.events.strikeCostMult; // burned PCs event
   return Math.floor(cost);
 }
 // Cheapest release the player could still put together right now. Used for the
@@ -4522,12 +4589,18 @@ function bindSliders(){
     window.addEventListener('touchend',()=>dr=false);
     // Keyboard control. The sliders were pointer-only, which made the game's
     // single most important input unreachable without a mouse or touchscreen.
-    // Note the RTL inversion: ArrowRight decreases, matching the visual direction.
+    //
+    // The arrows used to be inverted, on the theory that an RTL document means an
+    // RTL slider. It does not, here: .stw carries `direction:ltr` and the thumb is
+    // positioned with `style.left = value%`, so zero is on the LEFT and the track
+    // fills rightwards like every other slider. Dragging right raised the value
+    // while ArrowRight lowered it — the same control disagreeing with itself, and
+    // backwards from what ARIA specifies for a slider that renders left-to-right.
     w.addEventListener('keydown',e=>{
       const mx=STG[S.st].maxPts;let handled=true;
       switch(e.key){
-        case 'ArrowLeft': case 'ArrowUp':   setVal(S.sl[k]+1);break;
-        case 'ArrowRight': case 'ArrowDown':setVal(S.sl[k]-1);break;
+        case 'ArrowRight': case 'ArrowUp':  setVal(S.sl[k]+1);break;
+        case 'ArrowLeft': case 'ArrowDown': setVal(S.sl[k]-1);break;
         case 'PageUp':   setVal(S.sl[k]+3);break;
         case 'PageDown': setVal(S.sl[k]-3);break;
         case 'Home': setVal(0);break;
@@ -4805,7 +4878,81 @@ const BALANCE={
   },
   research:{perGame:1,highScoreBonus:2,highScoreAt:8},
   morale:{great:6,good:3,flop:-8,crunch:-4,resignChance:0.15,resignBelow:30},
+  // World-event magnitudes. These lived as literals inside triggerEvent() and
+  // getDevCost(), with a second hand-written copy of each in the event's own
+  // description text — which is how four of them came to say one thing and do
+  // another. Both the effect and the sentence now read from here.
+  events:{
+    hackMoneyLoss:0.20, hackMorale:-5,
+    competitorFanLoss:0.15, competitorRivalFans:500,
+    strikeCostMult:2, strikeMorale:-5,
+    awardFans:500, awardMorale:4,
+    giftMoney:15000, giftMorale:4,
+    viralFans:800, youtuberFans:1200,
+    moraleUp:10, moraleDown:-12,
+    buyoutBase:50000, buyoutPerStage:30000, buyoutSpread:50000,
+  },
 };
+
+// ---- Event text, generated from the numbers above --------------------------
+// One row per event type, naming the constant that type's magnitude comes from.
+// describeEvent() below substitutes it into the event's `desc` template, so the
+// sentence the player reads and the arithmetic the game runs cannot disagree.
+const EVENT_FX={
+  trend:     {sales:()=>BALANCE.sales.trend},
+  recession: {sales:()=>BALANCE.sales.recession},
+  publisher: {sales:()=>BALANCE.sales.publisher},
+  piracy:    {sales:()=>BALANCE.sales.piracy},
+  festival:  {score:()=>BALANCE.score.festivalBonus},
+  quit:      {score:()=>-BALANCE.score.quitPenalty},
+  strike:    {cost:()=>BALANCE.events.strikeCostMult},
+  hack:      {costPct:()=>BALANCE.events.hackMoneyLoss},
+  competitor:{fansPct:()=>-BALANCE.events.competitorFanLoss},
+  award:     {fans:()=>BALANCE.events.awardFans},
+  viral:     {fans:()=>BALANCE.events.viralFans},
+  youtuber:  {fans:()=>BALANCE.events.youtuberFans},
+  gift:      {money:()=>BALANCE.events.giftMoney},
+  moraleUp:  {morale:()=>BALANCE.events.moraleUp},
+  moraleDown:{morale:()=>BALANCE.events.moraleDown},
+};
+
+// A sales multiplier as the player reads it: 0.6 -> "-40%", 1.5 -> "+50%",
+// 2 -> "×2". Doubling and halving read as a factor; everything else reads as the
+// percentage change, because "×0.6" is not how anyone thinks about a recession.
+function fmtMult(m){
+  if(m>=2||m<=0.5)return '×'+ +m.toFixed(2);
+  const pct=Math.round((m-1)*100);
+  return (pct>0?'+':'')+pct+'%';
+}
+const _sign=n=>n>0?'+':n<0?'-':'';
+const _int=n=>Math.abs(Math.round(n)).toLocaleString('en-US');
+// Trailing zeros dropped so festivalBonus:1 reads "+1" rather than "+1.0", while
+// quitPenalty:0.5 keeps its decimal.
+const _dec=n=>_sign(n)+(+Math.abs(n).toFixed(1));
+const _pct=n=>_sign(n)+Math.round(Math.abs(n)*100)+'%';
+
+const EVENT_TOKENS={
+  sales:v=>fmtMult(v), cost:v=>'×'+v,
+  score:_dec, morale:v=>_sign(v)+_int(v),
+  fans:v=>_sign(v)+_int(v), money:v=>_sign(v)+_int(v),
+  fansPct:_pct,
+  // Unsigned on purpose: {costPct} sits in sentences that already say "تكلفة",
+  // where a leading minus reads as a double negative.
+  costPct:v=>Math.round(Math.abs(v)*100)+'%',
+};
+
+// `extra` carries the tokens that depend on the run rather than on the balance
+// table — which topic went hot, which rival shipped the blockbuster.
+function describeEvent(ev,extra){
+  const fx=EVENT_FX[ev.type]||{};
+  return String(ev.desc||'').replace(/\{(\w+)\}/g,(whole,key)=>{
+    if(extra&&extra[key]!==undefined)return extra[key];
+    const src=fx[key];
+    if(!src)return whole;
+    const fmtT=EVENT_TOKENS[key];
+    return fmtT?fmtT(src()):String(src());
+  });
+}
 
 // ---- Release pipeline -----------------------------------------------------
 // finishDevelopment() was a single 240-line function that mixed score maths,
@@ -5279,35 +5426,48 @@ function triggerEvent(){
     if(e.type==='quit'&&!(S.employees||[]).length)return false;
     return true;
   });
-  const ev=pool[Math.random()*pool.length|0];let desc=ev.desc;
-  if(ev.type==='trend'){const rt=REAL_TOPICS[Math.random()*REAL_TOPICS.length|0];S.tt=rt.id;desc=desc.replace('{topic}',rt.icon+' '+rt.name);S.em='trend';}
+  const ev=pool[Math.random()*pool.length|0];
+  const E=BALANCE.events;
+  // Run-specific tokens: which topic went hot, which rival shipped, who quit.
+  // Everything numeric is filled by describeEvent() from BALANCE.
+  const ctx={};
+  // The resignation event rewrites its own sentence to name the person who left,
+  // so the template is held separately from the (shared, frozen) event row.
+  let descTpl=ev.desc;
+  const morale=d=>{S.morale=Math.max(0,Math.min(100,(S.morale??75)+d));};
+  if(ev.type==='trend'){const rt=REAL_TOPICS[Math.random()*REAL_TOPICS.length|0];S.tt=rt.id;ctx.topic=rt.icon+' '+rt.name;S.em='trend';}
   else if(ev.type==='recession')S.em='recession';
   else if(ev.type==='festival')S.em='festival';
   else if(ev.type==='competitor'){
-    S.fn=Math.max(0,S.fn-Math.floor(S.fn*.15));
+    S.fn=Math.max(0,S.fn-Math.floor(S.fn*E.competitorFanLoss));
     const rr=(S.rivals||[])[Math.random()*(S.rivals||[]).length|0];
-    if(rr){const def=RIVAL_DEFS.find(d=>d.id===rr.id);if(def)desc=def.icon+' '+def.name+' أصدر لعبة ضخمة! -15% معجبين.';rr.fans+=500;}
+    if(rr){const def=RIVAL_DEFS.find(d=>d.id===rr.id);if(def)ctx.rival=def.icon+' '+def.name;rr.fans+=E.competitorRivalFans;}
   }
   else if(ev.type==='publisher')S.em='publisher';
-  else if(ev.type==='award'){S.fn+=500;S.morale=Math.min(100,(S.morale??75)+4);}
-  else if(ev.type==='hack'){S.money=Math.max(0,S.money-Math.floor(S.money*.2));S.morale=Math.max(0,(S.morale??75)-5);}
-  else if(ev.type==='buyout')S.money+=Math.floor(50000+S.st*30000+Math.random()*50000);
+  else if(ev.type==='award'){S.fn+=E.awardFans;morale(E.awardMorale);}
+  else if(ev.type==='hack'){S.money=Math.max(0,S.money-Math.floor(S.money*E.hackMoneyLoss));morale(E.hackMorale);}
+  else if(ev.type==='buyout')S.money+=Math.floor(E.buyoutBase+S.st*E.buyoutPerStage+Math.random()*E.buyoutSpread);
   else if(ev.type==='quit'){
     S.em='quit';
     if((S.employees||[]).length){
       const q=S.employees.splice(Math.random()*S.employees.length|0,1)[0];
       const qr=EMP_ROLES.find(r=>r.id===q.role);
-      desc=(qr?qr.icon+' ':'')+q.name+' استقال ورحل! التقييم القادم -0.5';
+      // Names the person who left, but keeps the {score} token so the penalty it
+      // quotes still comes from BALANCE.score.quitPenalty.
+      descTpl=(qr?qr.icon+' ':'')+q.name+' استقال ورحل! التقييم القادم {score}';
       refreshPeople();refreshBoard();
     }
   }
   else if(ev.type==='piracy')S.em='piracy';
-  else if(ev.type==='gift'){S.money+=15000;S.morale=Math.min(100,(S.morale??75)+4);}
-  else if(ev.type==='viral')S.fn+=800;
-  else if(ev.type==='youtuber')S.fn+=1200;
-  else if(ev.type==='strike'){S.em='strike';S.morale=Math.max(0,(S.morale??75)-5);}
-  else if(ev.type==='moraleDown')S.morale=Math.max(0,(S.morale??75)-12);
-  else if(ev.type==='moraleUp')S.morale=Math.min(100,(S.morale??75)+10);
+  else if(ev.type==='gift'){S.money+=E.giftMoney;morale(E.giftMorale);}
+  else if(ev.type==='viral')S.fn+=E.viralFans;
+  else if(ev.type==='youtuber')S.fn+=E.youtuberFans;
+  else if(ev.type==='strike'){S.em='strike';morale(E.strikeMorale);}
+  else if(ev.type==='moraleDown')morale(E.moraleDown);
+  else if(ev.type==='moraleUp')morale(E.moraleUp);
+  // Default token for the competitor event when no rival could be picked.
+  if(ev.type==='competitor'&&ctx.rival===undefined)ctx.rival='منافسك';
+  const desc=describeEvent({type:ev.type,desc:descTpl},ctx);
   document.getElementById('evi').textContent=ev.icon;
   const te=document.getElementById('evt2');te.textContent=ev.title;te.className='et '+(ev.good?'gd2':'bd3');
   document.getElementById('evd').textContent=desc;
@@ -5928,10 +6088,51 @@ function bindKeyboard(){
   });
 }
 
-// Move focus into a modal when it opens and restore it when it closes, so
-// keyboard and screen-reader users are never left tabbing through the page behind
-// an overlay. Done with an observer so every existing open/close call site — there
-// are dozens — gets the behaviour without being rewritten.
+// Move focus into a modal when it opens, hold it there while it is open, and
+// restore it when it closes — so keyboard and screen-reader users are never left
+// tabbing through the page behind an overlay. Done with an observer so every
+// existing open/close call site — there are dozens — gets the behaviour without
+// being rewritten.
+//
+// Holding it there is the part that was missing. Every overlay already carried
+// aria-modal="true", which promises a screen reader that the rest of the page is
+// not there; but nothing enforced it, so six Tab presses out of the settings panel
+// landed on document.body and from there walked the toolbar and the develop panel
+// behind a dimmed, blurred backdrop the user could not read. The promise is now
+// kept twice over: `inert` takes the background out of the tab order and the
+// accessibility tree for browsers that have it, and the Tab handler wraps focus
+// inside the topmost overlay for those that do not.
+// `summary` is in the list because a <details> summary is focusable by default and
+// the topic picker's keyword reference is one — leaving it out put a real tab stop
+// outside the set the wrap computes its first and last element from.
+const FOCUSABLE='button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+// Everything that is NOT an overlay: the HUD, the develop panel and its handle,
+// and the start screen. Held as ids rather than a query so a future overlay can
+// never accidentally inert itself.
+const BACKDROP_IDS=['ui','mp','pt','ss'];
+const _supportsInert='inert' in HTMLElement.prototype;
+
+// Visibility by rendered box rather than by offsetParent: every overlay is
+// position:fixed, which makes offsetParent's answer depend on details that have
+// nothing to do with whether the player can see the button.
+function focusablesIn(el){
+  return [...el.querySelectorAll(FOCUSABLE)]
+    .filter(n=>n.offsetWidth>0||n.offsetHeight>0||n.getClientRects().length>0);
+}
+// The overlay that owns focus right now: the last one in DOM order that is open,
+// matching the topmost-wins rule Escape already uses.
+function topOverlay(){
+  const open=openOverlays().filter(el=>el.id!=='sp');
+  return open.length?open[open.length-1]:null;
+}
+function setBackdropInert(on){
+  if(!_supportsInert)return;
+  for(const id of BACKDROP_IDS){
+    const el=document.getElementById(id);
+    if(el)el.inert=on;
+  }
+}
+
 let _focusBeforeModal=null;
 function bindModalFocus(){
   document.querySelectorAll('.os').forEach(el=>{
@@ -5939,13 +6140,46 @@ function bindModalFocus(){
     new MutationObserver(()=>{
       if(el.classList.contains('show')){
         if(!_focusBeforeModal)_focusBeforeModal=document.activeElement;
-        const first=el.querySelector('button:not([disabled]),[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+        setBackdropInert(true);
+        const first=el.querySelector(FOCUSABLE);
         if(first)try{first.focus({preventScroll:true})}catch(_){}
-      }else if(!anyModalOpen()&&_focusBeforeModal){
-        try{_focusBeforeModal.focus({preventScroll:true})}catch(_){}
-        _focusBeforeModal=null;
+      }else if(!anyModalOpen()){
+        setBackdropInert(false);
+        if(_focusBeforeModal){
+          try{_focusBeforeModal.focus({preventScroll:true})}catch(_){}
+          _focusBeforeModal=null;
+        }
+      }else{
+        // A stacked overlay closed and another is still up: hand focus to it
+        // rather than leaving it on the element that just went away.
+        const top=topOverlay();
+        if(top&&!top.contains(document.activeElement)){
+          const first=top.querySelector(FOCUSABLE);
+          if(first)try{first.focus({preventScroll:true})}catch(_){}
+        }
       }
     }).observe(el,{attributes:true,attributeFilter:['class']});
+  });
+
+  // The wrap. Runs regardless of inert support, because inert alone still lets
+  // focus fall off the end of the overlay onto the browser chrome and back in at
+  // the top of the document.
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Tab')return;
+    const top=topOverlay();
+    if(!top)return;
+    const items=focusablesIn(top);
+    if(!items.length){e.preventDefault();return}
+    const first=items[0],last=items[items.length-1];
+    const active=document.activeElement;
+    if(!top.contains(active)){
+      // Focus escaped (or never arrived): pull it back to the appropriate end.
+      e.preventDefault();
+      (e.shiftKey?last:first).focus({preventScroll:true});
+      return;
+    }
+    if(e.shiftKey&&active===first){e.preventDefault();last.focus({preventScroll:true});}
+    else if(!e.shiftKey&&active===last){e.preventDefault();first.focus({preventScroll:true});}
   });
 }
 
