@@ -55,6 +55,9 @@ async function handle(id){
   else if(id==='contractModal')   await pg.evaluate(()=>window.AcceptContract());
   else if(id==='loanModal') await pg.evaluate(()=>window.TakeLoan(0.5));
   else if(id==='sg2')       await pg.evaluate(()=>window.restartGame());
+  // The endgame is a decision modal with no Escape route (it is a choice, not a
+  // notice), so it has to be answered explicitly or the pipeline never resumes.
+  else if(id==='vicModal')  await pg.evaluate(()=>window.continueAfterWin());
   else await pg.evaluate(x=>document.getElementById(x).classList.remove('show'),id);
   await pg.waitForTimeout(180);
 }

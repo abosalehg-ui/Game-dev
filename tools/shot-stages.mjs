@@ -153,6 +153,20 @@ await page.waitForTimeout(1500);
 const nightBuf = await page.screenshot({ path: path.join(OUT, `${LABEL}-night.png`) });
 rows.push({ stage: 'night', mean: meanRGB(nightBuf) });
 
+// Two portrait shots. The framing bug that hid two thirds of the skyscraper on a
+// phone survived for as long as it did because every committed screenshot was
+// 900x620 landscape, where the frustum's half-height governs and nothing is
+// wrong. tests/viewport-fit.mjs is the gate; these are so a human reviewing a
+// camera change can see the shape the gate is protecting.
+for (const s of [3, 5]) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(st => window.__shot.stage(st), s);
+  await page.evaluate(() => window.__shot.daylight(1));
+  await page.waitForTimeout(1500);
+  const buf = await page.screenshot({ path: path.join(OUT, `${LABEL}-portrait-stage${s}.png`) });
+  rows.push({ stage: `portrait-${s}`, mean: meanRGB(buf) });
+}
+
 await browser.close();
 server.close();
 console.log(JSON.stringify({ label: LABEL, renderer: info, perStage: rows, errors: errors.slice(0, 5) }, null, 2));

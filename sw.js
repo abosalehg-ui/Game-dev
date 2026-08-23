@@ -11,7 +11,7 @@
  *  - There are no third-party requests left, so no cross-origin caching rules.
  */
 
-const VERSION = 'v1.11.1';
+const VERSION = 'v1.12.1';
 const APP_SHELL = `room-to-top-shell-${VERSION}`;
 const RUNTIME = `room-to-top-runtime-${VERSION}`;
 
@@ -91,7 +91,12 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// Allow the page to trigger an immediate activation after an update.
-self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
-});
+// There is deliberately no 'SKIP_WAITING' message handler here. One used to exist,
+// and nothing in the project ever posted that message — install() already calls
+// self.skipWaiting() unconditionally and activate() claims the clients, so a new
+// worker takes over the moment it installs. The handler was a second, unreachable
+// route to something that already happens.
+//
+// What that does NOT do is reload the page the player is looking at: their tab
+// keeps running the HTML it loaded. Telling them so is index.html's job, on the
+// 'installed' state change.
