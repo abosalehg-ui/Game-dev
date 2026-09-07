@@ -9,7 +9,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Full history rather than the default depth-1 clone: the service worker
+      # guard at the end diffs the PR against its base with a three-dot range,
+      # which needs the merge base to exist locally. The repo is small enough
+      # that this costs a second.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -74,6 +80,18 @@ jobs:
       - name: Endgame suite
         run: npm run test:endgame
 
+      # Calls the real computeScore/computeSales/getDevCost inside the running game
+      # and pins the properties the balance rests on: a continuous score curve,
+      # scores in [1,10], revenue rising with the review, a fan multiplier with a
+      # knee, and the constants the balance sim parses being the ones the game uses.
+      - name: Formula suite
+        run: npm run test:formulas
+
+      # Taking the rescue loan used to resume the post-release pipeline twice
+      # (stacked modals, double event rolls). Pins exactly one resumption.
+      - name: Rescue loan suite
+        run: npm run test:rescue
+
       # Walks ~26 consecutive releases through the post-release pipeline, which a
       # one-release smoke test cannot cover: a mis-ordered flow step only shows up
       # as a dead end after a year rollover or an award ceremony.
@@ -87,6 +105,10 @@ jobs:
 
       # 3) Guard: the service worker VERSION must be bumped whenever index.html
       #    changes, or returning players stay stuck on a stale cached build.
+      # The guard used to exit 0 whenever git failed, which hid the fact that on
+      # a depth-1 checkout it had never once actually compared the two versions.
+      # It fails closed now; the full-history checkout above is what makes the
+      # base ref and the merge base available to it.
       - name: Service worker version bump check
         if: github.event_name == 'pull_request'
         run: node tools/check-sw-version.mjs origin/${{ github.base_ref }}

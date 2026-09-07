@@ -189,10 +189,10 @@ def main():
         img.save(path, "PNG", optimize=True)
         print(f"  wrote {path.relative_to(OUT.parent)}  ({size}x{size})")
 
-    # Also save a high-res master for archival / store listings
-    master = render(1024, rounded=True, maskable=False)
-    master.save(OUT / "icon-1024.png", "PNG", optimize=True)
-    print(f"  wrote icons/icon-1024.png  (1024x1024)")
+    # No 1024px "master" is written any more. It was 112KB in every clone,
+    # referenced by neither the manifest nor the service worker, and this
+    # script regenerates it in a second if a store listing ever needs one:
+    #   render(1024, rounded=True, maskable=False).save("icon-1024.png")
 
 
 if __name__ == "__main__":

@@ -30,3 +30,7 @@ own licences.
   vendor/fonts/cairo-*.woff2
     Cairo — Copyright © The Cairo Project Authors
     SIL Open Font License 1.1 · https://openfontlicense.org
+
+The full text of both licences ships with the repository, as each requires:
+  vendor/LICENSES/three.js-MIT.txt
+  vendor/LICENSES/Cairo-OFL.txt

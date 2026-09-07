@@ -20,40 +20,16 @@
  *      `node tools/balance-sim.mjs 50000,120000,...` — compare a proposed curve
  * Use the output to size STG[].upgCost and the rival fan-growth curve.
  */
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
 // ---- constants derived from index.html (single source of truth) ----
-function readStages() {
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const block = html.match(/const STG=\[([\s\S]*?)\];/);
-  if (!block) throw new Error('could not locate the STG table in index.html');
-  const rows = [...block[1].matchAll(/\{name:'([^']+)'.*?devCost:(\d+).*?maxPts:(\d+).*?upgCost:([A-Za-z0-9]+)/g)];
-  if (rows.length < 6) throw new Error(`parsed only ${rows.length} stages from index.html`);
-  return rows.map(([, name, devCost, maxPts, upgCost]) => ({
-    name,
-    devCost: Number(devCost),
-    maxPts: Number(maxPts),
-    upgCost: upgCost === 'Infinity' ? Infinity : Number(upgCost),
-  }));
-}
-
-// The per-stage revenue slope also lives in index.html (BALANCE.sales.stageRevenue).
-// Parsed for the same reason as the stage table: a hand-copied duplicate drifts.
-function readRevenueSlope() {
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const m = html.match(/stageRevenue:\s*i\s*=>\s*([\d.]+)\s*\+\s*i\s*\*\s*([\d.]+)/);
-  if (!m) throw new Error('could not locate BALANCE.sales.stageRevenue in index.html');
-  return { base: Number(m[1]), perStage: Number(m[2]) };
-}
+// The readers live in tools/balance-constants.mjs so tests/formulas.mjs can
+// import the same ones and check them against the running game's BALANCE.
+import { readStages, readRevenueSlope, readSalesModel, effectiveFans } from './balance-constants.mjs';
 
 // Short latin labels for the table, in stage order — the game's names are emoji + Arabic.
 const LABELS = ['bedroom', 'garage', 'smallOffice', 'studio', 'company', 'skyscraper'];
 const STG = readStages();
 const REV = readRevenueSlope();
+const SALES = readSalesModel();
 
 // Optional override of upgrade costs (pass values to compare a proposed curve).
 const upgCostOverride = process.argv[2]
@@ -131,8 +107,11 @@ function simulate({ upgCosts = null } = {}) {
 
     // Competent player: average review ~8, occasional 9.
     const avg = Math.min(10, 7.6 + Math.random() * 1.6);
-    let sales = Math.pow(avg, 2.5) * 100 * (1 + fn * 0.002);
-    sales *= 0.9 + share * 0.4; // market-share multiplier
+    // Same shape as computeSales() in index.html, on the parsed constants —
+    // including the fan soft cap, without which the sim (like the game before
+    // it) let the fan multiplier run away unbounded.
+    let sales = Math.pow(avg, SALES.scoreExponent) * SALES.unit * (1 + effectiveFans(fn, SALES) * SALES.fanWeight);
+    sales *= SALES.shareFloor + share * SALES.shareRange; // market-share multiplier
     const rev = Math.floor(sales * (REV.base + st * REV.perStage));
     money += rev;
     fn = Math.max(0, fn + Math.floor(playerFanGain(avg)));
@@ -228,5 +207,6 @@ function report(label, opts) {
 // on — neither of which the tool could see at all until it stopped quitting the
 // moment the player arrived.
 console.log(`stage revenue slope: ×${REV.base} + ${REV.perStage}/stage (from BALANCE.sales.stageRevenue)`);
+console.log(`fan multiplier: 1 + fans × ${SALES.fanWeight}, soft cap ${SALES.fanSoftCap} then ×${SALES.fanTail} (from BALANCE.sales)`);
 report('SHIPPED curve (parsed from index.html)', {});
 if (upgCostOverride) report('PROPOSED curve (from argv)', { upgCosts: upgCostOverride });
