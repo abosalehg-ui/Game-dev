@@ -22,7 +22,7 @@ function changed(pathspec) {
     return out.trim().length > 0;
   } catch (e) {
     console.error(`✗ could not run git diff against ${base}: ${e.message}`);
-    console.error('  This guard needs the base ref fetched (CI: actions/checkout with the PR base).');
+    console.error('  This guard needs the base ref and a merge base (CI: actions/checkout with fetch-depth: 0).');
     process.exit(1);
   }
 }

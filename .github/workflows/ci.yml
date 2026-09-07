@@ -9,7 +9,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Full history rather than the default depth-1 clone: the service worker
+      # guard at the end diffs the PR against its base with a three-dot range,
+      # which needs the merge base to exist locally. The repo is small enough
+      # that this costs a second.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -99,12 +105,10 @@ jobs:
 
       # 3) Guard: the service worker VERSION must be bumped whenever index.html
       #    changes, or returning players stay stuck on a stale cached build.
-      # The checkout is shallow (depth 1), so the base branch is not in the clone
-      # until it is fetched here. The guard used to exit 0 whenever git failed,
-      # which hid the fact that on CI it had never once actually compared the two
-      # versions; it fails closed now, so the base ref has to be present.
+      # The guard used to exit 0 whenever git failed, which hid the fact that on
+      # a depth-1 checkout it had never once actually compared the two versions.
+      # It fails closed now; the full-history checkout above is what makes the
+      # base ref and the merge base available to it.
       - name: Service worker version bump check
         if: github.event_name == 'pull_request'
-        run: |
-          git fetch --no-tags --depth=1 origin ${{ github.base_ref }}
-          node tools/check-sw-version.mjs origin/${{ github.base_ref }}
+        run: node tools/check-sw-version.mjs origin/${{ github.base_ref }}
