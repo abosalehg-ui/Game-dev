@@ -74,6 +74,18 @@ jobs:
       - name: Endgame suite
         run: npm run test:endgame
 
+      # Calls the real computeScore/computeSales/getDevCost inside the running game
+      # and pins the properties the balance rests on: a continuous score curve,
+      # scores in [1,10], revenue rising with the review, a fan multiplier with a
+      # knee, and the constants the balance sim parses being the ones the game uses.
+      - name: Formula suite
+        run: npm run test:formulas
+
+      # Taking the rescue loan used to resume the post-release pipeline twice
+      # (stacked modals, double event rolls). Pins exactly one resumption.
+      - name: Rescue loan suite
+        run: npm run test:rescue
+
       # Walks ~26 consecutive releases through the post-release pipeline, which a
       # one-release smoke test cannot cover: a mis-ordered flow step only shows up
       # as a dead end after a year rollover or an award ceremony.

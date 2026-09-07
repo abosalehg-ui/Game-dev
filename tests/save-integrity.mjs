@@ -183,6 +183,32 @@ try {
     await page.close();
   }
 
+  // ---- 5b. Imported contract publisher must never execute ----
+  // Same class of bug as 5, one field over: contract.publisher was length-clamped
+  // and then written into the contract banner through innerHTML. The publisher is
+  // an enum (MakeContractOffer only picks from PUBLISHERS), so an unknown name is
+  // now collapsed to a table row AND the banner is built from text nodes.
+  {
+    const { page, errors } = await boot({ save: null });
+    await importInto(page, { ...REAL_SAVE, st: 2, money: 99999, genre: 'action',
+      contract: { publisher: '<img src=x onerror="window.__pwn2=1">', icon: '🏢', genre: 'action',
+                  topic: null, minScore: 5, payment: 1000, bonus: 0, penalty: 0, gamesLeft: 2, active: true } });
+    await page.waitForTimeout(500);
+    const pwned = await page.evaluate(() => window.__pwn2 === 1);
+    const banner = await page.evaluate(() => {
+      const cb = document.getElementById('contractBanner');
+      return { shown: cb.style.display === 'block', html: cb.innerHTML, imgs: cb.querySelectorAll('img').length };
+    });
+    const saved = await read(page);
+    checks['imported contract publisher cannot execute script'] = pwned === false && banner.imgs === 0;
+    checks['unknown contract publisher collapses to a table row'] = !!saved && !!saved.contract && !/</.test(saved.contract.publisher) && saved.contract.publisher.length > 0;
+    note['unknown contract publisher collapses to a table row'] = saved && saved.contract ? `publisher="${saved.contract.publisher}"` : 'no contract in save';
+    checks['contract banner still renders for the sanitised contract'] = banner.shown === true;
+    checks['contract-publisher import raises no JS error'] = errors.length === 0;
+    note['contract-publisher import raises no JS error'] = errors.slice(0, 2).join(' | ');
+    await page.close();
+  }
+
   // ---- 6. Unknown platform id must be rejected, not crash the UI ----
   {
     const { page, errors } = await boot({ save: null });

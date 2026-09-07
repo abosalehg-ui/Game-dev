@@ -11,7 +11,7 @@
  *  - There are no third-party requests left, so no cross-origin caching rules.
  */
 
-const VERSION = 'v1.12.1';
+const VERSION = 'v1.13.0';
 const APP_SHELL = `room-to-top-shell-${VERSION}`;
 const RUNTIME = `room-to-top-runtime-${VERSION}`;
 
@@ -21,8 +21,10 @@ const PRECACHE_URLS = [
   './manifest.webmanifest',
   './vendor/three.module.js',
   './vendor/fonts/cairo-arabic.woff2',
-  './vendor/fonts/cairo-latin.woff2',
-  './vendor/fonts/cairo-latin-ext.woff2',
+  // The Latin and Latin-Extended faces are deliberately NOT pre-cached. The UI
+  // is Arabic; those two files (~49KB) cover glyph ranges it barely touches, and
+  // @font-face's unicode-range already lets the browser skip them. If a page
+  // does need one it is fetched on demand and then held by the runtime cache.
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

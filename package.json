@@ -1,12 +1,12 @@
 {
   "name": "room-to-top",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "description": "من الغرفة للقمة — محاكي تطوير ألعاب ثلاثي الأبعاد في ملف HTML واحد",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "node tools/check-syntax.mjs",
-    "test": "node tests/smoke.mjs && node tests/topic-detect.mjs && node tests/topic-flow.mjs && node tests/save-integrity.mjs && node tests/pathfinding.mjs && node tests/viewport-fit.mjs && node tests/event-text.mjs && node tests/focus-trap.mjs && node tests/endgame.mjs && node tests/playthrough.mjs",
+    "test": "node tests/smoke.mjs && node tests/topic-detect.mjs && node tests/topic-flow.mjs && node tests/save-integrity.mjs && node tests/pathfinding.mjs && node tests/viewport-fit.mjs && node tests/event-text.mjs && node tests/focus-trap.mjs && node tests/endgame.mjs && node tests/formulas.mjs && node tests/rescue-loan.mjs && node tests/playthrough.mjs",
     "test:smoke": "node tests/smoke.mjs",
     "test:topic": "node tests/topic-detect.mjs && node tests/topic-flow.mjs",
     "test:save": "node tests/save-integrity.mjs",
@@ -21,6 +21,8 @@
     "test:events": "node tests/event-text.mjs",
     "test:focus": "node tests/focus-trap.mjs",
     "test:endgame": "node tests/endgame.mjs",
+    "test:formulas": "node tests/formulas.mjs",
+    "test:rescue": "node tests/rescue-loan.mjs",
     "share": "node tools/share-probe.mjs"
   },
   "devDependencies": {

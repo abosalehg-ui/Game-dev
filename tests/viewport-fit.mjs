@@ -131,9 +131,21 @@ page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|
 await page.goto(`http://localhost:${server.address().port}/index.html`, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => localStorage.removeItem('gd_save'));
 await page.reload({ waitUntil: 'domcontentloaded' });
-await page.waitForTimeout(1200);
+// Wait on the CONDITION, not the clock. Fixed sleeps were the second reason this
+// suite went red on a loaded runner and green on the retry.
+await page.waitForFunction(() => window.__fit && document.getElementById('bst'));
 await page.click('#bst');
-await page.waitForTimeout(700);
+await page.waitForFunction(() => document.getElementById('ss').style.display === 'none');
+
+// The corner projection reads the camera's world matrix. applyCam() refreshes it
+// synchronously now, so a stage or yaw change is observable from the very next
+// evaluate() — but give the renderer one frame anyway so the check also covers
+// what the player would actually see drawn.
+const settle = () => page.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
+const setViewport = async (w, h) => {
+  await page.setViewportSize({ width: w, height: h });
+  await page.waitForFunction(([ww, hh]) => window.innerWidth === ww && window.innerHeight === hh, [w, h]);
+};
 
 const checks = {};
 const note = {};
@@ -148,12 +160,11 @@ let worstWhere = '';
 const offenders = [];
 
 for (const vp of VIEWPORTS) {
-  await page.setViewportSize({ width: vp.w, height: vp.h });
-  await page.waitForTimeout(150);
+  await setViewport(vp.w, vp.h);
   let vpWorst = 0;
   for (let s = 0; s <= 5; s++) {
     await page.evaluate(st => window.__fit.stage(st), s);
-    await page.waitForTimeout(120);
+    await settle();
     for (const y of YAWS) {
       await page.evaluate(yy => window.__fit.yaw(yy), y);
       const corners = await page.evaluate(() => window.__fit.corners());
@@ -179,9 +190,9 @@ note['every floor fits on every viewport, at every orbit angle'] = worstOverflow
 // The fix must not touch the desktop framing. 18 is CAM_BASE_HALF_H; anything
 // else at 900×620 on the early stages means the baseline look moved.
 {
-  await page.setViewportSize({ width: 900, height: 620 });
+  await setViewport(900, 620);
   await page.evaluate(() => window.__fit.stage(0));
-  await page.waitForTimeout(150);
+  await settle();
   const f = await page.evaluate(() => window.__fit.frustum());
   checks['a wide screen keeps the original framing'] = Math.abs(f.halfH - 18) < 1e-6;
   note['a wide screen keeps the original framing'] = `half-height ${f.halfH.toFixed(2)} (baseline 18)`;
@@ -189,9 +200,9 @@ note['every floor fits on every viewport, at every orbit angle'] = worstOverflow
 
 // Orbiting must not resize the frustum, or the scene visibly breathes as it spins.
 {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await setViewport(390, 844);
   await page.evaluate(() => window.__fit.stage(5));
-  await page.waitForTimeout(150);
+  await settle();
   const seen = [];
   for (const y of YAWS) {
     await page.evaluate(yy => window.__fit.yaw(yy), y);

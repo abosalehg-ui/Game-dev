@@ -36,8 +36,15 @@
 
 /* --tx3 was #666 on #0a0e1a (~3.4:1) and #888 on #f0f3fa (~3.2:1) — both below the
    WCAG AA 4.5:1 floor for the small secondary labels it is used on. */
-:root{--p:#00ff88;--s:#00ccff;--d:#ff0055;--g:#ffd700;--pb:rgba(12,18,38,0.82);--pbr:rgba(0,204,255,0.12);--bg1:#0a0e1a;--bg2:#020204;--tx:#fff;--tx2:#b3b9c9;--tx3:#8b93a7}
-body.light{--p:#00aa55;--s:#0088cc;--d:#cc0044;--g:#8a6d00;--pb:rgba(245,247,255,0.92);--pbr:rgba(0,136,204,0.2);--bg1:#f0f3fa;--bg2:#dde3f0;--tx:#222;--tx2:#4a505e;--tx3:#5d6472}
+/* Every opaque surface a modal, toast or side panel sits on is a token, so the
+   light theme can repaint it. The modal background used to be a literal dark
+   navy: switching to the light theme swapped --tx to #222 but left .modal at
+   rgba(12,16,30,.95), which put near-black text on near-black — every dialog
+   in the game, the settings one included, at ~1.5:1 contrast. */
+:root{--p:#00ff88;--s:#00ccff;--d:#ff0055;--g:#ffd700;--pb:rgba(12,18,38,0.82);--pbr:rgba(0,204,255,0.12);--bg1:#0a0e1a;--bg2:#020204;--tx:#fff;--tx2:#b3b9c9;--tx3:#8b93a7;
+  --modal-bg:rgba(12,16,30,.95);--panel-bg:rgba(12,12,30,.95);--dim-bg:rgba(0,0,0,.82);--egg-bg:rgba(0,0,0,.92);--muted-bg:rgba(0,0,0,.3);--hover-bg:rgba(255,255,255,.05)}
+body.light{--p:#00aa55;--s:#0088cc;--d:#cc0044;--g:#8a6d00;--pb:rgba(245,247,255,0.92);--pbr:rgba(0,136,204,0.2);--bg1:#f0f3fa;--bg2:#dde3f0;--tx:#222;--tx2:#4a505e;--tx3:#5d6472;
+  --modal-bg:rgba(246,248,255,.97);--panel-bg:rgba(246,248,255,.96);--dim-bg:rgba(30,40,60,.5);--egg-bg:rgba(255,255,255,.97);--muted-bg:rgba(0,0,0,.06);--hover-bg:rgba(0,0,0,.04)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--tx);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 #gC{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
@@ -84,7 +91,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
    derivation is never a black box. Doubles as the button that opens the picker. */
 .techo{margin-top:5px;padding:5px 6px;min-height:32px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;border:1px dashed rgba(0,204,255,.22);border-radius:6px;background:rgba(0,204,255,.03);transition:all .15s}
 .techo:has(.tmain:hover),.techo:has(.tmain:focus-visible){border-color:var(--s);background:rgba(0,204,255,.07)}
-.techo .tmain{flex:1;min-width:0;text-align:right;padding:2px 3px;background:none;border:none;color:var(--tx2);font-family:'Cairo';font-size:11.5px;font-weight:700;line-height:1.5;cursor:pointer}
+.techo .tmain{flex:1;min-width:0;text-align:start;padding:2px 3px;background:none;border:none;color:var(--tx2);font-family:'Cairo';font-size:11.5px;font-weight:700;line-height:1.5;cursor:pointer}
 .techo .tw{color:var(--tx3);font-weight:400}
 .techo .tv{color:var(--s);font-weight:900}
 .techo .talt{padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);color:var(--tx2);font-family:'Cairo';font-size:10.5px;font-weight:700;cursor:pointer}
@@ -104,7 +111,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 /* Already shipped in — the ✓ turns the picker into a checklist for 📖 معجم الاستوديو. */
 .tpc.done{border-color:rgba(0,255,136,.28)}
 .tpprog{font-size:11px;font-weight:700;color:var(--p);text-align:center;margin-top:6px}
-.tpwords{margin-top:8px;font-size:11px;color:var(--tx3);text-align:right;line-height:1.7}
+.tpwords{margin-top:8px;font-size:11px;color:var(--tx3);text-align:start;line-height:1.7}
 .tpwords summary{cursor:pointer;color:var(--s);font-weight:700;font-size:12px;margin-bottom:6px}
 .tpwords b{color:var(--tx2)}
 
@@ -120,7 +127,10 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .stf.ds{background:linear-gradient(90deg,#ff6b6b,#ee5a24)}.stf.cd{background:linear-gradient(90deg,#4ecdc4,#00b894)}.stf.sn2{background:linear-gradient(90deg,#a29bfe,#6c5ce7)}
 .sth{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#ddd);border:2.5px solid var(--s);position:absolute;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px rgba(0,204,255,.3),0 2px 6px rgba(0,0,0,.5);z-index:2;pointer-events:none}
 .sth.ds{border-color:#ff6b6b}.sth.cd{border-color:#00b894}.sth.sn2{border-color:#6c5ce7}
-@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.sb2{padding:5px 10px;font-size:12px}.sr{max-height:132px}.techo{font-size:12px;min-height:36px}.tpc{min-height:70px}}
+@media (max-width:480px){.sth{width:28px;height:28px}.stw{height:38px}.sb2{padding:5px 10px;font-size:12px}.sr{max-height:132px}.techo{font-size:12px;min-height:36px}.tpc{min-height:70px}
+  /* Nine icon buttons at 10px/~26px tall were the smallest tap targets in the
+     game, on the screen size the game advertises itself for. */
+  .topbtn{min-height:40px;min-width:40px;padding:8px 12px;font-size:12px}}
 
 .bd{width:100%;padding:9px;margin-top:8px;background:linear-gradient(135deg,var(--s),#2d00f7);border:none;border-radius:8px;color:#fff;font-family:'Cairo';font-size:14px;font-weight:900;cursor:pointer;transition:all .2s;box-shadow:0 0 12px rgba(0,204,255,.15)}
 .bd:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,204,255,.25)}
@@ -129,10 +139,10 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 
 .os{position:fixed;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50;text-align:center;padding:12px}
 .os.show{display:flex}
-.os.dim{background:rgba(0,0,0,.82);backdrop-filter:blur(4px)}
+.os.dim{background:var(--dim-bg);backdrop-filter:blur(4px)}
 .os.transp{background:rgba(0,0,0,.25);backdrop-filter:blur(1px)}
 
-.modal{background:rgba(12,16,30,.95);border:1px solid rgba(0,204,255,.15);border-radius:14px;padding:18px 22px;max-width:min(440px,94vw);max-height:88vh;overflow-y:auto;width:100%}
+.modal{background:var(--modal-bg);border:1px solid rgba(0,204,255,.15);border-radius:14px;padding:18px 22px;max-width:min(440px,94vw);max-height:88vh;overflow-y:auto;width:100%}
 .modal h2{font-size:18px;color:var(--s);margin-bottom:8px;font-weight:900}
 .modal h3{font-size:13px;color:var(--g);margin:10px 0 6px;font-weight:700}
 .modal p{font-size:12px;color:var(--tx2);margin-bottom:6px;line-height:1.5}
@@ -172,12 +182,12 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .diff button{padding:8px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:var(--tx2);font-family:'Cairo';font-size:12px;font-weight:700;cursor:pointer}
 .diff button.a{background:rgba(0,204,255,.12);border-color:var(--s);color:var(--s)}
 
-#at{position:fixed;bottom:16px;right:16px;background:rgba(12,12,30,.94);border:1px solid rgba(255,215,0,.25);border-radius:8px;padding:8px 14px;z-index:300;text-align:center;transform:translateX(120%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);pointer-events:none;max-width:80vw}
+#at{position:fixed;bottom:16px;inset-inline-end:16px;background:var(--panel-bg);border:1px solid rgba(255,215,0,.25);border-radius:8px;padding:8px 14px;z-index:300;text-align:center;transform:translateX(120%);transition:transform .45s cubic-bezier(.34,1.56,.64,1);pointer-events:none;max-width:80vw}
 #at.show{transform:translateX(0)}
 .al{font-size:10px;color:var(--g);font-weight:900;letter-spacing:.8px}
 .an{font-size:12px;color:#fff}
 
-#ee{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(0,0,0,.92);border:2px solid var(--g);border-radius:14px;padding:18px 28px;z-index:310;text-align:center;transition:transform .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+#ee{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:var(--egg-bg);border:2px solid var(--g);border-radius:14px;padding:18px 28px;z-index:310;text-align:center;transition:transform .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
 #ee.show{transform:translate(-50%,-50%) scale(1)}
 .eet{font-size:28px;margin-bottom:4px}
 .een{font-size:16px;font-weight:900;color:var(--g)}
@@ -190,7 +200,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
    so it can never overlap regardless of how many lines the stat row takes. */
 #topbar2{padding:0 12px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 
-#hp{display:none;position:fixed;top:96px;right:12px;width:min(260px,80vw);max-height:50vh;background:rgba(12,12,30,.96);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px;overflow-y:auto;z-index:40;font-size:11px}
+#hp{display:none;position:fixed;top:96px;inset-inline-end:12px;width:min(260px,80vw);max-height:50vh;background:var(--panel-bg);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px;overflow-y:auto;z-index:40;font-size:11px}
 .hr{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)}.hn{color:var(--tx2)}.hs{font-weight:900}
 
 .platrow{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
@@ -220,14 +230,14 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 #settingsModal input[type=range]{width:120px}
 #settingsModal input[type=checkbox]{cursor:pointer}
 
-.qa-opt{display:block;width:100%;font-family:'Cairo';padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin:5px 0;cursor:pointer;transition:all .15s;text-align:right}
+.qa-opt{display:block;width:100%;font-family:'Cairo';padding:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin:5px 0;cursor:pointer;transition:all .15s;text-align:start}
 .qa-opt.dis{opacity:.4;cursor:not-allowed}
 .qa-opt .qaprice{color:var(--g);font-weight:700}
 .qa-opt:hover{border-color:var(--s);background:rgba(0,204,255,.05)}
 .qa-opt .qat{font-size:13px;font-weight:900;color:var(--s);margin-bottom:3px}
 .qa-opt .qad{font-size:11px;color:var(--tx2);line-height:1.5}
 
-.mkt-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin:5px 0;cursor:pointer;text-align:right;transition:all .15s}
+.mkt-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin:5px 0;cursor:pointer;text-align:start;transition:all .15s}
 .mkt-opt:hover{border-color:var(--g);background:rgba(255,215,0,.05)}
 .mkt-opt.dis{opacity:.4;cursor:not-allowed}
 .mkt-opt .mt{font-size:12px;font-weight:900;color:var(--g)}
@@ -237,15 +247,15 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .tab-bar button{flex:1;padding:6px;background:none;border:none;color:var(--tx3);font-family:'Cairo';font-size:11px;font-weight:700;cursor:pointer;border-bottom:2px solid transparent}
 .tab-bar button.a{color:var(--s);border-bottom-color:var(--s)}
 
-.rivalcard{padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;margin-bottom:5px;font-size:11px;text-align:right}
+.rivalcard{padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;margin-bottom:5px;font-size:11px;text-align:start}
 .rivalcard.me{background:rgba(255,215,0,.06);border-color:rgba(255,215,0,.3)}
 .rivalcard .rn2{font-weight:900}
 .rivalcard .rl{font-size:10px;color:var(--tx3);margin-top:3px}
-.rivalcard .share{font-weight:900;color:var(--s);float:left;direction:ltr}
+.rivalcard .share{font-weight:900;color:var(--s);float:inline-end;direction:ltr}
 #contractBanner{display:none;padding:6px 8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.25);border-radius:6px;margin-bottom:8px;font-size:11px;color:var(--g);font-weight:700;line-height:1.6}
 .moralebar{height:10px;background:rgba(255,255,255,.06);border-radius:5px;margin:8px 0;overflow:hidden}
 .moralebar div{height:100%;transition:width .3s;border-radius:5px}
-.loanstat{padding:8px;background:rgba(0,204,255,.05);border:1px solid rgba(0,204,255,.15);border-radius:8px;margin:6px 0;font-size:11px;text-align:right;line-height:1.7}
+.loanstat{padding:8px;background:rgba(0,204,255,.05);border:1px solid rgba(0,204,255,.15);border-radius:8px;margin:6px 0;font-size:11px;text-align:start;line-height:1.7}
 
 /* ---- Keyboard navigation: every interactive element must show where focus is ---- */
 :focus-visible{outline:2px solid var(--s);outline-offset:2px;border-radius:4px}
@@ -281,7 +291,7 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
 .stt{position:absolute;top:50%;width:2px;height:14px;margin-top:-7px;background:var(--g);opacity:.75;border-radius:1px;pointer-events:none;z-index:1}
 
 /* ---- Mid-production decision (replaces part of the dead 2.75s wait) ---- */
-.prod-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin:6px 0;cursor:pointer;text-align:right;transition:all .15s;width:100%;font-family:'Cairo'}
+.prod-opt{padding:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:8px;margin:6px 0;cursor:pointer;text-align:start;transition:all .15s;width:100%;font-family:'Cairo'}
 .prod-opt:hover{border-color:var(--s);background:rgba(0,204,255,.05)}
 .prod-opt .pt2{font-size:13px;font-weight:900;color:var(--s);margin-bottom:3px}
 .prod-opt .pd2{font-size:11px;color:var(--tx2);line-height:1.5}
@@ -360,9 +370,9 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     </div>
     <div class="sg"><div class="sl">📱 المنصات (اختر واحدة أو أكثر — 🔥 مناسبة للنوع، 🔻 غير مناسبة)</div><div class="platrow" id="plr" role="group" aria-label="منصات النشر"></div></div>
     <div class="slt"><span>⚙️ توزيع نقاط التطوير</span><span class="pl">المتبقي: <span id="dpl">0</span> / <span id="dpm">10</span></span></div>
-    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
-    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
-    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
+    <div class="srow"><span class="si">🎨</span><span class="sn">تصميم</span><div class="stw" data-s="design" role="slider" tabindex="0" aria-label="نقاط التصميم" aria-valuemin="0" aria-valuenow="3" aria-valuemax="10"><div class="stb"><div class="stf ds" id="fd"></div><div class="stt" id="mkd"></div></div><div class="sth ds" id="td"></div></div><span class="sv" id="vd">3</span></div>
+    <div class="srow"><span class="si">💻</span><span class="sn">برمجة</span><div class="stw" data-s="code" role="slider" tabindex="0" aria-label="نقاط البرمجة" aria-valuemin="0" aria-valuenow="4" aria-valuemax="10"><div class="stb"><div class="stf cd" id="fc"></div><div class="stt" id="mkc"></div></div><div class="sth cd" id="tc"></div></div><span class="sv" id="vc">4</span></div>
+    <div class="srow"><span class="si">🔊</span><span class="sn">صوت</span><div class="stw" data-s="sound" role="slider" tabindex="0" aria-label="نقاط الصوت" aria-valuemin="0" aria-valuenow="3" aria-valuemax="10"><div class="stb"><div class="stf sn2" id="fs"></div><div class="stt" id="mks"></div></div><div class="sth sn2" id="ts"></div></div><span class="sv" id="vs">3</span></div>
     <!-- Pinned: the live quality read-out and the primary action must stay on screen
          no matter how far the player has scrolled the genre/topic grids. -->
     <div id="devFooter">
@@ -486,19 +496,19 @@ body{font-family:'Cairo',sans-serif;overflow:hidden;background:#000;color:var(--
     <p>قبل إطلاق لعبتك، هل تريد حملة إعلانية؟ الحملة الناجحة ترفع المعجبين والمبيعات.</p>
     <div class="hype"><div id="hypeBar" style="width:0%"></div></div>
     <div style="font-size:10px;color:var(--tx3);text-align:center;margin-bottom:4px">مقياس الضجة</div>
-    <div class="mkt-opt" onclick="ChooseMkt('none')">
+    <div class="mkt-opt" role="button" tabindex="0" onclick="ChooseMkt('none')">
       <div class="mt">🚫 بدون حملة</div>
       <div class="md">مجاناً • لا ضجة قبل الإطلاق</div>
     </div>
-    <div class="mkt-opt" id="mktS" onclick="ChooseMkt('s')">
+    <div class="mkt-opt" id="mktS" role="button" tabindex="0" onclick="ChooseMkt('s')">
       <div class="mt">📣 حملة صغيرة</div>
       <div class="md">5,000 💰 • ضجة +20 • مبيعات أولية +15%</div>
     </div>
-    <div class="mkt-opt" id="mktM" onclick="ChooseMkt('m')">
+    <div class="mkt-opt" id="mktM" role="button" tabindex="0" onclick="ChooseMkt('m')">
       <div class="mt">📺 حملة متوسطة</div>
       <div class="md">25,000 💰 • ضجة +50 • مبيعات أولية +35%</div>
     </div>
-    <div class="mkt-opt" id="mktL" onclick="ChooseMkt('l')">
+    <div class="mkt-opt" id="mktL" role="button" tabindex="0" onclick="ChooseMkt('l')">
       <div class="mt">🌐 حملة كبيرة</div>
       <div class="md">100,000 💰 • ضجة +100 • مبيعات أولية +75%</div>
     </div>
@@ -627,7 +637,7 @@ import * as THREE from './vendor/three.module.js';
 
 // ============ THREE.JS ============
 let scene,camera,renderer,employees=[],typingActive=false,trophies=[];
-let amb,dl,fill,winMeshes=[],confettiBursts=[],celebrateUntil=0,walkers=0,curStage=0;
+let amb,dl,fill,winMeshes=[],celebrateUntil=0,walkers=0,curStage=0,_glLost=false;
 
 // Camera base positions per stage + interactive orbit/zoom state
 const CAM_POS=[[20,20,20],[22,22,22],[26,26,26],[30,28,30],[36,34,36],[42,40,42]];
@@ -698,6 +708,14 @@ function applyCam(){
   camera.lookAt(0,0,0);
   camera.zoom=camNow.zoom;
   camera.updateProjectionMatrix();
+  // The world matrix is refreshed here rather than left to the next render.
+  // Anything that projects through the camera between two frames — the
+  // viewport-fit test's corner check, or a future screen-space UI anchor —
+  // otherwise reads matrixWorldInverse from the PREVIOUS yaw, and whether that
+  // is stale depends on whether a rAF happened to land in between: the exact
+  // race that made tests/viewport-fit.mjs pass on one run and fail on the next
+  // with identical code.
+  camera.updateMatrixWorld(true);
   // The backdrop is a child of the camera, so it follows the orbit for free — but
   // the window it samples and the size it needs both depend on where the camera
   // ended up, so they are recomputed here rather than per frame.
@@ -1056,6 +1074,21 @@ function initThree(){
   renderer.toneMappingExposure=TONE_EXPOSURE;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   c.appendChild(renderer.domElement);
+  // Mobile browsers evict the GL context when the tab is backgrounded under
+  // memory pressure. Without preventDefault() on the lost event the browser
+  // never attempts a restore, and the player comes back from a phone call to a
+  // black canvas for good. three.js re-uploads geometry and textures itself on
+  // restore; the composer's render targets and the PMREM'd sky are ours to
+  // rebuild, and the frame loop must not draw through a dead context meanwhile.
+  renderer.domElement.addEventListener('webglcontextlost',e=>{
+    e.preventDefault();_glLost=true;
+    showToast('⚠️ فُقد اتصال الرسوميات — جارٍ الاستعادة...');
+  },false);
+  renderer.domElement.addEventListener('webglcontextrestored',()=>{
+    _glLost=false;
+    try{disposeComposer();buildComposer();_skyKey='';refreshSky();}catch(err){console.error('GL restore failed:',err);}
+    showToast('✅ عادت الرسوميات');
+  },false);
   // Ambient is scaled back because the environment map now supplies the indirect
   // term with actual directional variation instead of a constant grey.
   amb=new THREE.AmbientLight(0x556677,0.7*LIGHT_GAIN*AMB_ENV_SCALE);
@@ -1079,7 +1112,11 @@ function initThree(){
 }
 
 // Drag-to-orbit + wheel/pinch-to-zoom (custom handlers, no OrbitControls dependency)
+let _controlsBound=false;
 function bindCameraControls(){
+  // Guarded so a second initThree() (context-loss recovery, tests) cannot stack
+  // a duplicate set of pointer and wheel handlers on the canvas.
+  if(_controlsBound)return;_controlsBound=true;
   const cv=renderer.domElement;
   cv.style.touchAction='none';
   const ptrs=new Map();let lastPinch=0;
@@ -1152,6 +1189,10 @@ const DAY_PHASES=[
 ];
 let dayTarget=DAY_PHASES[1];
 const _dc1=new THREE.Color(),_dc2=new THREE.Color(),_dc3=new THREE.Color(),_dc4=new THREE.Color();
+// scene.background gets its OWN Color. It used to be assigned one of the scratch
+// colours by reference, so the day/night lerp toward `_dc3.set(target)` was a
+// colour lerping toward itself — the "cross-fade" the comment promised was a snap.
+const _bgColor=new THREE.Color();
 function applyDayPhase(){
   const idx=Math.max(0,Math.min(3,Math.floor(S.gamesThisYear||0)));
   const next=DAY_PHASES[idx];
@@ -1347,13 +1388,13 @@ function refreshSky(){
     // scene.background stays a flat colour and the visible sky is drawn by the
     // backdrop plane instead — see mkSkyPlane() for why neither of three's own
     // background paths can do this job under an orthographic camera.
-    scene.background=_dc3.setHex(dayTarget.bg);
+    scene.background=_bgColor.setHex(dayTarget.bg);
     scene.backgroundIntensity=BG_INTENSITY;
     updateSkyPlane();
   }else{
     // Lowest tier: no reflections, no sky — the original flat backdrop.
     scene.environment=null;
-    scene.background=_dc3.setHex(dayTarget.bg);
+    scene.background=_bgColor.setHex(dayTarget.bg);
     if(skyPlane)skyPlane.visible=false;
   }
 }
@@ -1637,28 +1678,49 @@ function updateFlash(f){
 }
 
 // Celebration confetti burst (added to scene directly so buildRoom rebuilds can't wipe it)
+// One pooled Points object sized for the largest burst. Each celebration used
+// to allocate a fresh geometry, two Float32Arrays, a material and an array of
+// 250–700 velocity objects, then throw them all away 3.5 s later — the only
+// place in the game that churned GPU resources at runtime. The pool is added to
+// the scene (not the room group) so it survives every buildRoom(). A new burst
+// while one is still falling restarts it, which is what the eye expects anyway.
+const CONFETTI_MAX=700;
+let _confetti=null;
+const _confettiColor=new THREE.Color();
+function confettiPool(){
+  if(_confetti)return _confetti;
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(CONFETTI_MAX*3),3));
+  geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(CONFETTI_MAX*3),3));
+  geo.setDrawRange(0,0);
+  const mat=new THREE.PointsMaterial({size:.3,vertexColors:true,transparent:true,opacity:1});
+  const pts=new THREE.Points(geo,mat);
+  pts.visible=false;pts.frustumCulled=false;
+  scene.add(pts);
+  _confetti={pts,vel:new Float32Array(CONFETTI_MAX*3),count:0,born:0};
+  return _confetti;
+}
 function spawnConfetti(n,gold){
   if(!scene)return;
   // Large bursts of moving particles are exactly what "reduce motion" is for.
   if(prefersReducedMotion())return;
-  n=n||250;
-  const geo=new THREE.BufferGeometry();
-  const pos=new Float32Array(n*3),col=new Float32Array(n*3),vel=[];
-  const c=new THREE.Color();
+  n=Math.min(CONFETTI_MAX,n||250);
+  const cf=confettiPool();
+  const pos=cf.pts.geometry.attributes.position.array,col=cf.pts.geometry.attributes.color.array,vel=cf.vel;
+  const c=_confettiColor;
   for(let i=0;i<n;i++){
-    pos[i*3]=(Math.random()-.5)*4;pos[i*3+1]=8+Math.random()*3;pos[i*3+2]=(Math.random()-.5)*4;
+    const i3=i*3;
+    pos[i3]=(Math.random()-.5)*4;pos[i3+1]=8+Math.random()*3;pos[i3+2]=(Math.random()-.5)*4;
     if(gold)c.setHSL(0.12+Math.random()*0.05,1,0.5+Math.random()*0.3);
     else c.setHSL(Math.random(),0.9,0.6);
-    col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;
-    vel.push({x:(Math.random()-.5)*.25,y:Math.random()*.15,z:(Math.random()-.5)*.25});
+    col[i3]=c.r;col[i3+1]=c.g;col[i3+2]=c.b;
+    vel[i3]=(Math.random()-.5)*.25;vel[i3+1]=Math.random()*.15;vel[i3+2]=(Math.random()-.5)*.25;
   }
-  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
-  const mat=new THREE.PointsMaterial({size:.3,vertexColors:true,transparent:true,opacity:1});
-  geo.userData.owned=true;mat.userData.owned=true;
-  const pts=new THREE.Points(geo,mat);
-  scene.add(pts);
-  confettiBursts.push({pts,vel,born:Date.now()});
+  cf.pts.geometry.attributes.position.needsUpdate=true;
+  cf.pts.geometry.attributes.color.needsUpdate=true;
+  cf.pts.geometry.setDrawRange(0,n);
+  cf.pts.material.opacity=1;cf.pts.visible=true;
+  cf.count=n;cf.born=Date.now();
 }
 
 // ---- Shared GPU resources -------------------------------------------------
@@ -1834,7 +1896,6 @@ const screens=[];   // {canvas, ctx, tex, draw, state}
 const SCR_BG='#153a5e',SCR_CHROME='#0d2439';
 const SCR_INK=['#9fe4ff','#ff9fd2','#bdf59f','#ffe08a','#c9b6ff'];
 
-function mulberryFrom(seed){return mulberry32(seed)}
 
 function makeScreen(variant){
   const canvas=document.createElement('canvas');
@@ -1857,7 +1918,7 @@ function makeScreen(variant){
 // Rows of coloured bars read as code at this size far better than actual glyphs,
 // which turn to mush below about 8px.
 function drawCode(ctx,st){
-  const rnd=mulberryFrom(st.seed+((st.t/6)|0));
+  const rnd=mulberry32(st.seed+((st.t/6)|0));
   ctx.fillStyle=SCR_BG;ctx.fillRect(0,0,SCREEN_W,SCREEN_H);
   ctx.fillStyle=SCR_CHROME;ctx.fillRect(0,0,SCREEN_W,10);
   for(let i=0;i<3;i++){ctx.fillStyle=['#ff5f57','#febc2e','#28c840'][i];ctx.fillRect(5+i*7,4,3,3);}
@@ -1886,7 +1947,7 @@ function drawCode(ctx,st){
 }
 
 function drawArt(ctx,st){
-  const rnd=mulberryFrom(st.seed+((st.t/10)|0));
+  const rnd=mulberry32(st.seed+((st.t/10)|0));
   ctx.fillStyle=SCR_BG;ctx.fillRect(0,0,SCREEN_W,SCREEN_H);
   ctx.fillStyle=SCR_CHROME;ctx.fillRect(0,0,SCREEN_W,10);
   // Checkerboard, the universal "transparent background" of every art tool.
@@ -1907,7 +1968,7 @@ function drawArt(ctx,st){
 }
 
 function drawChart(ctx,st){
-  const rnd=mulberryFrom(st.seed);
+  const rnd=mulberry32(st.seed);
   ctx.fillStyle=SCR_BG;ctx.fillRect(0,0,SCREEN_W,SCREEN_H);
   ctx.fillStyle=SCR_CHROME;ctx.fillRect(0,0,SCREEN_W,10);
   const bars=14,bw=SCREEN_W/bars;
@@ -2528,7 +2589,6 @@ function mkTrophy(x,y,z,col){
   gTrophies.add(t);trophies.push(t);return t;
 }
 
-const COLORS=[0x00aaff,0xff6b6b,0x6c5ce7,0x00b894,0xfdcb6e,0xe17055,0x74b9ff,0xffeaa7];
 
 // Role-based person colors (matches employee role)
 const ROLE_COLORS={designer:0xff6b9d,coder:0x00b894,artist:0xa29bfe,composer:0x74b9ff,marketer:0xfdcb6e};
@@ -2591,10 +2651,11 @@ function placePeople(stage){
     // Slot 0 = self (player). Always present, gold colored.
     // Slots 1+ = hired employees in order. Empty slot = no person (visible empty desk).
     // People stand on the +Z side of their desk, which is the side the chair and
-    // keyboard are on. Derived from the two positions rather than hard-coded to
-    // pi, so moving a desk or changing DESK_STAND_OFF keeps them facing it.
+    // keyboard are on, and face -Z back toward it. (An earlier version derived
+    // this with atan2 from the two positions, but since the stand-off is purely
+    // along Z the answer was always exactly pi — a derivation with one outcome.)
     const px=desk.x,pz=desk.z+DESK_STAND_OFF;
-    const faceY=Math.atan2(desk.x-px,desk.z-pz);
+    const faceY=Math.PI;
     if(i===0){
       const p=mkPerson(px,pz,SELF_COLOR,0,faceY);
       p.userData.isSelf=true;
@@ -2803,13 +2864,20 @@ function navPath(fromX,fromZ,toX,toZ){
   const prev=new Int32Array(n).fill(-1),closed=new Uint8Array(n);
   const h=(c,r)=>{const dc=Math.abs(c-goal.c),dr=Math.abs(r-goal.r);return (dc+dr)+(1.414-2)*Math.min(dc,dr);};
   g[si]=0;fScore[si]=h(start.c,start.r);
-  const open=[si];
+  // Binary min-heap on fScore. The open set used to be a plain array with a
+  // linear scan for the minimum AND an includes() on every relaxation — O(n)
+  // twice per expansion, O(n²) over the skyscraper's ~2.6k cells, which is a
+  // multi-millisecond synchronous hitch every time someone went for coffee.
+  // A relaxed node is pushed again rather than re-keyed; the stale copy is
+  // skipped on pop because the node is closed by then.
+  const heap=[];
+  const hPush=i=>{heap.push(i);let k=heap.length-1;while(k>0){const pk=(k-1)>>1;if(fScore[heap[pk]]<=fScore[heap[k]])break;const t=heap[pk];heap[pk]=heap[k];heap[k]=t;k=pk;}};
+  const hPop=()=>{const top=heap[0],last=heap.pop();if(heap.length){heap[0]=last;let k=0;for(;;){const l=2*k+1,r=l+1;let m=k;if(l<heap.length&&fScore[heap[l]]<fScore[heap[m]])m=l;if(r<heap.length&&fScore[heap[r]]<fScore[heap[m]])m=r;if(m===k)break;const t=heap[m];heap[m]=heap[k];heap[k]=t;k=m;}}return top;};
+  hPush(si);
   let guard=0;
-  while(open.length&&guard++<20000){
-    // Small grids, so a linear scan for the best node beats maintaining a heap.
-    let bi=0;
-    for(let k=1;k<open.length;k++)if(fScore[open[k]]<fScore[open[bi]])bi=k;
-    const cur=open.splice(bi,1)[0];
+  while(heap.length&&guard++<20000){
+    const cur=hPop();
+    if(closed[cur])continue;
     if(cur===gi)break;
     closed[cur]=1;
     const cc=cur%nav.cols,cr=(cur-cc)/nav.cols;
@@ -2823,7 +2891,7 @@ function navPath(fromX,fromZ,toX,toZ){
       const t=g[cur]+cost;
       if(t<g[ni]){
         g[ni]=t;fScore[ni]=t+h(nc,nr);prev[ni]=cur;
-        if(!open.includes(ni))open.push(ni);
+        hPush(ni);
       }
     }
   }
@@ -3018,9 +3086,11 @@ let _lastFrame=0,_frameSkip=0;
 // and while a modal covers the scene we drop to every third frame — enough to keep
 // the confetti celebration behind the review card alive at a third of the GPU cost.
 const MODAL_FRAME_DIVISOR=3;
+// Hoisted out of animate() so it is not re-created as a closure every frame.
+function swing(pivots,a,b){if(pivots){pivots[0].rotation.x=a;pivots[1].rotation.x=b===undefined?a:b;}}
 function animate(){
   requestAnimationFrame(animate);
-  if(document.hidden){_lastFrame=0;return}
+  if(document.hidden||_glLost){_lastFrame=0;return}
   if(anyModalOpen()&&(++_frameSkip%MODAL_FRAME_DIVISOR)!==0)return;
   const now=Date.now();
   const t=now*.001;
@@ -3034,7 +3104,6 @@ function animate(){
   // reached for children[2] and children[3], which silently meant "whatever the
   // third and fourth boxes happen to be" — and the moment the model gained legs,
   // hair and a collar those indices pointed at completely different parts.
-  const swing=(pivots,a,b)=>{if(pivots){pivots[0].rotation.x=a;pivots[1].rotation.x=b===undefined?a:b;}};
   employees.forEach((e,i)=>{
     const u=e.userData||{};
     const bs=u.s||1;   // the person's own build scale, which breathing multiplies
@@ -3043,7 +3112,7 @@ function animate(){
       if(u.anim&&u.anim!=='idle'){u.anim='idle';u.path=null;walkers=Math.max(0,walkers-1);detachCup(e);}
       e.position.x=u.baseX;e.position.z=u.baseZ;u.lean=0;
       e.position.y=Math.abs(Math.sin(t*9+i))*1.2;
-      e.rotation.y+=0.15;
+      e.rotation.y+=0.15*f;
       e.scale.y=bs;
       swing(u.arms,-2.6);
       // Legs tuck up on the jump instead of staying rigid, which is what makes it
@@ -3135,7 +3204,7 @@ function animate(){
         const wp=u.path&&u.path[u.pi];
         if(!wp){
           // Path exhausted: arrive.
-          if(u.anim==='walk'){u.anim='pause';u.pauseUntil=Date.now()+2000+Math.random()*2000;}
+          if(u.anim==='walk'){u.anim='pause';u.pauseUntil=now+2000+Math.random()*2000;}
           else{u.anim='idle';walkers=Math.max(0,walkers-1);detachCup(e);}
           u.path=null;
         }else{
@@ -3161,7 +3230,7 @@ function animate(){
         e.position.y=0;
         e.scale.y=bs*(1+Math.sin(t*1.5+i)*.015);
         swing(u.legs,0);
-        if(Date.now()>u.pauseUntil){
+        if(now>u.pauseUntil){
           const back=navPath(e.position.x,e.position.z,u.baseX,u.baseZ);
           // If the way home is somehow blocked, snap back rather than stranding them.
           if(back){u.anim='return';u.path=back;u.pi=0;attachCup(e);}
@@ -3194,19 +3263,19 @@ function animate(){
       sh.mesh.material.opacity+=(shaftTarget*sh.base-sh.mesh.material.opacity)*k;
     });
   }
-  // Confetti bursts: outward burst + gravity + fade, auto-dispose
-  for(let ci=confettiBursts.length-1;ci>=0;ci--){
-    const cb=confettiBursts[ci];
-    const age=(Date.now()-cb.born)/1000;
-    const arr=cb.pts.geometry.attributes.position.array;
-    cb.vel.forEach((v,i)=>{
-      v.y-=0.012*f;
-      arr[i*3]+=v.x*f;arr[i*3+1]+=v.y*f;arr[i*3+2]+=v.z*f;
-      if(arr[i*3+1]<0){arr[i*3+1]=0;v.y=0;v.x*=0.9;v.z*=0.9;}
-    });
-    cb.pts.geometry.attributes.position.needsUpdate=true;
-    cb.pts.material.opacity=Math.max(0,Math.min(1,1-(age-2)/1.5));
-    if(age>3.5){scene.remove(cb.pts);cb.pts.geometry.dispose();cb.pts.material.dispose();confettiBursts.splice(ci,1);}
+  // Confetti: outward burst + gravity + fade on the pooled Points, then hidden.
+  if(_confetti&&_confetti.pts.visible){
+    const cf=_confetti,age=(now-cf.born)/1000;
+    const arr=cf.pts.geometry.attributes.position.array,vel=cf.vel;
+    for(let i=0;i<cf.count;i++){
+      const i3=i*3;
+      vel[i3+1]-=0.012*f;
+      arr[i3]+=vel[i3]*f;arr[i3+1]+=vel[i3+1]*f;arr[i3+2]+=vel[i3+2]*f;
+      if(arr[i3+1]<0){arr[i3+1]=0;vel[i3+1]=0;vel[i3]*=0.9;vel[i3+2]*=0.9;}
+    }
+    cf.pts.geometry.attributes.position.needsUpdate=true;
+    cf.pts.material.opacity=Math.max(0,Math.min(1,1-(age-2)/1.5));
+    if(age>3.5){cf.pts.visible=false;cf.pts.geometry.setDrawRange(0,0);}
   }
   // Trophy glow rotation + gentle hover
   trophies.forEach((tr,i)=>{tr.rotation.y=t*.3+i;tr.position.y=.45+Math.sin(t*1.5+i)*.08;});
@@ -3921,6 +3990,7 @@ function sanitizeSave(p){
   if(!validTopic.has(p.topic))p.topic=null;
   // 'general' is never a trend: it exists only as the no-keyword fallback.
   if(!validTopic.has(p.tt)||p.tt==='general')p.tt=null;
+  p.trendLeft=clampInt(p.trendLeft,BALANCE.trendReleases,0,9);
 
   // Whitelist employee roles and clamp names — both feed the DOM and the
   // salary/promotion path in finishDevelopment().
@@ -3993,8 +4063,15 @@ function sanitizeSave(p){
   }else p.loan=null;
 
   if(p.contract&&typeof p.contract==='object'&&validGenre.has(p.contract.genre)){
+    // The publisher is an ENUM, not free text: MakeContractOffer() only ever
+    // picks from PUBLISHERS, so anything else in a save is corruption or an
+    // attack. It used to be length-clamped only, and the banner in updateUI()
+    // wrote it through innerHTML — a 60-character budget is plenty for
+    // <img src=x onerror=…>. Now unknown names collapse to the first table row
+    // and the banner is built from text nodes regardless (defence in depth).
+    const pubRow=PUBLISHERS.find(x=>x.n===p.contract.publisher)||PUBLISHERS[0];
     p.contract={
-      publisher:clampName(p.contract.publisher)||'ناشر',icon:clampName(p.contract.icon).slice(0,4)||'🏢',
+      publisher:pubRow.n,icon:pubRow.icon,
       genre:p.contract.genre,
       // Absent or unknown → a genre-only contract, which is what pre-topic saves hold.
       topic:validTopic.has(p.contract.topic)&&p.contract.topic!=='general'?p.contract.topic:null,
@@ -4306,6 +4383,11 @@ function isResearched(id){return (S.research?.unlocked||[]).includes(id);}
 function moraleMult(){return 0.75+((S.morale??75)/100)*0.4;}
 
 // Market share: fans are the proxy, with a slight player bias so early game isn't punishing
+// Diminishing returns on the fan base (see BALANCE.sales.fanSoftCap).
+function effectiveFans(fn){
+  const C=BALANCE.sales;const f=Math.max(0,fn||0);
+  return f<=C.fanSoftCap?f:C.fanSoftCap+(f-C.fanSoftCap)*C.fanTail;
+}
 function getShares(){
   const pw=Math.max(100,(S.fn||0)*1.2+100);
   const tot=pw+(S.rivals||[]).reduce((a,r)=>a+r.fans,0);
@@ -4606,12 +4688,17 @@ function updateUI(){
     const genreOff=S.genre&&S.genre!==S.contract.genre;
     const topicOff=ct&&S.topic&&S.topic!==S.contract.topic;
     cb.style.display='block';
-    cb.innerHTML='📜 عقد '+S.contract.icon+' '+S.contract.publisher+': لعبة '+(g?g.icon+' '+g.name:'')
+    // Text nodes, never innerHTML: publisher/icon originate in the save file.
+    // sanitizeSave() already pins them to the PUBLISHERS table, but the banner
+    // must not be the thing that stands between a shared save and script execution.
+    cb.textContent='';
+    const lines=['📜 عقد '+S.contract.icon+' '+S.contract.publisher+': لعبة '+(g?g.icon+' '+g.name:'')
       +(ct?' · '+ct.icon+' '+ct.name:'')
-      +' بتقييم ≥ '+S.contract.minScore+' — الدفعة: '+fmt(S.contract.payment)+' 💰 — متبقي '+S.contract.gamesLeft+' إصدار'
-      +(genreOff?'<br>⚠️ نوعك الحالي مختلف عن نوع العقد — إصدارك القادم يستهلك من المهلة بلا دفعة.':'')
-      +(topicOff?'<br>⚠️ اسم لعبتك يدل على '+(TOPICS.find(x=>x.id===S.topic)||{name:'موضوع آخر'}).name
-        +' لا على '+ct.name+' — عدّل الاسم أو تفقد الدفعة.':'');
+      +' بتقييم ≥ '+S.contract.minScore+' — الدفعة: '+fmt(S.contract.payment)+' 💰 — متبقي '+S.contract.gamesLeft+' إصدار'];
+    if(genreOff)lines.push('⚠️ نوعك الحالي مختلف عن نوع العقد — إصدارك القادم يستهلك من المهلة بلا دفعة.');
+    if(topicOff)lines.push('⚠️ اسم لعبتك يدل على '+(TOPICS.find(x=>x.id===S.topic)||{name:'موضوع آخر'}).name
+        +' لا على '+ct.name+' — عدّل الاسم أو تفقد الدفعة.');
+    lines.forEach((t,i)=>{if(i)cb.appendChild(document.createElement('br'));cb.appendChild(document.createTextNode(t));});
   }else cb.style.display='none';
 }
 
@@ -4686,10 +4773,19 @@ function bindGameName(){
   });
 }
 
+// The drag in progress, if any: {w,calc}. One set of window listeners serves
+// every slider. They used to be registered inside the per-slider loop — three
+// sliders × four window listeners, never removed, and only the dataset.bound
+// guard stood between importSave()'s re-bind and a second set of twelve.
+let _sliderDrag=null;
+window.addEventListener('mousemove',e=>{if(_sliderDrag)_sliderDrag.calc(e)});
+window.addEventListener('touchmove',e=>{if(_sliderDrag)_sliderDrag.calc(e)},{passive:true});
+window.addEventListener('mouseup',()=>{_sliderDrag=null});
+window.addEventListener('touchend',()=>{_sliderDrag=null});
 function bindSliders(){
   document.querySelectorAll('.stw').forEach(w=>{
     if(w.dataset.bound)return;w.dataset.bound='1';
-    const k=w.dataset.s;let dr=false;
+    const k=w.dataset.s;
     function setVal(nv){
       const mx=STG[S.st].maxPts;
       const os=Object.keys(S.sl).filter(x=>x!==k).reduce((a,x)=>a+S.sl[x],0);
@@ -4701,12 +4797,8 @@ function bindSliders(){
       const p=Math.max(0,Math.min(1,(cx-r.left)/r.width));
       setVal(Math.round(p*STG[S.st].maxPts));
     }
-    w.addEventListener('mousedown',e=>{dr=true;calc(e)});
-    w.addEventListener('touchstart',e=>{dr=true;calc(e);e.preventDefault()},{passive:false});
-    window.addEventListener('mousemove',e=>{if(dr)calc(e)});
-    window.addEventListener('touchmove',e=>{if(dr)calc(e)},{passive:true});
-    window.addEventListener('mouseup',()=>dr=false);
-    window.addEventListener('touchend',()=>dr=false);
+    w.addEventListener('mousedown',e=>{_sliderDrag={w,calc};calc(e)});
+    w.addEventListener('touchstart',e=>{_sliderDrag={w,calc};calc(e);e.preventDefault()},{passive:false});
     // Keyboard control. The sliders were pointer-only, which made the game's
     // single most important input unreachable without a mouse or touchscreen.
     //
@@ -4896,8 +4988,12 @@ document.addEventListener('visibilitychange',()=>{
 
 // ============ THEME ============
 function applyTheme(){
-  if(S.theme==='light')document.body.classList.add('light');
-  else document.body.classList.remove('light');
+  const light=S.theme==='light';
+  document.body.classList.toggle('light',light);
+  // The browser chrome / PWA title bar follows the in-game theme too; it used to
+  // stay dark navy over a light page.
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta)meta.setAttribute('content',light?'#f0f3fa':'#0a0e1a');
 }
 
 // ============ DEVELOP ============
@@ -5109,9 +5205,22 @@ const BALANCE={
     sequelCap:1.5,sequelFromParent:0.15,sequelFatigue:0.3,
     reviewerSpread:1.5,finalJitter:0.8,
     expectationCatchUp:0.3, // how fast the rubber-band baseline chases performance
+    // Final score as a CONTINUOUS function of how far `raw` beats the studio's
+    // own record (d2). Points are (d2, score); values between are interpolated
+    // and the ends are clamped. This replaced four flat buckets where beating
+    // the record by 1.01 paid exactly what beating it by 5 did — the optimal
+    // play was "clear your record by a hair", and any investment past that was
+    // wasted. The curve keeps the old bucket centres roughly where they were.
+    curve:[[-3,3.5],[-1,5.5],[0,7],[1,8.5],[2,9.6]],
+    curveSpread:1.0,   // ± random half-width around the curve
   },
   sales:{
     scoreExponent:2.5,unit:100,fanWeight:0.002,
+    // Fans past the soft cap count at `fanTail` of their face value. Without a
+    // knee the multiplier (1 + fans × fanWeight) was unbounded: 100K fans was
+    // ×201, and since every money sink is fixed or stage-linear, cash stopped
+    // meaning anything by mid-game and morale/loans/contracts became scenery.
+    fanSoftCap:20000,fanTail:0.15,
     stageRevenue:i=>1.5+i*1.0,
     trend:2,recession:0.6,publisher:1.5,piracy:0.7,
     sequel:1.5,prestigePerLevel:0.1,
@@ -5129,6 +5238,9 @@ const BALANCE={
     fansBase:50,fansPerScore:30,
   },
   research:{perGame:1,highScoreBonus:2,highScoreAt:8},
+  // A hot-topic trend used to sit in S.em until the player cashed it in — a
+  // banked ×2 with no expiry. It now lasts this many releases.
+  trendReleases:3,
   morale:{great:6,good:3,flop:-8,crunch:-4,resignChance:0.15,resignBelow:30},
   // World-event magnitudes. These lived as literals inside triggerEvent() and
   // getDevCost(), with a second hand-written copy of each in the event's own
@@ -5240,6 +5352,16 @@ function showEggPopup(eggKey,egg){
 
 // Reviewer scores. Returns the raw quality figure, the four review scores, their
 // average, and the inputs the review screen explains back to the player.
+// Piecewise-linear lookup on BALANCE.score.curve, clamped at both ends.
+function scoreCurve(d2){
+  const pts=BALANCE.score.curve;
+  if(d2<=pts[0][0])return pts[0][1];
+  for(let i=1;i<pts.length;i++){
+    const [x0,y0]=pts[i-1],[x1,y1]=pts[i];
+    if(d2<=x1)return y0+(y1-y0)*(d2-x0)/(x1-x0);
+  }
+  return pts[pts.length-1][1];
+}
 function computeScore(rel){
   const C=BALANCE.score;
   const bonus=skillBonuses();
@@ -5273,11 +5395,8 @@ function computeScore(rel){
 
   // Rubber band: scores are relative to the studio's own track record, so a
   // winning formula cannot simply be repeated forever.
-  const d2=raw-S.hs;let fin;
-  if(d2>1)fin=9+Math.random()*1.2;
-  else if(d2>0)fin=7.5+Math.random()*2;
-  else if(d2>-1)fin=6+Math.random()*2;
-  else fin=3+Math.random()*3;
+  const d2=raw-S.hs;
+  let fin=scoreCurve(d2)+(Math.random()*2-1)*C.curveSpread;
   fin+=(Math.random()-.5)*C.finalJitter;
   fin=Math.max(1,Math.min(10,Math.round(fin*10)/10));
   if(raw>S.hs)S.hs+=(raw-S.hs)*C.expectationCatchUp;
@@ -5292,10 +5411,14 @@ function computeScore(rel){
 function computeSales(rel,q){
   const C=BALANCE.sales,F=BALANCE.fans;
   const eggBonus=rel.egg?rel.egg.bonus:1;
-  let sales=Math.pow(q.avg,C.scoreExponent)*C.unit*(1+S.fn*C.fanWeight)*eggBonus;
+  let sales=Math.pow(q.avg,C.scoreExponent)*C.unit*(1+effectiveFans(S.fn)*C.fanWeight)*eggBonus;
 
   let mult=1;
-  if(S.em==='trend'&&rel.topic.id===S.tt){mult=C.trend;S.em=null}
+  if(S.em==='trend'){
+    if(rel.topic.id===S.tt){mult=C.trend;S.em=null}
+    // Unclaimed trends age out instead of waiting indefinitely to be cashed.
+    else if(--S.trendLeft<=0){S.em=null}
+  }
   if(S.em==='recession'){mult=C.recession;S.em=null}
   if(S.em==='publisher'){mult=C.publisher;S.em=null}
   if(S.em==='piracy'){mult=C.piracy;S.em=null}
@@ -5759,7 +5882,7 @@ function triggerEvent(){
   // so the template is held separately from the (shared, frozen) event row.
   let descTpl=ev.desc;
   const morale=d=>{S.morale=Math.max(0,Math.min(100,(S.morale??75)+d));};
-  if(ev.type==='trend'){const rt=REAL_TOPICS[Math.random()*REAL_TOPICS.length|0];S.tt=rt.id;ctx.topic=rt.icon+' '+rt.name;S.em='trend';}
+  if(ev.type==='trend'){const rt=REAL_TOPICS[Math.random()*REAL_TOPICS.length|0];S.tt=rt.id;ctx.topic=rt.icon+' '+rt.name;S.em='trend';S.trendLeft=BALANCE.trendReleases;}
   else if(ev.type==='recession')S.em='recession';
   else if(ev.type==='festival')S.em='festival';
   else if(ev.type==='competitor'){
@@ -5910,7 +6033,7 @@ window.toggleHistory=function(){
   const p=document.getElementById('hp');
   if(p.style.display==='block'){p.style.display='none';return}
   p.innerHTML='';
-  if(!S.hist.length){p.innerHTML='<div style="color:#444;text-align:center;padding:6px">لا توجد ألعاب</div>';}
+  if(!S.hist.length){p.innerHTML='<div style="color:var(--tx3);text-align:center;padding:6px">لا توجد ألعاب</div>';}
   else S.hist.slice(0,30).forEach(h=>{
     const d=document.createElement('div');d.className='hr';
     const col=h.score>=8?'var(--p)':h.score>=5?'var(--g)':'var(--d)';
@@ -5987,7 +6110,7 @@ function RenderResearch(){
     const can=S.research.points>=r.cost&&!done;
     const div=document.createElement('div');
     div.className='resnode'+(done?' done':'')+(!can&&!done?' locked':'');
-    div.innerHTML=`<div><div style="font-weight:900">${r.n}</div><div style="font-size:9px;color:var(--tx3)">${r.desc}</div></div><div style="text-align:left"><div class="cost">${done?'✅':r.cost+' 🔬'}</div></div>`;
+    div.innerHTML=`<div><div style="font-weight:900">${r.n}</div><div style="font-size:9px;color:var(--tx3)">${r.desc}</div></div><div style="text-align:end"><div class="cost">${done?'✅':r.cost+' 🔬'}</div></div>`;
     if(!done){
       const btn=document.createElement('button');btn.textContent='بحث';btn.disabled=!can;
       btn.onclick=()=>{
@@ -6045,7 +6168,11 @@ function RenderEmps(){
     info.style.cssText='font-size:10px;color:var(--tx3);text-align:center';
     info.textContent='المعنويات تؤثر على إنتاجية الموظفين والتقييم. ترتفع بالنجاحات وتنخفض بالإخفاقات والإطلاق السريع. تحت 30: خطر استقالات!';
     c.appendChild(info);
-    const partyCost=5000+S.st*15000;
+    // Floored by stage, but scaled to what the studio actually earns: a fixed
+    // price becomes a rounding error once releases pay millions, which is how
+    // the morale system stopped being a decision after the mid-game.
+    const lastRev=(S.hist&&S.hist[0]&&S.hist[0].revenue)||0;
+    const partyCost=Math.max(5000+S.st*15000,Math.floor(lastRev*0.15));
     const pb=document.createElement('button');pb.className='bg';pb.style.cssText='display:block;width:100%;margin:6px 0';
     pb.textContent='🎉 حفلة للفريق ('+fmt(partyCost)+' 💰) +15';
     pb.disabled=S.partyUsed||S.money<partyCost;
@@ -6058,7 +6185,7 @@ function RenderEmps(){
       RenderEmps();updateUI();saveGame();
     };
     c.appendChild(pb);
-    const bonusCost=getTotalSalary()*2;
+    const bonusCost=Math.max(getTotalSalary()*2,Math.floor(lastRev*0.25));
     const bb=document.createElement('button');bb.className='bg gl';bb.style.cssText='display:block;width:100%;margin:6px 0';
     bb.textContent='💰 مكافآت مالية ('+fmt(bonusCost)+' 💰) +25';
     bb.disabled=!bonusCost||S.money<bonusCost;
@@ -6150,7 +6277,7 @@ function RenderIPs(){
   if(!S.ips||!S.ips.length){list.innerHTML='<p style="text-align:center;color:var(--tx3);padding:14px">لا توجد ألعاب ناجحة بعد. حقّق تقييم ≥ 7 ليُحفظ كـ IP.</p>';return;}
   S.ips.slice().reverse().forEach(ip=>{
     const genre=GENRES.find(g=>g.id===ip.genre),topic=TOPICS.find(t=>t.id===ip.topic);
-    const div=document.createElement('div');div.className='ipcard';
+    const div=document.createElement('div');div.className='ipcard';div.setAttribute('role','button');div.tabIndex=0;
     const dlcsMade=ip.dlcs||0;
     const nameDiv=document.createElement('div');nameDiv.className='ipn';nameDiv.textContent=ip.name;
     const metaDiv=document.createElement('div');metaDiv.className='ipd';
@@ -6200,7 +6327,7 @@ function StartDLC(ip){
   // game (~3.9×) — the lowest-effort action was the highest-yield one. A shallower
   // slope keeps DLC as useful bridging income without out-earning real releases.
   const fatigue=Math.pow(D.fatigue,made);
-  const rev=Math.floor(Math.pow(ip.bestScore,D.scoreExponent)*D.unit*(1+S.fn*D.fanWeight)
+  const rev=Math.floor(Math.pow(ip.bestScore,D.scoreExponent)*D.unit*(1+effectiveFans(S.fn)*D.fanWeight)
     *DIFFICULTY[S.difficulty].rewardMult*D.stageRevenue(S.st)*fatigue);
   S.money+=rev;
   const fans=Math.floor((D.fansBase+ip.bestScore*D.fansPerScore)*fatigue);
@@ -6256,7 +6383,7 @@ function RenderLoan(){
     [[0.25,'صغير'],[0.5,'متوسط'],[1,'كامل']].forEach(([frac,label])=>{
       const amount=Math.floor(cap*frac);
       const total=Math.floor(amount*(1+interest));
-      const opt=document.createElement('div');opt.className='mkt-opt';
+      const opt=document.createElement('div');opt.className='mkt-opt';opt.setAttribute('role','button');opt.tabIndex=0;
       opt.innerHTML='<div class="mt">🏦 قرض '+label+': '+fmt(amount)+' 💰</div><div class="md">السداد الكلي: '+fmt(total)+' • القسط: '+fmt(Math.ceil(total/8))+'/لعبة × 8</div>';
       opt.onclick=()=>TakeLoan(frac);
       body.appendChild(opt);
@@ -6277,11 +6404,14 @@ window.TakeLoan=function(frac){
   const remaining=Math.floor(principal*(1+interest));
   S.loan={principal,remaining,perGame:Math.ceil(remaining/8),gamesLeft:8};
   S.money+=principal;
-  const wasRescue=loanRescue;
+  // CloseLoan() owns the rescue hand-off: when loanRescue is set it clears the
+  // flag AND resumes the pipeline after tryBankruptcy. This function used to
+  // advance a second time on top of that, so every step from tryUpgrade onward
+  // ran twice — two rolls of contract/convention/event, two stacked modals, and
+  // an upgrade prompt against money that had already been spent.
   CloseLoan();
   sn('ok');showToast('🏦 حصلت على قرض '+fmt(principal)+' 💰');
   updateUI();saveGame();
-  if(wasRescue)advance(stepAfter('tryBankruptcy'));
 };
 
 // ============ PUBLISHER CONTRACTS ============
@@ -6406,9 +6536,12 @@ function bindKeyboard(){
       if(po){window.togglePanel();e.preventDefault();}
       return;
     }
-    // Space/Enter on the div-based panel handle (role="button").
-    if((e.key==='Enter'||e.key===' ')&&document.activeElement&&document.activeElement.id==='pt'){
-      window.togglePanel();e.preventDefault();
+    // Space/Enter activate any div carrying role="button": the panel handle, the
+    // marketing tiers, the loan options and the IP cards. Real <button>s already
+    // do this natively and are excluded so they are not clicked twice.
+    if(e.key==='Enter'||e.key===' '){
+      const ae=document.activeElement;
+      if(ae&&ae.tagName!=='BUTTON'&&ae.getAttribute('role')==='button'){ae.click();e.preventDefault();}
     }
   });
 }
